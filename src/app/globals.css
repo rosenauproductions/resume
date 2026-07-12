@@ -1,0 +1,111 @@
+@import "tailwindcss";
+
+:root {
+  --ink: #071018;
+  --panel: #0d1824;
+  --cream: #eef4f8;
+  --muted: #9aafbf;
+  --accent: #3fd0c9;
+  --warm: #e8a35c;
+  --background: var(--ink);
+  --foreground: var(--cream);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-body);
+  --font-display: var(--font-display);
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background: var(--ink);
+  color: var(--cream);
+  font-family: var(--font-body), system-ui, sans-serif;
+}
+
+::selection {
+  background: color-mix(in oklab, var(--accent) 40%, transparent);
+  color: var(--cream);
+}
+
+.section-kicker {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.75rem;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.section-kicker::after {
+  content: "";
+  height: 1px;
+  width: 3rem;
+  background: color-mix(in oklab, var(--accent) 50%, transparent);
+}
+
+.section-title {
+  font-family: var(--font-display), system-ui, sans-serif;
+  font-size: clamp(2.5rem, 6vw, 4rem);
+  letter-spacing: -0.03em;
+  line-height: 1.05;
+  color: var(--cream);
+}
+
+.hero-plane {
+  background:
+    linear-gradient(
+      105deg,
+      rgba(7, 16, 24, 0.92) 0%,
+      rgba(7, 16, 24, 0.78) 42%,
+      rgba(7, 16, 24, 0.35) 70%,
+      rgba(7, 16, 24, 0.55) 100%
+    ),
+    linear-gradient(180deg, rgba(7, 16, 24, 0.2), rgba(7, 16, 24, 0.85));
+}
+
+.hero-vignette {
+  background: radial-gradient(ellipse 80% 70% at 70% 40%, transparent 20%, rgba(7, 16, 24, 0.75) 100%);
+}
+
+.hero-orb {
+  background: radial-gradient(circle, rgba(63, 208, 201, 0.35), transparent 70%);
+  filter: blur(8px);
+}
+
+.hero-orb-warm {
+  background: radial-gradient(circle, rgba(232, 163, 92, 0.28), transparent 70%);
+  filter: blur(10px);
+}
+
+.work-placeholder {
+  background:
+    linear-gradient(145deg, rgba(63, 208, 201, 0.12), transparent 45%),
+    linear-gradient(320deg, rgba(232, 163, 92, 0.1), transparent 40%),
+    repeating-linear-gradient(
+      -12deg,
+      transparent,
+      transparent 10px,
+      rgba(238, 244, 248, 0.03) 10px,
+      rgba(238, 244, 248, 0.03) 11px
+    ),
+    var(--panel);
+}
+
+.contact-glow {
+  background: radial-gradient(60% 50% at 50% 30%, rgba(63, 208, 201, 0.12), transparent 70%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+}
