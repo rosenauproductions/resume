@@ -20,8 +20,8 @@ export function About() {
           <Reveal className="relative md:col-span-5" delay={0.05}>
             <div className="relative aspect-[4/5] overflow-hidden bg-black">
               <Image
-                src={portraits.rim}
-                alt="Chris Rosenau — rim light portrait"
+                src={portraits.close}
+                alt="Chris Rosenau — portrait"
                 fill
                 className="object-cover object-center"
                 sizes="(max-width: 768px) 100vw, 40vw"

@@ -114,12 +114,12 @@ export const skills = {
     },
   ],
   meters: [
-    { name: "Articulate Rise & Storyline", level: 95 },
-    { name: "PowerPoint animation & video", level: 98 },
-    { name: "Synthesia AI video", level: 90 },
-    { name: "Canvas LMS", level: 85 },
-    { name: "Premiere / After Effects", level: 80 },
-    { name: "Vyond / character animation", level: 85 },
+    { name: "Articulate Rise & Storyline", proficiency: "Expert", width: 95 },
+    { name: "PowerPoint animation & video", proficiency: "Expert", width: 98 },
+    { name: "Synthesia AI video", proficiency: "Expert", width: 90 },
+    { name: "Canvas LMS", proficiency: "Advanced", width: 85 },
+    { name: "Premiere / After Effects", proficiency: "Advanced", width: 80 },
+    { name: "Vyond / character animation", proficiency: "Advanced", width: 85 },
   ],
 };
 
@@ -131,15 +131,16 @@ export const portraits = {
   texture: "/images/texture-concrete.png",
 };
 
-/** Visual identity strip — studio portraits (not client work) */
-export const gallery = {
-  heading: "Studio",
-  note: "Portrait studies — black & white, high contrast.",
-  items: [
-    { src: "/images/portrait-rim.png", alt: "Chris Rosenau — rim light portrait" },
-    { src: "/images/portrait-side.png", alt: "Chris Rosenau — side-lit portrait" },
-    { src: "/images/portrait-close.png", alt: "Chris Rosenau — close portrait" },
-  ],
+/** Selected work — video reel for now; stills can be added later */
+export const work = {
+  heading: "Selected work",
+  note: "A look at past courses, video, and learning media.",
+  portfolioVideo: {
+    href: "https://www.youtube.com/watch?v=ja7QZxXej7w",
+    embed: "https://www.youtube.com/embed/ja7QZxXej7w",
+    label: "Watch portfolio reel",
+    detail: "2-year portfolio overview",
+  },
 };
 
 export const education = [

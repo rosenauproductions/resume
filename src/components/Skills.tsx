@@ -44,19 +44,16 @@ export function Skills() {
             ))}
           </div>
 
-          <div className="space-y-6">
+          <div className="space-y-8">
             {skills.meters.map((meter, i) => (
               <Reveal key={meter.name} delay={0.05 + i * 0.05}>
                 <div>
-                  <div className="mb-2 flex justify-between text-sm">
-                    <span className="text-[var(--cream)]">{meter.name}</span>
-                    <span className="font-mono text-[var(--muted)]">{meter.level}%</span>
-                  </div>
-                  <div className="h-1.5 overflow-hidden rounded-full bg-white/10">
+                  <p className="mb-3 text-sm text-[var(--cream)]">{meter.name}</p>
+                  <div className="relative h-1.5 rounded-full bg-white/10">
                     <motion.div
-                      className="h-full rounded-full bg-gradient-to-r from-[var(--cream)] to-[var(--accent)]"
-                      initial={reduce ? { width: `${meter.level}%` } : { width: 0 }}
-                      whileInView={{ width: `${meter.level}%` }}
+                      className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-[var(--cream)] to-[var(--accent)]"
+                      initial={reduce ? { width: `${meter.width}%` } : { width: 0 }}
+                      whileInView={{ width: `${meter.width}%` }}
                       viewport={{ once: true, margin: "-40px" }}
                       transition={{
                         duration: 1.1,
@@ -64,6 +61,22 @@ export function Skills() {
                         delay: 0.1,
                       }}
                     />
+                    <motion.div
+                      className="absolute top-full -translate-x-1/2 pt-1.5"
+                      style={{ left: `${meter.width}%` }}
+                      initial={reduce ? { opacity: 1 } : { opacity: 0 }}
+                      whileInView={{ opacity: 1 }}
+                      viewport={{ once: true, margin: "-40px" }}
+                      transition={{ duration: 0.4, delay: 0.7 }}
+                    >
+                      <span
+                        className="mx-auto block h-0 w-0 border-x-[5px] border-t-[7px] border-x-transparent border-t-[var(--accent)]"
+                        aria-hidden
+                      />
+                      <span className="mt-1 block whitespace-nowrap text-center font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--accent)]">
+                        {meter.proficiency}
+                      </span>
+                    </motion.div>
                   </div>
                 </div>
               </Reveal>

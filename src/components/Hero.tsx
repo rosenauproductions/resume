@@ -87,22 +87,20 @@ export function Hero() {
         </div>
 
         <motion.div
-          className="relative mx-auto w-full max-w-sm md:col-span-5 md:max-w-none"
+          className="relative mx-auto w-full max-w-md md:col-span-5 md:max-w-none"
           initial={reduce ? false : { opacity: 0, x: 40, scale: 0.96 }}
           animate={{ opacity: 1, x: 0, scale: 1 }}
           transition={{ duration: 1, ease: [0.22, 1, 0.36, 1], delay: 0.35 }}
         >
-          <div className="relative aspect-[3/4] overflow-hidden">
+          <div className="relative aspect-[3/4]">
             <Image
               src={portraits.hero}
               alt={`${site.name} portrait`}
               fill
               priority
-              className="object-cover object-top"
+              className="object-contain object-bottom"
               sizes="(max-width: 768px) 90vw, 40vw"
             />
-            <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[var(--ink)] via-transparent to-transparent opacity-70" />
-            <div className="pointer-events-none absolute inset-y-0 left-0 w-1/4 bg-gradient-to-r from-[var(--ink)] to-transparent opacity-60 md:opacity-40" />
           </div>
         </motion.div>
       </div>

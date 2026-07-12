@@ -2,10 +2,8 @@
 
 | File | Use |
 |---|---|
-| `portrait-hero.png` | Hero (blazer) |
-| `portrait-rim.png` | About |
-| `portrait-side.png` | Studio gallery |
-| `portrait-close.png` | Studio gallery |
+| `portrait-hero.png` | Hero cutout (transparent background) |
+| `portrait-close.png` | About |
 | `texture-concrete.png` | Hero background texture |
 
-Replace any file with the same name to update the site.
+Work samples currently use the YouTube portfolio reel embed. Add stills later when ready.
