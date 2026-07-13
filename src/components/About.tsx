@@ -6,7 +6,7 @@ import { Reveal } from "./Reveal";
 
 export function About() {
   return (
-    <section id="about" className="relative py-16 md:py-20 lg:py-24">
+    <section id="about" className="relative pt-16 pb-4 md:pt-20 md:pb-4 lg:pt-24 lg:pb-2">
       <div className="mx-auto max-w-6xl px-6">
         <Reveal>
           <p className="section-kicker">01</p>

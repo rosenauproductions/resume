@@ -8,7 +8,7 @@ export function Experience() {
   const reduce = useReducedMotion();
 
   return (
-    <section id="experience" className="relative py-16 md:py-20 lg:py-24">
+    <section id="experience" className="relative pt-2 pb-16 md:pt-2 md:pb-20 lg:pt-2 lg:pb-24">
       <div className="mx-auto max-w-6xl px-6">
         <Reveal>
           <p className="section-kicker">02</p>
