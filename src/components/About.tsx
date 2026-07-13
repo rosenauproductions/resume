@@ -1,13 +1,10 @@
 "use client";
 
 import Image from "next/image";
-import { motion, useReducedMotion } from "motion/react";
 import { about, portraits } from "@/content/resume";
 import { Reveal } from "./Reveal";
 
 export function About() {
-  const reduce = useReducedMotion();
-
   return (
     <section id="about" className="relative py-28 md:py-36">
       <div className="mx-auto max-w-6xl px-6">
@@ -23,17 +20,10 @@ export function About() {
                 src={portraits.close}
                 alt="Chris Rosenau — portrait"
                 fill
-                className="object-cover object-center"
+                priority
+                className="object-cover object-[center_20%]"
                 sizes="(max-width: 768px) 100vw, 40vw"
               />
-              {!reduce && (
-                <motion.div
-                  className="absolute inset-0 bg-[var(--accent)] mix-blend-soft-light opacity-20"
-                  animate={{ opacity: [0.12, 0.22, 0.12] }}
-                  transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
-                  aria-hidden
-                />
-              )}
             </div>
           </Reveal>
 

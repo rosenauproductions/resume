@@ -30,7 +30,7 @@ export const experience = [
   {
     role: "Instructional Design Specialist (Media)",
     company: "Medical Sales College",
-    dates: "Feb 2024 – Present",
+    dates: "Feb 2024 – July 2026",
     location: "Remote",
     highlights: [
       "Spearheaded the transition from an in-person instructor-led platform to a hybrid online learning format, improving accessibility and flexibility for learners",
@@ -127,11 +127,11 @@ export const portraits = {
   hero: "/images/portrait-hero.png",
   rim: "/images/portrait-rim.png",
   side: "/images/portrait-side.png",
-  close: "/images/portrait-close.png",
+  close: "/images/portrait-about.jpg",
   texture: "/images/texture-concrete.png",
 };
 
-/** Selected work — video reel for now; stills can be added later */
+/** Selected work — video reel + looping demo */
 export const work = {
   heading: "Selected work",
   note: "A look at past courses, video, and learning media.",
@@ -140,6 +140,11 @@ export const work = {
     embed: "https://www.youtube.com/embed/ja7QZxXej7w",
     label: "Watch portfolio reel",
     detail: "2-year portfolio overview",
+  },
+  demoGif: {
+    src: "/images/work-diagnostic-scope.mp4",
+    title: "Diagnostic scope demo",
+    detail: "MSC — sped-up demonstration (looping)",
   },
 };
 
