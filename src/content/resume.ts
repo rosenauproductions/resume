@@ -127,7 +127,7 @@ export const portraits = {
   hero: "/images/portrait-hero.png",
   rim: "/images/portrait-rim.png",
   side: "/images/portrait-side.png",
-  close: "/images/portrait-about.jpg",
+  close: "/images/portrait-about.png",
   texture: "/images/texture-concrete.png",
 };
 
