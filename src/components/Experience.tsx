@@ -24,22 +24,19 @@ export function Experience() {
           <ol className="space-y-14">
             {experience.map((job, i) => (
               <li key={`${job.company}-${job.dates}`} className="relative pl-10 md:pl-14">
-                <Reveal delay={i * 0.04}>
-                  <span
-                    className="absolute left-0 top-2 flex h-4 w-4 items-center justify-center rounded-full border border-[var(--accent)] bg-[var(--ink)] md:h-6 md:w-6"
-                    aria-hidden
-                  >
-                    {!reduce && (
-                      <motion.span
-                        className="h-1.5 w-1.5 rounded-full bg-[var(--accent)] md:h-2 md:w-2"
-                        initial={{ scale: 0 }}
-                        whileInView={{ scale: 1 }}
-                        viewport={{ once: true }}
-                        transition={{ delay: 0.2, type: "spring", stiffness: 260 }}
-                      />
-                    )}
-                  </span>
+                {/* Marker stays put — no translate, just a soft fade */}
+                <motion.span
+                  className="absolute left-0 top-2 flex h-4 w-4 items-center justify-center rounded-full border border-[var(--accent)] bg-[var(--ink)] md:h-6 md:w-6"
+                  aria-hidden
+                  initial={reduce ? false : { opacity: 0 }}
+                  whileInView={{ opacity: 1 }}
+                  viewport={{ once: true, amount: 0.4 }}
+                  transition={{ duration: 0.6, ease: "easeOut", delay: i * 0.05 }}
+                >
+                  <span className="h-1.5 w-1.5 rounded-full bg-[var(--accent)] md:h-2 md:w-2" />
+                </motion.span>
 
+                <Reveal delay={i * 0.05} distance={14} duration={0.85}>
                   <div className="flex flex-col gap-2 sm:flex-row sm:items-baseline sm:justify-between">
                     <div>
                       <h3 className="font-[family-name:var(--font-display)] text-2xl tracking-tight text-[var(--cream)]">
