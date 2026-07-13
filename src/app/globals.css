@@ -136,3 +136,26 @@ body {
     scroll-behavior: auto;
   }
 }
+
+@media print {
+  header,
+  nav,
+  .hero-orb,
+  .hero-orb-warm {
+    display: none !important;
+  }
+
+  body {
+    background: white !important;
+    color: black !important;
+  }
+
+  a {
+    color: inherit !important;
+    text-decoration: none !important;
+  }
+
+  section {
+    break-inside: avoid;
+  }
+}

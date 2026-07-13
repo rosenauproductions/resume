@@ -3,7 +3,7 @@ import { Reveal } from "./Reveal";
 
 export function Gallery() {
   return (
-    <section id="work" className="relative py-28 md:py-36">
+    <section id="work" className="relative pt-2 pb-4 md:pt-2 md:pb-4 lg:pt-2 lg:pb-2">
       <div className="mx-auto max-w-6xl px-6">
         <Reveal>
           <p className="section-kicker">03</p>

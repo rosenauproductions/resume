@@ -3,7 +3,7 @@ import { Reveal } from "./Reveal";
 
 export function Contact() {
   return (
-    <section id="contact" className="relative py-28 md:py-40">
+    <section id="contact" className="relative pt-2 pb-16 md:pt-2 md:pb-20 lg:pt-2 lg:pb-24">
       <div className="absolute inset-0 contact-glow" aria-hidden />
       <div className="relative mx-auto max-w-6xl px-6 text-center">
         <Reveal>
