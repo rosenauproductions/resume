@@ -15,13 +15,14 @@ export function About() {
 
         <div className="mt-14 grid items-center gap-10 md:grid-cols-12 md:gap-12">
           <Reveal className="relative md:col-span-5" delay={0.05}>
-            <div className="relative aspect-[4/5] overflow-hidden bg-black">
+            <div className="relative aspect-[4/5]">
               <Image
                 src={portraits.close}
                 alt="Chris Rosenau — portrait"
                 fill
                 priority
-                className="object-cover object-[center_20%]"
+                unoptimized
+                className="object-contain object-center"
                 sizes="(max-width: 768px) 100vw, 40vw"
               />
             </div>

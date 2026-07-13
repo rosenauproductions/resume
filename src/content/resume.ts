@@ -117,9 +117,9 @@ export const skills = {
     { name: "Articulate Rise & Storyline", proficiency: "Expert", width: 95 },
     { name: "PowerPoint animation & video", proficiency: "Expert", width: 98 },
     { name: "Synthesia AI video", proficiency: "Expert", width: 90 },
-    { name: "Canvas LMS", proficiency: "Advanced", width: 85 },
-    { name: "Premiere / After Effects", proficiency: "Advanced", width: 80 },
-    { name: "Vyond / character animation", proficiency: "Advanced", width: 85 },
+    { name: "Canvas LMS", proficiency: "Low Advanced", width: 78 },
+    { name: "Premiere / After Effects", proficiency: "Expert", width: 92 },
+    { name: "Vyond / character animation", proficiency: "Expert", width: 92 },
   ],
 };
 
