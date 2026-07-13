@@ -6,7 +6,7 @@ import { Reveal } from "./Reveal";
 
 export function About() {
   return (
-    <section id="about" className="relative py-20 md:py-28 lg:py-36">
+    <section id="about" className="relative py-16 md:py-20 lg:py-24">
       <div className="mx-auto max-w-6xl px-6">
         <Reveal>
           <p className="section-kicker">01</p>
@@ -14,7 +14,7 @@ export function About() {
         </Reveal>
 
         <Reveal className="mt-10 md:mt-14" delay={0.06}>
-          <p className="mb-8 font-[family-name:var(--font-display)] text-2xl leading-snug tracking-tight text-[var(--cream)] sm:text-3xl md:text-4xl">
+          <p className="mb-8 text-center font-[family-name:var(--font-display)] text-2xl leading-snug tracking-tight text-[var(--cream)] sm:text-3xl md:text-4xl">
             Learning media that feels intentional — not templated.
           </p>
 
