@@ -145,9 +145,17 @@ body {
     display: none !important;
   }
 
+  html,
   body {
-    background: white !important;
-    color: black !important;
+    background: #071018 !important;
+    color: #eef4f8 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
 
   a {
