@@ -32,10 +32,10 @@ export function Hero() {
         />
       )}
 
-      <div className="relative z-10 mx-auto grid w-full max-w-6xl items-end gap-8 px-6 md:grid-cols-12 md:items-center">
+      <div className="relative z-10 mx-auto grid w-full max-w-6xl items-end gap-6 px-5 pb-2 sm:px-6 md:grid-cols-12 md:items-center md:gap-8">
         <div className="md:col-span-7">
           <motion.p
-            className="mb-5 text-sm uppercase tracking-[0.28em] text-[var(--accent)]"
+            className="mb-4 text-xs uppercase tracking-[0.28em] text-[var(--accent)] sm:mb-5 sm:text-sm"
             initial={reduce ? false : { opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.1 }}
@@ -44,7 +44,7 @@ export function Hero() {
           </motion.p>
 
           <motion.h1
-            className="font-[family-name:var(--font-display)] text-[clamp(3.1rem,11vw,7.5rem)] leading-[0.9] tracking-[-0.03em] text-[var(--cream)]"
+            className="font-[family-name:var(--font-display)] text-[clamp(2.75rem,12vw,7.5rem)] leading-[0.9] tracking-[-0.03em] text-[var(--cream)]"
             initial={reduce ? false : { opacity: 0, y: 40 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.85, ease: [0.22, 1, 0.36, 1], delay: 0.2 }}
@@ -53,25 +53,25 @@ export function Hero() {
           </motion.h1>
 
           <motion.p
-            className="mt-6 max-w-lg text-lg text-[var(--muted)] md:text-xl"
+            className="mt-5 max-w-lg text-base text-[var(--muted)] sm:mt-6 sm:text-lg md:text-xl"
             initial={reduce ? false : { opacity: 0, y: 24 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.7, delay: 0.4 }}
           >
             <span className="block text-[var(--cream)]">{site.title}</span>
-            <span className="mt-1 block text-base text-[var(--muted)]">{site.subtitle}</span>
-            <span className="mt-4 block">{site.tagline}</span>
+            <span className="mt-1 block text-sm text-[var(--muted)] sm:text-base">{site.subtitle}</span>
+            <span className="mt-3 block sm:mt-4">{site.tagline}</span>
           </motion.p>
 
           <motion.div
-            className="mt-10 flex flex-wrap gap-4"
+            className="mt-8 flex flex-wrap gap-3 sm:mt-10 sm:gap-4"
             initial={reduce ? false : { opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.65, delay: 0.55 }}
           >
             <a
               href="#experience"
-              className="rounded-full bg-[var(--cream)] px-7 py-3.5 text-sm font-semibold text-[var(--ink)] transition-transform hover:scale-[1.03]"
+              className="rounded-full bg-[var(--cream)] px-6 py-3 text-sm font-semibold text-[var(--ink)] transition-transform hover:scale-[1.03] sm:px-7 sm:py-3.5"
             >
               View experience
             </a>
@@ -79,7 +79,7 @@ export function Hero() {
               href={site.linkedin}
               target="_blank"
               rel="noopener noreferrer"
-              className="rounded-full border border-white/25 px-7 py-3.5 text-sm font-semibold text-[var(--cream)] transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)]"
+              className="rounded-full border border-white/25 px-6 py-3 text-sm font-semibold text-[var(--cream)] transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)] sm:px-7 sm:py-3.5"
             >
               LinkedIn
             </a>
@@ -87,7 +87,7 @@ export function Hero() {
         </div>
 
         <motion.div
-          className="relative mx-auto w-full max-w-md md:col-span-5 md:max-w-none"
+          className="relative mx-auto w-full max-w-xs sm:max-w-md md:col-span-5 md:max-w-none"
           initial={reduce ? false : { opacity: 0, x: 40, scale: 0.96 }}
           animate={{ opacity: 1, x: 0, scale: 1 }}
           transition={{ duration: 1, ease: [0.22, 1, 0.36, 1], delay: 0.35 }}

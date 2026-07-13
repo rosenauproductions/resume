@@ -104,6 +104,33 @@ body {
   background: radial-gradient(60% 50% at 50% 30%, rgba(63, 208, 201, 0.12), transparent 70%);
 }
 
+.about-flow {
+  overflow: hidden;
+}
+
+.about-portrait {
+  display: block;
+  width: min(52%, 280px);
+  max-width: 100%;
+  margin: 0 auto 1.5rem;
+}
+
+@media (min-width: 640px) {
+  .about-portrait {
+    float: left;
+    width: min(42%, 320px);
+    margin: 0 1.75rem 1rem 0;
+    shape-outside: margin-box;
+  }
+}
+
+@media (min-width: 1024px) {
+  .about-portrait {
+    width: min(38%, 360px);
+    margin: 0 2.25rem 1.25rem 0;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;
