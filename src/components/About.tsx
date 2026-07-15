@@ -18,25 +18,30 @@ export function About() {
             Learning media that feels intentional — not templated.
           </p>
 
-          {/* Float portrait so body copy wraps around it on tablet+ */}
+          {/* Image height tracks the paragraph column beside it */}
           <div className="about-flow">
             <div className="about-portrait">
               <Image
                 src={portraits.close}
                 alt="Chris Rosenau — portrait"
-                width={808}
+                width={404}
                 height={1024}
                 priority
                 unoptimized
-                className="h-auto w-full"
+                className="about-portrait-img"
               />
             </div>
 
-            {about.paragraphs.map((p) => (
-              <p key={p.slice(0, 40)} className="mb-5 text-base leading-relaxed text-[var(--muted)] last:mb-0 sm:text-lg">
-                {p}
-              </p>
-            ))}
+            <div className="about-copy">
+              {about.paragraphs.map((p) => (
+                <p
+                  key={p.slice(0, 40)}
+                  className="mb-5 text-base leading-relaxed text-[var(--muted)] last:mb-0 sm:text-lg"
+                >
+                  {p}
+                </p>
+              ))}
+            </div>
           </div>
         </Reveal>
       </div>
