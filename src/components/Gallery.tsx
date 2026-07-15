@@ -61,7 +61,9 @@ export function Gallery() {
                 <h3 className="font-[family-name:var(--font-display)] text-xl text-[var(--cream)]">
                   {work.demoGif.title}
                 </h3>
-                <p className="mt-1 text-sm text-[var(--muted)]">{work.demoGif.detail}</p>
+                {work.demoGif.detail ? (
+                  <p className="mt-1 text-sm text-[var(--muted)]">{work.demoGif.detail}</p>
+                ) : null}
               </div>
             </div>
           </Reveal>

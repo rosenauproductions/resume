@@ -143,8 +143,8 @@ export const work = {
   },
   demoGif: {
     src: "/images/work-diagnostic-scope.mp4",
-    title: "Diagnostic scope demo",
-    detail: "MSC — sped-up demonstration (looping)",
+    title: "PPT animation samples",
+    detail: "",
   },
 };
 
