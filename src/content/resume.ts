@@ -7,7 +7,7 @@ export const site = {
   name: "Chris Rosenau",
   title: "Instructional Media Specialist",
   subtitle: "Medical Sales College · E-Learning Professional",
-  location: "Sachse, Texas",
+  location: "Dallas, Texas",
   email: "rosenauproductions@gmail.com",
   phone: "945-217-2211",
   phoneHref: "tel:9452172211",
