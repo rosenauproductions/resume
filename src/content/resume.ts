@@ -143,7 +143,7 @@ export const work = {
   },
   demoGif: {
     src: "/images/work-diagnostic-scope.mp4",
-    title: "PPT animation samples",
+    title: "PPT Animation Samples",
     detail: "",
   },
 };
