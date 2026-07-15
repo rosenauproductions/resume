@@ -119,6 +119,7 @@ body {
   height: 100%;
   object-fit: contain;
   object-position: top left;
+  opacity: 0.9; /* 10% transparent */
 }
 
 .about-copy {
