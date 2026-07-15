@@ -24,8 +24,8 @@ export function About() {
               <Image
                 src={portraits.close}
                 alt="Chris Rosenau — portrait"
-                width={404}
-                height={1024}
+                width={389}
+                height={844}
                 priority
                 unoptimized
                 className="about-portrait-img"
