@@ -43,13 +43,18 @@ async function notifyDiscord(webhook: string, lines: string[]) {
 }
 
 async function notifyNtfy(topic: string, title: string, message: string) {
+  const token = process.env.VISIT_NOTIFY_NTFY_TOKEN;
+  const headers: Record<string, string> = {
+    Title: title,
+    Priority: "default",
+    Tags: "eyes,globe_with_meridians",
+  };
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+  }
   await fetch(`https://ntfy.sh/${encodeURIComponent(topic)}`, {
     method: "POST",
-    headers: {
-      Title: title,
-      Priority: "default",
-      Tags: "eyes,globe_with_meridians",
-    },
+    headers,
     body: message,
   });
 }
