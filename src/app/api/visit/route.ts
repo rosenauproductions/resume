@@ -44,19 +44,29 @@ async function notifyDiscord(webhook: string, lines: string[]) {
 
 async function notifyNtfy(topic: string, title: string, message: string) {
   const token = process.env.VISIT_NOTIFY_NTFY_TOKEN;
-  const headers: Record<string, string> = {
+  const url = `https://ntfy.sh/${encodeURIComponent(topic)}`;
+  const baseHeaders: Record<string, string> = {
     Title: title,
     Priority: "default",
     Tags: "eyes,globe_with_meridians",
   };
-  if (token) {
-    headers.Authorization = `Bearer ${token}`;
+
+  const post = (headers: Record<string, string>) =>
+    fetch(url, { method: "POST", headers, body: message });
+
+  let res = await post(
+    token ? { ...baseHeaders, Authorization: `Bearer ${token}` } : baseHeaders,
+  );
+
+  // Token may be invalid for public topics — fall back to unauthenticated publish
+  if (res.status === 401 || res.status === 403) {
+    res = await post(baseHeaders);
   }
-  await fetch(`https://ntfy.sh/${encodeURIComponent(topic)}`, {
-    method: "POST",
-    headers,
-    body: message,
-  });
+
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(`ntfy ${res.status}: ${text}`);
+  }
 }
 
 export async function POST(req: NextRequest) {
