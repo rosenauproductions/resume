@@ -24,13 +24,20 @@ function summarizeUa(ua: string) {
   return "Desktop / other";
 }
 
-async function notifyDiscord(webhook: string, lines: string[]) {
+function titleForPath(path: string) {
+  if (path === "/pipeline" || path.startsWith("/pipeline/")) {
+    return "Pipeline visited";
+  }
+  return "Resume site visit";
+}
+
+async function notifyDiscord(webhook: string, title: string, lines: string[]) {
   const body = {
     embeds: [
       {
-        title: "Resume site visit",
+        title,
         description: lines.join("\n"),
-        color: 0x3fd0c9,
+        color: title.startsWith("Pipeline") ? 0xe8a35c : 0x3fd0c9,
         timestamp: new Date().toISOString(),
       },
     ],
@@ -45,10 +52,13 @@ async function notifyDiscord(webhook: string, lines: string[]) {
 async function notifyNtfy(topic: string, title: string, message: string) {
   const token = process.env.VISIT_NOTIFY_NTFY_TOKEN;
   const url = `https://ntfy.sh/${encodeURIComponent(topic)}`;
+  const tags = title.startsWith("Pipeline")
+    ? "lock,briefcase"
+    : "eyes,globe_with_meridians";
   const baseHeaders: Record<string, string> = {
     Title: title,
     Priority: "default",
-    Tags: "eyes,globe_with_meridians",
+    Tags: tags,
   };
 
   const post = (headers: Record<string, string>) =>
@@ -113,12 +123,13 @@ export async function POST(req: NextRequest) {
   ].filter(Boolean) as string[];
 
   const plain = lines.map((l) => l.replace(/\*\*/g, "")).join("\n");
+  const title = titleForPath(payload.path || "/");
 
   try {
     const jobs: Promise<unknown>[] = [];
-    if (discordWebhook) jobs.push(notifyDiscord(discordWebhook, lines));
+    if (discordWebhook) jobs.push(notifyDiscord(discordWebhook, title, lines));
     if (ntfyTopic) {
-      jobs.push(notifyNtfy(ntfyTopic, "Resume site visit", plain));
+      jobs.push(notifyNtfy(ntfyTopic, title, plain));
     }
     await Promise.all(jobs);
     return NextResponse.json({ ok: true });

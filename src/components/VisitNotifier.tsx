@@ -2,18 +2,26 @@
 
 import { useEffect } from "react";
 
-const SESSION_KEY = "resume-visit-notified";
+function sessionKeyForPath(pathname: string) {
+  if (pathname === "/pipeline" || pathname.startsWith("/pipeline/")) {
+    return "pipeline-visit-notified";
+  }
+  return "resume-visit-notified";
+}
 
 export function VisitNotifier() {
   useEffect(() => {
     if (typeof window === "undefined") return;
     if (process.env.NODE_ENV !== "production") return;
-    if (sessionStorage.getItem(SESSION_KEY)) return;
 
-    sessionStorage.setItem(SESSION_KEY, "1");
+    const path = window.location.pathname || "/";
+    const sessionKey = sessionKeyForPath(path);
+    if (sessionStorage.getItem(sessionKey)) return;
+
+    sessionStorage.setItem(sessionKey, "1");
 
     const body = {
-      path: window.location.pathname,
+      path,
       referrer: document.referrer || "",
       language: navigator.language || "",
       screen: `${window.screen.width}×${window.screen.height}`,
