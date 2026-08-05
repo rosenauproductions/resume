@@ -41,3 +41,9 @@ yarn-error.log*
 next-env.d.ts
 
 .venv-img/
+.ntfy-topic.txt
+
+# Private job tracker data (never commit real applications)
+/data/pipeline/
+pipeline-jobs.json
+jobs.local.json

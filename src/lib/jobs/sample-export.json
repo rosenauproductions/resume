@@ -1,0 +1,41 @@
+[
+  {
+    "title": "Instructional Designer",
+    "company": "Sample Learning Co",
+    "location": "Remote",
+    "dateApplied": "2026-07-01",
+    "rate": "$85k",
+    "status": "interview",
+    "description": "Articulate Rise + Storyline curriculum for clinical onboarding.",
+    "source": "LinkedIn",
+    "tags": ["Articulate", "eLearning", "healthcare"],
+    "notes": "Sample seed — replace via Import",
+    "url": ""
+  },
+  {
+    "title": "Multimedia Specialist",
+    "company": "Example University",
+    "location": "Hybrid · Dallas",
+    "dateApplied": "2026-06-20",
+    "rate": "",
+    "status": "rejected",
+    "description": "Campus video + LMS support.",
+    "source": "Referral",
+    "tags": ["Canvas", "video", "higher-ed"],
+    "notes": "Sample seed",
+    "url": ""
+  },
+  {
+    "title": "AI Video Content Producer",
+    "company": "Demo Studio",
+    "location": "Remote",
+    "dateApplied": "2026-07-10",
+    "rate": "$70/hr",
+    "status": "applied",
+    "description": "Synthesia / AI avatar training modules.",
+    "source": "Company site",
+    "tags": ["AI video", "Synthesia", "corporate"],
+    "notes": "Sample seed",
+    "url": ""
+  }
+]
