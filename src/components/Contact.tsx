@@ -7,7 +7,7 @@ export function Contact() {
       <div className="absolute inset-0 contact-glow" aria-hidden />
       <div className="relative mx-auto max-w-6xl px-6 text-center">
         <Reveal>
-          <p className="section-kicker justify-center">05</p>
+          <p className="section-kicker justify-center">06</p>
           <h2 className="section-title">Let’s connect</h2>
           <p className="mx-auto mt-5 max-w-xl text-lg text-[var(--muted)]">
             {site.location} · Open to instructional design, eLearning, corporate training,

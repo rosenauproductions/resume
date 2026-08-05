@@ -161,3 +161,185 @@ export const certifications = [
   "E-Learning Professional Learning Path — In Progress",
   "Synthesia Video Essentials Certification",
 ];
+
+/**
+ * Recruiter / hiring-manager fit checker.
+ * Select needs → see matching roles + proof from the resume.
+ */
+export const roleFit = {
+  heading: "Role fit",
+  note: "Select what you’re hiring for. I’ll map it to the roles and proof points that match.",
+  needs: [
+    {
+      id: "instructional-design",
+      label: "Instructional design",
+      strength: "Expert",
+      summary:
+        "End-to-end course design with ADDIE, SME collaboration, assessments, and learner-centered media.",
+      matches: [
+        {
+          role: "Instructional Design Specialist (Media)",
+          company: "Medical Sales College",
+          proof:
+            "Hybrid migration, Rise/Storyline modules, scenario video, and Canvas support for instructors.",
+        },
+        {
+          role: "Contractor — Instructional Designer",
+          company: "iCode / Intuit",
+          proof:
+            "Managed scope, ADDIE workflow, Storyline templates, CBT modules, and instructor materials.",
+        },
+      ],
+    },
+    {
+      id: "elearning",
+      label: "eLearning development",
+      strength: "Expert",
+      summary:
+        "Interactive web modules, storyboards, and media-rich courses built for LMS delivery.",
+      matches: [
+        {
+          role: "Multimedia Director & E-Learning Design",
+          company: "Higher Ed Partners",
+          proof:
+            "Rise-on-AWS remote updates, Canvas UX enhancements, and scalable multimedia systems.",
+        },
+        {
+          role: "E-Learning Designer",
+          company: "Concordia University Irvine",
+          proof:
+            "Storyline courses with Q&A, flow control, and a 9-week animated history series.",
+        },
+      ],
+    },
+    {
+      id: "articulate",
+      label: "Articulate Rise / Storyline",
+      strength: "Expert",
+      summary:
+        "Rise for modular cloud content; Storyline for branching, assessments, and templates.",
+      matches: [
+        {
+          role: "Instructional Design Specialist (Media)",
+          company: "Medical Sales College",
+          proof: "Interactive Rise & Storyline courses converted from decks and PDFs.",
+        },
+        {
+          role: "Multimedia Director & E-Learning Design",
+          company: "Higher Ed Partners",
+          proof: "Centralized Rise content hosting with Canvas iframe delivery.",
+        },
+      ],
+    },
+    {
+      id: "canvas",
+      label: "Canvas LMS",
+      strength: "Advanced",
+      summary:
+        "Administration, instructor support, custom enhancements, and content delivery patterns.",
+      matches: [
+        {
+          role: "Instructional Design Specialist (Media)",
+          company: "Medical Sales College",
+          proof: "LMS admin, troubleshooting, custom programming, and faculty support.",
+        },
+        {
+          role: "Multimedia Director & E-Learning Design",
+          company: "Higher Ed Partners",
+          proof: "Remote Rise updates, CSS for iframes, and multilingual JS layer in Canvas.",
+        },
+      ],
+    },
+    {
+      id: "ai-video",
+      label: "AI video / Synthesia",
+      strength: "Expert",
+      summary:
+        "Template systems and production workflows that replace slow traditional filming cycles.",
+      matches: [
+        {
+          role: "Multimedia Director & E-Learning Design",
+          company: "Higher Ed Partners",
+          proof: "Pioneered Synthesia avatar templates to accelerate content production.",
+        },
+        {
+          role: "Instructional Design Specialist (Media)",
+          company: "Medical Sales College",
+          proof: "AI-assisted learning video production with Claude, ChatGPT, and Grok.",
+        },
+      ],
+    },
+    {
+      id: "ppt-video",
+      label: "PowerPoint training video",
+      strength: "Expert",
+      summary:
+        "Preferred tool for informative/training video — graphic enhancement, animation, and polish.",
+      matches: [
+        {
+          role: "Instructional Design Specialist (Media)",
+          company: "Medical Sales College",
+          proof:
+            "Turned Slides/PDFs into animated PowerPoint learning videos at production quality.",
+        },
+      ],
+    },
+    {
+      id: "multimedia",
+      label: "Multimedia / video production",
+      strength: "Expert",
+      summary:
+        "Full-cycle production: script, film, edit, motion, audio, and delivery formats.",
+      matches: [
+        {
+          role: "Video Editor, Graphic Artist & E-Learning Designer",
+          company: "ProPricer",
+          proof: "21 years of end-to-end video, graphics, and training media delivery.",
+        },
+        {
+          role: "E-Learning Designer",
+          company: "Concordia University Irvine",
+          proof: "Vyond + After Effects animation with narration and SRT subtitles.",
+        },
+      ],
+    },
+    {
+      id: "hybrid",
+      label: "Hybrid / online migration",
+      strength: "Expert",
+      summary:
+        "Moving instructor-led programs online without losing engagement or update speed.",
+      matches: [
+        {
+          role: "Instructional Design Specialist (Media)",
+          company: "Medical Sales College",
+          proof: "Led in-person → hybrid transition with accessibility and flexibility gains.",
+        },
+        {
+          role: "Multimedia Director & E-Learning Design",
+          company: "Higher Ed Partners",
+          proof: "Remote content update model that removed repeated Canvas master churn.",
+        },
+      ],
+    },
+    {
+      id: "corporate",
+      label: "Corporate training",
+      strength: "Advanced",
+      summary:
+        "Training systems, SME collaboration, and materials that support consistent delivery.",
+      matches: [
+        {
+          role: "Contractor — Instructional Designer",
+          company: "iCode / Intuit",
+          proof: "Course projects with manuals, CBT, storyboards, and clear scope control.",
+        },
+        {
+          role: "Video Editor, Graphic Artist & E-Learning Designer",
+          company: "ProPricer",
+          proof: "Training videos and product media for national customer communication.",
+        },
+      ],
+    },
+  ],
+} as const;
