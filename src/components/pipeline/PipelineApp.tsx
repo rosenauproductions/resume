@@ -15,14 +15,12 @@ import { computeInsights } from "@/lib/jobs/insights";
 const LOCAL_KEY = "pipeline-jobs-v1";
 type ViewMode = "board" | "timeline" | "insights";
 
-const CHATGPT_PROMPT = `Export my job tracker as JSON (no markdown fences). Either:
-1) { "applications": [ ... ] }  — your current format is fine
-2) a bare JSON array of jobs
+const CHATGPT_PROMPT = `Export my job tracker as a JSON array (no markdown fences). PascalCase is fine:
 
-Per application, these fields are understood:
-company, position|title, location, applied_date|dateApplied, salary|rate,
-status (Pending→applied, Rejected→rejected, Not Submitted→researching, or pipeline statuses),
-job_url, job_req, employment, hours, notes (string or array), tags`;
+Company, Position, Applied (YYYY-MM-DD), Status, Salary, ReqID, Location, Type, Source, URL, Notes
+
+Status values: Pending, Rejected, Not Submitted — or pipeline statuses (applied, interview, offer, …).
+Also accepted: { "applications": [...] } and camelCase / snake_case field names.`;
 
 function loadLocal(): JobApplication[] {
   if (typeof window === "undefined") return [];

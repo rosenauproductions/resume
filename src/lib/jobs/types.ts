@@ -115,15 +115,40 @@ function asNotes(raw: unknown): string {
   return String(raw ?? "").trim();
 }
 
-function inferTags(o: Record<string, unknown>, title: string): string[] {
-  const tags = Array.isArray(o.tags)
-    ? o.tags.map((t) => String(t).trim()).filter(Boolean)
-    : typeof o.tags === "string"
-      ? o.tags.split(/[,;]/).map((t) => t.trim()).filter(Boolean)
+/** Normalize keys so Company / company / COMPANY / applied_date all match. */
+function canonicalizeRecord(raw: Record<string, unknown>): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(raw)) {
+    const norm = key
+      .trim()
+      .toLowerCase()
+      .replace(/[\s_-]+/g, "");
+    if (!(norm in out) || out[norm] === "" || out[norm] == null) {
+      out[norm] = value;
+    }
+  }
+  return out;
+}
+
+function pick(o: Record<string, unknown>, ...keys: string[]): unknown {
+  for (const key of keys) {
+    const value = o[key];
+    if (value === undefined || value === null) continue;
+    if (typeof value === "string" && value.trim() === "") continue;
+    return value;
+  }
+  return undefined;
+}
+
+function inferTags(o: Record<string, unknown>, title: string, employment: string): string[] {
+  const tagsRaw = o.tags;
+  const tags = Array.isArray(tagsRaw)
+    ? tagsRaw.map((t) => String(t).trim()).filter(Boolean)
+    : typeof tagsRaw === "string"
+      ? tagsRaw.split(/[,;]/).map((t) => t.trim()).filter(Boolean)
       : [];
 
   const extras: string[] = [];
-  const employment = String(o.employment ?? "").trim();
   if (employment) extras.push(employment);
 
   const hay = `${title} ${employment}`.toLowerCase();
@@ -136,51 +161,62 @@ function inferTags(o: Record<string, unknown>, title: string): string[] {
   return [...new Set([...tags, ...extras])];
 }
 
-/** Accepts our schema or ChatGPT tracker exports (`applications`, `position`, Pending, etc.). */
+/** Accepts our schema or ChatGPT tracker exports (`applications`, PascalCase, Pending, etc.). */
 export function extractJobRecords(payload: unknown): unknown[] {
   if (Array.isArray(payload)) return payload;
   if (!payload || typeof payload !== "object") return [];
-  const o = payload as Record<string, unknown>;
-  if (Array.isArray(o.applications)) return o.applications;
-  if (Array.isArray(o.jobs)) return o.jobs;
-  if (o.company || o.title || o.position) return [o];
+  const o = canonicalizeRecord(payload as Record<string, unknown>);
+  if (Array.isArray(o.applications)) return o.applications as unknown[];
+  if (Array.isArray(o.jobs)) return o.jobs as unknown[];
+  if (pick(o, "company", "title", "position")) return [payload];
   return [];
 }
 
 export function normalizeJob(raw: unknown): JobApplication | null {
   if (!raw || typeof raw !== "object") return null;
-  const o = raw as Record<string, unknown>;
-  const title = String(o.title ?? o.position ?? o.role ?? "").trim();
-  const company = String(o.company ?? o.where ?? "").trim();
+  const o = canonicalizeRecord(raw as Record<string, unknown>);
+
+  const title = String(pick(o, "title", "position", "role") ?? "").trim();
+  const company = String(pick(o, "company", "where") ?? "").trim();
   if (!title && !company) return null;
 
-  const dateApplied = String(
-    o.dateApplied ?? o.applied_date ?? o.date ?? o.rejection_date ?? new Date().toISOString().slice(0, 10),
-  ).slice(0, 10);
+  const dateRaw = pick(
+    o,
+    "dateapplied",
+    "applied",
+    "applieddate",
+    "date",
+    "rejectiondate",
+  );
+  const dateApplied = dateRaw
+    ? String(dateRaw).slice(0, 10)
+    : "";
 
-  const noteParts = [asNotes(o.notes)];
-  if (o.job_req) noteParts.push(`Req: ${o.job_req}`);
-  if (o.hours) noteParts.push(`Hours: ${o.hours}`);
-  if (o.employment) noteParts.push(`Employment: ${o.employment}`);
-  if (o.rejection_date && !o.applied_date && !o.dateApplied) {
-    noteParts.push(`Rejection date: ${o.rejection_date}`);
-  }
+  const employment = String(pick(o, "type", "employment") ?? "").trim();
+  const reqId = pick(o, "reqid", "jobreq", "req");
+  const hours = pick(o, "hours");
 
-  const url = String(o.url ?? o.job_url ?? o.link ?? "").trim();
+  const noteParts = [asNotes(pick(o, "notes"))];
+  if (reqId) noteParts.push(`Req: ${reqId}`);
+  if (hours) noteParts.push(`Hours: ${hours}`);
+  if (employment) noteParts.push(`Employment: ${employment}`);
+
+  const url = String(pick(o, "url", "joburl", "link") ?? "").trim();
+  const source = String(pick(o, "source") ?? employment ?? "").trim();
 
   return {
-    id: String(o.id ?? crypto.randomUUID()),
+    id: String(pick(o, "id") ?? crypto.randomUUID()),
     title: title || "Untitled role",
     company: company || "Unknown company",
-    location: String(o.location ?? "").trim(),
+    location: String(pick(o, "location") ?? "").trim(),
     dateApplied,
-    rate: String(o.rate ?? o.salary ?? "").trim(),
-    status: mapStatus(o.status),
-    description: String(o.description ?? o.roleDescription ?? o.jd ?? "").trim(),
-    source: String(o.source ?? o.employment ?? "").trim(),
-    tags: inferTags(o, title),
+    rate: String(pick(o, "rate", "salary") ?? "").trim(),
+    status: mapStatus(pick(o, "status")),
+    description: String(pick(o, "description", "roledescription", "jd") ?? "").trim(),
+    source,
+    tags: inferTags(o, title, employment),
     notes: noteParts.filter(Boolean).join("\n"),
-    url: url || "",
-    updatedAt: String(o.updatedAt ?? new Date().toISOString()),
+    url,
+    updatedAt: String(pick(o, "updatedat") ?? new Date().toISOString()),
   };
 }
