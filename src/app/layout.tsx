@@ -18,10 +18,36 @@ const body = Figtree({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://resume-rho-taupe.vercel.app"),
   title: "Chris Rosenau — Instructional Media Specialist",
   description:
     "Instructional Media Specialist at Medical Sales College. eLearning, Articulate, Canvas, Synthesia, and multimedia production.",
+  openGraph: {
+    title: "Chris Rosenau — Instructional Media Specialist",
+    description:
+      "eLearning, Articulate, Canvas, Synthesia, and multimedia production.",
+    url: "https://resume-rho-taupe.vercel.app",
+    siteName: "Chris Rosenau",
+    locale: "en_US",
+    type: "website",
+    images: [
+      {
+        url: "/images/og-preview.jpg",
+        width: 1200,
+        height: 630,
+        alt: "Chris Rosenau — Instructional Media Specialist",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Chris Rosenau — Instructional Media Specialist",
+    description:
+      "eLearning, Articulate, Canvas, Synthesia, and multimedia production.",
+    images: ["/images/og-preview.jpg"],
+  },
 };
+
 
 export default function RootLayout({
   children,
