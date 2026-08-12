@@ -19,13 +19,13 @@ const body = Figtree({
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://resume-rho-taupe.vercel.app"),
-  title: "Chris Rosenau — Instructional Media Specialist",
+  title: "Chris Rosenau — Multimedia Designer & Learning Media Specialist",
   description:
-    "Instructional Media Specialist at Medical Sales College. eLearning, Articulate, Canvas, Synthesia, and multimedia production.",
+    "Multimedia design, graphic arts, video production, LMS administration, and eLearning. Dallas-based learning media specialist.",
   openGraph: {
-    title: "Chris Rosenau — Instructional Media Specialist",
+    title: "Chris Rosenau — Multimedia Designer & Learning Media Specialist",
     description:
-      "eLearning, Articulate, Canvas, Synthesia, and multimedia production.",
+      "Multimedia design, graphic arts, video, LMS management, and interactive learning experiences.",
     url: "https://resume-rho-taupe.vercel.app",
     siteName: "Chris Rosenau",
     locale: "en_US",
@@ -35,15 +35,15 @@ export const metadata: Metadata = {
         url: "/images/og-preview.jpg",
         width: 1200,
         height: 630,
-        alt: "Chris Rosenau — Instructional Media Specialist",
+        alt: "Chris Rosenau — Multimedia Designer & Learning Media Specialist",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Chris Rosenau — Instructional Media Specialist",
+    title: "Chris Rosenau — Multimedia Designer & Learning Media Specialist",
     description:
-      "eLearning, Articulate, Canvas, Synthesia, and multimedia production.",
+      "Multimedia design, graphic arts, video, LMS management, and interactive learning experiences.",
     images: ["/images/og-preview.jpg"],
   },
 };

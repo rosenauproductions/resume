@@ -5,8 +5,8 @@
 
 export const site = {
   name: "Chris Rosenau",
-  title: "Instructional Media Specialist",
-  subtitle: "Medical Sales College · E-Learning Professional",
+  title: "Multimedia Designer & Learning Media Specialist",
+  subtitle: "Graphic arts · Video · LMS · eLearning",
   location: "Dallas, Texas",
   email: "rosenauproductions@gmail.com",
   phone: "945-217-2211",
@@ -14,15 +14,16 @@ export const site = {
   linkedin: "https://www.linkedin.com/in/christopherrosenau",
   linkedinLabel: "linkedin.com/in/christopherrosenau",
   tagline:
-    "I design learning experiences that move — interactive courses, training video, and media systems that scale.",
+    "I build learning and brand media end to end — graphic design, motion and video, LMS administration, and interactive course experiences that scale.",
 };
 
 export const about = {
   heading: "About",
+  lead: "Multimedia, graphic arts, and learning systems — not just slide decks.",
   paragraphs: [
-    "At Medical Sales College, I contributed to migrating an in-person learning platform to a dynamic hybrid online format. I designed interactive courses using Articulate Rise & Storyline, built professional video content primarily with PowerPoint (my preferred tool for informative and training videos), managed Canvas LMS, and enhanced productions with Adobe Premiere and After Effects when needed.",
-    "Previously, as Multimedia Director at Higher Ed Partners, I pioneered AI-driven avatar video using Synthesia. That approach dramatically improved content production efficiency and boosted learner engagement.",
-    "I bring a strong combination of instructional design, creative video production, special effects, and technical skills — including Canvas administration. I’m currently open to new opportunities in instructional design, eLearning development, corporate training, or multimedia production.",
+    "At Medical Sales College, I helped move an in-person learning platform into a hybrid online experience. That work spanned interactive courses in Articulate Rise & Storyline, training video (often built in PowerPoint, then elevated in Premiere and After Effects), graphic treatment of source materials, and day-to-day Canvas LMS administration — troubleshooting, custom enhancements, and instructor support.",
+    "Previously, as Multimedia Director at Higher Ed Partners, I led AI-assisted avatar video with Synthesia, owned visual templates and hosting workflows, and kept content moving in Canvas without constant master-course churn. Earlier roles deepened the craft side: video editing, special effects, print and digital graphics, and full production ownership from storyboard to delivery.",
+    "I work at the intersection of multimedia design, graphic arts, instructional media, and LMS management. I’m open to roles in multimedia production, visual/graphic design for learning or marketing, eLearning development, Canvas or LMS administration, corporate training, and instructional design.",
   ],
 };
 

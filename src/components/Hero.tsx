@@ -10,7 +10,7 @@ export function Hero() {
   return (
     <section
       id="top"
-      className="relative flex min-h-[100svh] items-end overflow-hidden pb-16 pt-28 md:items-center md:pb-0"
+      className="relative flex min-h-[100svh] items-end overflow-hidden pb-8 pt-28 md:items-center md:pb-4"
     >
       <Image
         src={portraits.texture}
@@ -92,7 +92,7 @@ export function Hero() {
           animate={{ opacity: 1, x: 0, scale: 1 }}
           transition={{ duration: 1, ease: [0.22, 1, 0.36, 1], delay: 0.35 }}
         >
-          <div className="relative aspect-square">
+          <div className="relative aspect-[5/4]">
             <Image
               src={portraits.hero}
               alt={`${site.name} portrait`}

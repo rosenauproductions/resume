@@ -6,16 +6,16 @@ import { Reveal } from "./Reveal";
 
 export function About() {
   return (
-    <section id="about" className="relative pt-16 pb-4 md:pt-20 md:pb-4 lg:pt-24 lg:pb-2">
+    <section id="about" className="relative pt-6 pb-4 md:pt-8 md:pb-4 lg:pt-10 lg:pb-2">
       <div className="mx-auto max-w-6xl px-6">
         <Reveal>
           <p className="section-kicker">01</p>
           <h2 className="section-title">{about.heading}</h2>
         </Reveal>
 
-        <Reveal className="mt-10 md:mt-14" delay={0.06}>
+        <Reveal className="mt-8 md:mt-10" delay={0.06}>
           <p className="mb-8 text-center font-[family-name:var(--font-display)] text-2xl leading-snug tracking-tight text-[var(--cream)] sm:text-3xl md:text-4xl">
-            Learning media that feels intentional — not templated.
+            {about.lead}
           </p>
 
           {/* Image height tracks the paragraph column beside it */}
