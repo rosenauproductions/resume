@@ -32,8 +32,8 @@ export function Hero() {
         />
       )}
 
-      <div className="relative z-10 mx-auto grid w-full max-w-6xl items-end gap-6 px-5 pb-2 sm:px-6 md:grid-cols-12 md:items-center md:gap-8">
-        <div className="md:col-span-7">
+      <div className="relative z-10 mx-auto grid w-full max-w-6xl items-end gap-6 px-5 pb-2 sm:px-6 md:grid-cols-12 md:items-center md:gap-6">
+        <div className="md:col-span-6">
           <motion.p
             className="mb-4 text-xs uppercase tracking-[0.28em] text-[var(--accent)] sm:mb-5 sm:text-sm"
             initial={reduce ? false : { opacity: 0, y: 16 }}
@@ -87,12 +87,12 @@ export function Hero() {
         </div>
 
         <motion.div
-          className="relative mx-auto w-full max-w-xs sm:max-w-md md:col-span-5 md:max-w-none"
+          className="relative mx-auto w-full max-w-lg sm:max-w-xl md:col-span-6 md:-mr-4 md:max-w-none lg:-mr-8"
           initial={reduce ? false : { opacity: 0, x: 40, scale: 0.96 }}
           animate={{ opacity: 1, x: 0, scale: 1 }}
           transition={{ duration: 1, ease: [0.22, 1, 0.36, 1], delay: 0.35 }}
         >
-          <div className="relative aspect-[5/4]">
+          <div className="relative aspect-[5/4] min-h-[280px] sm:min-h-[360px] md:min-h-[420px] lg:min-h-[480px]">
             <Image
               src={portraits.hero}
               alt={`${site.name} portrait`}
@@ -100,7 +100,7 @@ export function Hero() {
               priority
               unoptimized
               className="object-contain object-center"
-              sizes="(max-width: 768px) 90vw, 40vw"
+              sizes="(max-width: 768px) 95vw, 55vw"
             />
           </div>
         </motion.div>
