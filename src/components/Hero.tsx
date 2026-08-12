@@ -92,15 +92,14 @@ export function Hero() {
           animate={{ opacity: 1, x: 0, scale: 1 }}
           transition={{ duration: 1, ease: [0.22, 1, 0.36, 1], delay: 0.35 }}
         >
-          <div className="relative aspect-[3/4]">
-            {/* unoptimized preserves PNG alpha transparency */}
+          <div className="relative aspect-square">
             <Image
               src={portraits.hero}
               alt={`${site.name} portrait`}
               fill
               priority
               unoptimized
-              className="object-contain object-bottom"
+              className="object-contain object-center"
               sizes="(max-width: 768px) 90vw, 40vw"
             />
           </div>
