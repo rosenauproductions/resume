@@ -18,7 +18,7 @@ export function Skills() {
         <Reveal>
           <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <p className="section-kicker">04</p>
+              <p className="section-kicker">05</p>
               <h2 className="section-title">{skills.heading}</h2>
             </div>
 
@@ -124,6 +124,23 @@ export function Skills() {
                 ))}
               </div>
             </div>
+
+            <Reveal className="mt-10" delay={0.08}>
+              <h3 className="text-sm uppercase tracking-[0.2em] text-[var(--muted)]">
+                {skills.also.label}
+              </h3>
+              <p className="mt-2 max-w-2xl text-sm text-[var(--muted)]">{skills.also.note}</p>
+              <div className="mt-4 flex flex-wrap gap-2">
+                {skills.also.items.map((item) => (
+                  <span
+                    key={item}
+                    className="border border-white/15 px-3 py-1.5 text-sm text-[var(--cream)]/85"
+                  >
+                    {item}
+                  </span>
+                ))}
+              </div>
+            </Reveal>
           </>
         ) : (
           <Reveal className="mt-8" delay={0.05}>

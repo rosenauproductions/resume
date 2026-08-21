@@ -68,6 +68,22 @@ export function Gallery() {
             </div>
           </Reveal>
         </div>
+
+        <div className="mt-6 grid gap-4 md:grid-cols-3">
+          {work.cases.map((item, i) => (
+            <Reveal key={item.title} delay={0.08 + i * 0.04}>
+              <article className="border border-white/10 px-5 py-5">
+                <p className="text-[10px] uppercase tracking-[0.22em] text-[var(--warm)]">
+                  {item.tag}
+                </p>
+                <h3 className="mt-2 font-[family-name:var(--font-display)] text-lg text-[var(--cream)]">
+                  {item.title}
+                </h3>
+                <p className="mt-2 text-sm leading-relaxed text-[var(--muted)]">{item.detail}</p>
+              </article>
+            </Reveal>
+          ))}
+        </div>
       </div>
     </section>
   );

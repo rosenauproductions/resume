@@ -5,6 +5,7 @@ import { Gallery } from "@/components/Gallery";
 import { Hero } from "@/components/Hero";
 import { Nav } from "@/components/Nav";
 import { RoleFit } from "@/components/RoleFit";
+import { SideProjects } from "@/components/SideProjects";
 import { Skills } from "@/components/Skills";
 
 export default function Home() {
@@ -16,6 +17,7 @@ export default function Home() {
         <About />
         <Experience />
         <Gallery />
+        <SideProjects />
         <Skills />
         <RoleFit />
         <Contact />

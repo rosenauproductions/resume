@@ -14,16 +14,16 @@ export const site = {
   linkedin: "https://www.linkedin.com/in/christopherrosenau",
   linkedinLabel: "linkedin.com/in/christopherrosenau",
   tagline:
-    "I build learning and brand media end to end — graphic design, motion and video, LMS administration, AI-assisted development, and programming that makes interactive experiences scale.",
+    "I build learning and brand media end to end — design, motion and video, LMS systems, and interactive experiences that actually scale.",
 };
 
 export const about = {
   heading: "About",
-  lead: "Multimedia, graphic arts, AI development, and learning systems — not just slide decks.",
+  lead: "Learning media, graphic arts, and systems that scale — not just slide decks.",
   paragraphs: [
-    "At Medical Sales College, I helped move an in-person learning platform into a hybrid online experience. That work spanned interactive courses in Articulate Rise & Storyline, training video (often built in PowerPoint, then elevated in Premiere and After Effects), graphic treatment of source materials, and day-to-day Canvas LMS administration — troubleshooting, custom programming enhancements, and instructor support. I also use AI tools heavily in production and development workflows to move faster without sacrificing quality.",
-    "Previously, as Multimedia Director at Higher Ed Partners, I led AI-assisted avatar video with Synthesia, authored CSS and JavaScript for Canvas delivery, owned visual templates and hosting workflows, and kept content moving without constant master-course churn. Earlier roles deepened the craft side: video editing, special effects, print and digital graphics, and full production ownership from storyboard to delivery.",
-    "I work at the intersection of multimedia design, graphic arts, instructional media, LMS management, AI development, and practical programming (CSS, JavaScript, and AI-assisted build workflows). I’m open to roles in multimedia production, visual/graphic design, eLearning development, Canvas or LMS administration, AI-enabled content systems, corporate training, and instructional design.",
+    "At Medical Sales College, I led the move from instructor-led training to a hybrid online format. I converted source materials into Rise and Storyline modules, built animated training video (PowerPoint through Premiere and After Effects), and owned Canvas administration — including custom enhancements and instructor support — so the platform stayed usable as content grew.",
+    "As Multimedia Director at Higher Ed Partners, I stood up Synthesia avatar-video templates, wrote CSS and JavaScript for Canvas delivery, and designed hosting workflows that let teams update Rise content without constant master-course churn. Earlier roles deepened the craft: video editing, motion graphics, print and digital design, and full production from storyboard to delivery.",
+    "I work where multimedia design, graphic arts, instructional media, LMS management, and practical programming meet. I’m open to roles in multimedia production, visual design, eLearning development, Canvas administration, interactive product work, corporate training, and instructional design.",
   ],
 };
 
@@ -34,11 +34,11 @@ export const experience = [
     dates: "Feb 2024 – July 2026",
     location: "Remote",
     highlights: [
-      "Spearheaded the transition from an in-person instructor-led platform to a hybrid online learning format, improving accessibility and flexibility for learners",
-      "Converted Google Slides and PDFs into high-quality training materials — graphically enhanced and animated in PowerPoint into engaging learning videos",
-      "Leveraged AI tools (Claude, ChatGPT, Grok, and others) for rapid learning-video production and AI-assisted development workflows",
-      "Produced videos featuring remote instructor filming and created animated scenario-based content in Vyond to simulate real patient cycles of care",
-      "Provided Canvas LMS administration, including custom programming enhancements, troubleshooting, and instructor support",
+      "Led hybrid migration of instructor-led content into an accessible online format — Rise/Storyline modules, animated training video, and Canvas administration with custom enhancements",
+      "Transformed Google Slides and PDFs into production-quality learning videos through graphic treatment and PowerPoint animation",
+      "Accelerated production with LLM workflows (Claude, ChatGPT, Grok) for scripting, iteration, and video polish",
+      "Produced remote-instructor video and Vyond scenario content that simulated real patient cycles of care",
+      "Owned Canvas LMS operations: troubleshooting, custom programming, and day-to-day instructor support",
     ],
   },
   {
@@ -47,12 +47,12 @@ export const experience = [
     dates: "May 2022 – Dec 2023",
     location: "Dallas, Texas",
     highlights: [
-      "Spearheaded video template design in Synthesia, transitioning from traditional filming to AI avatar video for faster, more flexible production",
-      "Implemented remote Rise content updates in Canvas via AWS/cloud hosting — eliminating repeated Canvas master propagations",
-      "Authored CSS to improve iframe rendering of AWS-hosted content for a seamless learner experience",
-      "Hosted all videos on Vimeo for parallel multimedia updates and consistent accessibility",
-      "Collaborated on a JavaScript translation layer in Canvas so learners could view course content in their chosen language",
-      "Mapped project process flows to surface gaps and strengthen delivery workflows",
+      "Replaced slow traditional filming cycles with Synthesia avatar templates that scaled video production across courses",
+      "Enabled remote Rise updates via AWS hosting inside Canvas — eliminating repeated master-course propagations",
+      "Improved learner UX with CSS that fixed iframe rendering for AWS-hosted content",
+      "Standardized Vimeo delivery for parallel multimedia updates and consistent accessibility",
+      "Shipped a JavaScript translation layer in Canvas so learners could view content in their preferred language",
+      "Mapped delivery workflows to expose process gaps and tighten handoffs across teams",
     ],
   },
   {
@@ -61,10 +61,10 @@ export const experience = [
     dates: "Dec 2021 – May 2022",
     location: "",
     highlights: [
-      "Managed course development from inception to completion using instructional design principles and the ADDIE model",
-      "Determined and communicated project scope, requirements, goals, and timelines",
-      "Designed Storyline templates and built web-based learning modules with multimedia and interactive objects",
-      "Created original videos, graphics, instructor manuals, CBT modules, and storyboards with SME collaboration",
+      "Drove course development end to end with ADDIE — from scope and timelines through delivery",
+      "Aligned stakeholders on requirements, goals, and milestones before build began",
+      "Built Storyline templates and multimedia web modules with interactive objects for LMS delivery",
+      "Partnered with SMEs to produce videos, graphics, instructor manuals, CBT modules, and storyboards",
     ],
   },
   {
@@ -73,10 +73,10 @@ export const experience = [
     dates: "Jan 2001 – Dec 2021",
     location: "Bedford, Texas",
     highlights: [
-      "Owned projects end-to-end: storyboarding, special effects, post-production, and final delivery formats",
-      "Edited training videos for digital distribution — graphics, sound design, and music mix",
-      "Produced the EBS Texas PR announcement video (script, drone/handheld filming, narration, edit, and deployment)",
-      "Created magazine ads, conference print graphics, and interactive media including custom photo backgrounds",
+      "Owned media projects end to end: storyboarding, effects, post-production, and final delivery formats",
+      "Delivered training videos for digital distribution with graphics, sound design, and music mix",
+      "Produced the EBS Texas PR announcement — script, drone/handheld film, narration, edit, and deployment",
+      "Created magazine ads, conference print graphics, and interactive media with custom photo backgrounds",
     ],
   },
   {
@@ -85,10 +85,10 @@ export const experience = [
     dates: "Feb 2016 – Oct 2020",
     location: "Irvine, California",
     highlights: [
-      "Created animated course graphics from scripts with audio narration and SRT subtitles (Vyond / After Effects)",
+      "Built animated course graphics from scripts with narration and SRT subtitles (Vyond / After Effects)",
       "Assembled Storyline courses with Q&A feedback, flow control, and assessment results",
       "Delivered Eastern History (HST301): a 9-week animated series with custom character rigging and culturally resonant storytelling",
-      "Managed project workflow and client change requests from script-to-screen",
+      "Managed script-to-screen workflow and client change requests without derailing delivery dates",
     ],
   },
 ] as const;
@@ -110,19 +110,27 @@ export const skills = {
       items: ["PowerPoint video", "Synthesia", "Vyond", "Premiere", "After Effects"],
     },
     {
-      label: "AI development",
-      items: ["Claude / ChatGPT / Grok", "AI-assisted workflows", "Synthesia systems", "Prompted production"],
-    },
-    {
-      label: "Programming",
-      items: ["JavaScript", "CSS", "Canvas customizations", "HTML / web delivery"],
+      label: "AI & programming",
+      items: ["Claude / ChatGPT / Grok", "JavaScript", "CSS", "HTML / web delivery"],
     },
   ],
+  also: {
+    label: "Also comfortable with",
+    note: "Independent builds keep these sharp without crowding the core eLearning stack.",
+    items: [
+      "TypeScript",
+      "Vite",
+      "PWA",
+      "Raspberry Pi / MOD ecosystem",
+      "Canvas embedding",
+      "Next.js",
+    ],
+  },
   meters: [
     { name: "Articulate Rise & Storyline", proficiency: "Expert", width: 95 },
     { name: "PowerPoint animation & video", proficiency: "Expert", width: 98 },
     { name: "Synthesia AI video", proficiency: "Expert", width: 90 },
-    { name: "AI development & tooling", proficiency: "Advanced", width: 82 },
+    { name: "AI tooling & workflows", proficiency: "Advanced", width: 82 },
     { name: "JavaScript / CSS / web", proficiency: "Advanced", width: 72 },
     { name: "Canvas LMS", proficiency: "Advanced", width: 70 },
     { name: "Premiere / After Effects", proficiency: "Expert", width: 92 },
@@ -205,10 +213,10 @@ export const portraits = {
   texture: "/images/texture-concrete.png",
 };
 
-/** Selected work — video reel + looping demo */
+/** Selected work — video reel + looping demo + short cases */
 export const work = {
   heading: "Selected work",
-  note: "A look at past courses, video, and learning media.",
+  note: "Courses, video, and learning systems — with a few highlights that show range.",
   portfolioVideo: {
     href: "https://www.youtube.com/watch?v=ja7QZxXej7w",
     embed: "https://www.youtube.com/embed/ja7QZxXej7w",
@@ -218,8 +226,60 @@ export const work = {
   demoGif: {
     src: "/images/work-diagnostic-scope.mp4",
     title: "PPT Animation Samples",
-    detail: "",
+    detail: "Animated training video built primarily in PowerPoint",
   },
+  cases: [
+    {
+      title: "Hybrid course migration",
+      detail:
+        "Moved instructor-led Medical Sales College content online with Rise/Storyline modules, training video, and Canvas support for faculty.",
+      tag: "LMS · Articulate",
+    },
+    {
+      title: "Synthesia avatar systems",
+      detail:
+        "Template-driven AI video at Higher Ed Partners that replaced slow traditional filming and kept updates moving at course scale.",
+      tag: "AI video",
+    },
+    {
+      title: "Canvas delivery customizations",
+      detail:
+        "CSS for iframe UX and a JavaScript translation layer so learners could view hosted Rise content in their preferred language.",
+      tag: "Programming · LMS",
+    },
+  ],
+};
+
+/** Independent builds that keep programming / UX / systems skills sharp */
+export const sideProjects = {
+  heading: "Selected Side Projects",
+  note: "Beyond institutional work I build tools for learners, instructors, and musicians. These projects keep programming, UX, and systems skills sharp.",
+  projects: [
+    {
+      title: "Pistomp-Mobile",
+      summary:
+        "Mobile-first companion web app for the open-source Pi-Stomp multi-effects platform. TypeScript + Vite PWA for pedalboard control, effect bypass, A/B snapshots, gain, and per-effect parameters over the MOD-UI API — optimized for phone use on the Pi’s Wi-Fi hotspot, with install and admin features.",
+      href: "https://github.com/rosenauproductions/Pistomp-Mobile",
+      linkLabel: "GitHub",
+      tags: ["TypeScript", "PWA", "Raspberry Pi", "UX"],
+    },
+    {
+      title: "StepBot — Canvas LMS help bot",
+      summary:
+        "Embeddable Canvas help bot with multi-step guided answers, session memory, admin/creator tooling, and theming. Built for easy content management and multi-site deployment.",
+      href: "https://github.com/rosenauproductions/StepBot-MSC",
+      linkLabel: "GitHub",
+      tags: ["Canvas", "JavaScript", "LMS"],
+    },
+    {
+      title: "Interactive party games & more",
+      summary:
+        "Browser-based Family Feud and The 1% Club with projector + host + phone controllers, plus family calendar tooling and other experiments in interactive media and rapid prototyping.",
+      href: "https://github.com/rosenauproductions",
+      linkLabel: "GitHub profile",
+      tags: ["Interactive media", "Multiplayer UI"],
+    },
+  ],
 };
 
 export const education = [
@@ -242,7 +302,7 @@ export const certifications = [
  */
 export const roleFit = {
   heading: "Role fit",
-  note: "Select what you’re hiring for. I’ll map it to the roles and proof points that match.",
+  note: "Select what you’re hiring for. I’ll map it to matching roles and short proof points.",
   needs: [
     {
       id: "instructional-design",
