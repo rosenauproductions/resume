@@ -21,11 +21,11 @@ export const metadata: Metadata = {
   metadataBase: new URL("https://resume-rho-taupe.vercel.app"),
   title: "Chris Rosenau — Multimedia Designer & Learning Media Specialist",
   description:
-    "Multimedia design, graphic arts, video production, LMS administration, and eLearning. Dallas-based learning media specialist.",
+    "Multimedia design, graphic arts, video, LMS administration, AI development, and programming. Dallas-based learning media specialist.",
   openGraph: {
     title: "Chris Rosenau — Multimedia Designer & Learning Media Specialist",
     description:
-      "Multimedia design, graphic arts, video, LMS management, and interactive learning experiences.",
+      "Multimedia design, graphic arts, video, LMS, AI development, and programming for learning experiences.",
     url: "https://resume-rho-taupe.vercel.app",
     siteName: "Chris Rosenau",
     locale: "en_US",
@@ -43,7 +43,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "Chris Rosenau — Multimedia Designer & Learning Media Specialist",
     description:
-      "Multimedia design, graphic arts, video, LMS management, and interactive learning experiences.",
+      "Multimedia design, graphic arts, video, LMS, AI development, and programming for learning experiences.",
     images: ["/images/og-preview.jpg"],
   },
 };
