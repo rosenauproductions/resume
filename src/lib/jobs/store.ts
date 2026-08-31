@@ -24,7 +24,7 @@ export async function loadJobsFromBlob(): Promise<JobApplication[] | null> {
     if (!res.ok) return [];
     const data = (await res.json()) as unknown;
     if (!Array.isArray(data)) return [];
-    return data.map(normalizeJob).filter((j): j is JobApplication => Boolean(j));
+    return data.map((row) => normalizeJob(row)).filter((j): j is JobApplication => Boolean(j));
   } catch (error) {
     console.error("loadJobsFromBlob", error);
     return [];

@@ -52,7 +52,7 @@ export async function PUT(request: Request) {
   }
 
   const jobs = body.jobs
-    .map(normalizeJob)
+    .map((row) => normalizeJob(row))
     .filter((j): j is JobApplication => Boolean(j));
 
   await saveJobsToBlob(jobs);

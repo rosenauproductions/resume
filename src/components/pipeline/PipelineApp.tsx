@@ -6,21 +6,26 @@ import {
   STATUS_LABELS,
   createEmptyJob,
   extractJobRecords,
+  extractTrackerMeta,
   normalizeJob,
   type JobApplication,
   type JobStatus,
+  type TrackerMeta,
 } from "@/lib/jobs/types";
 import { computeInsights } from "@/lib/jobs/insights";
+import { loadSeedJobs, loadSeedMeta } from "@/lib/jobs/seed";
+import { BarChart, DonutChart, StatCard, TimelineChart } from "./PipelineCharts";
 
-const LOCAL_KEY = "pipeline-jobs-v1";
-type ViewMode = "board" | "timeline" | "insights";
+const LOCAL_KEY = "pipeline-jobs-v2";
+const META_KEY = "pipeline-meta-v2";
+type ViewMode = "insights" | "board" | "list";
 
-const CHATGPT_PROMPT = `Export my job tracker as a JSON array (no markdown fences). PascalCase is fine:
+const CHATGPT_PROMPT = `Export my job tracker as JSON. Preferred wrapper:
 
-Company, Position, Applied (YYYY-MM-DD), Status, Salary, ReqID, Location, Type, Source, URL, Notes
+{ "job_application_tracker": { "applications": [ ... ], "candidate": {...}, "notable_current_targets": [...], "career_strategy": {...} } }
 
-Status values: Pending, Rejected, Not Submitted — or pipeline statuses (applied, interview, offer, …).
-Also accepted: { "applications": [...] } and camelCase / snake_case field names.`;
+Per application fields understood: company, position, application_status, application_date, location, salary{min,max,amount,period}, match_score_estimate, match_level, strong_matches, potential_gaps, notes, interview, employment_type, etc.
+PascalCase and older formats still work.`;
 
 function loadLocal(): JobApplication[] {
   if (typeof window === "undefined") return [];
@@ -29,14 +34,25 @@ function loadLocal(): JobApplication[] {
     if (!raw) return [];
     const parsed = JSON.parse(raw) as unknown;
     if (!Array.isArray(parsed)) return [];
-    return parsed.map(normalizeJob).filter((j): j is JobApplication => Boolean(j));
+    return parsed.map((j) => normalizeJob(j)).filter((j): j is JobApplication => Boolean(j));
   } catch {
     return [];
   }
 }
 
-function saveLocal(jobs: JobApplication[]) {
+function loadMetaLocal(): TrackerMeta | null {
+  try {
+    const raw = localStorage.getItem(META_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw) as TrackerMeta;
+  } catch {
+    return null;
+  }
+}
+
+function saveLocal(jobs: JobApplication[], meta: TrackerMeta | null) {
   localStorage.setItem(LOCAL_KEY, JSON.stringify(jobs));
+  if (meta) localStorage.setItem(META_KEY, JSON.stringify(meta));
 }
 
 function jobKey(job: JobApplication) {
@@ -52,55 +68,35 @@ function mergeJobs(a: JobApplication[], b: JobApplication[]) {
       map.set(key, { ...job, id: prev?.id || job.id || crypto.randomUUID() });
     }
   }
-  return [...map.values()].sort((x, y) => y.dateApplied.localeCompare(x.dateApplied));
+  return [...map.values()].sort((x, y) => {
+    const dx = x.dateApplied || "";
+    const dy = y.dateApplied || "";
+    if (dx && dy) return dy.localeCompare(dx);
+    if (dx) return -1;
+    if (dy) return 1;
+    return (y.matchScore ?? -1) - (x.matchScore ?? -1);
+  });
 }
 
-function parseImport(text: string): JobApplication[] {
+function parseImport(text: string): { jobs: JobApplication[]; meta: Partial<TrackerMeta> | null } {
   const trimmed = text.trim();
-  if (!trimmed) return [];
-
-  // Strip markdown fences if present
+  if (!trimmed) return { jobs: [], meta: null };
   const fenced = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/i);
   const candidate = fenced ? fenced[1].trim() : trimmed;
+  const data = JSON.parse(candidate) as unknown;
+  const meta = extractTrackerMeta(data);
+  const targets = (meta?.targets ?? []).map((t) => t.company);
+  const list = extractJobRecords(data);
+  if (!list.length) throw new Error("No applications found in JSON.");
+  const jobs = list
+    .map((row) => normalizeJob(row, targets))
+    .filter((j): j is JobApplication => Boolean(j));
+  return { jobs, meta };
+}
 
-  try {
-    const data = JSON.parse(candidate) as unknown;
-    const list = extractJobRecords(data);
-    if (!list.length) throw new Error("No applications found in JSON.");
-    return list.map(normalizeJob).filter((j): j is JobApplication => Boolean(j));
-  } catch (err) {
-    if (err instanceof Error && err.message === "No applications found in JSON.") throw err;
-    // fall through to markdown table
-    // Markdown table fallback: | Title | Company | ...
-    const lines = candidate.split("\n").filter((l) => l.includes("|"));
-    if (lines.length < 2) throw new Error("Could not parse JSON. Paste a JSON array.");
-    const headers = lines[0]
-      .split("|")
-      .map((h) => h.trim().toLowerCase())
-      .filter(Boolean);
-    const rows = lines.slice(1).filter((l) => !/^\|?\s*-+/.test(l));
-    return rows
-      .map((row) => {
-        const cells = row.split("|").map((c) => c.trim()).filter((_, i, arr) => !(i === 0 && arr[0] === "") && !(i === arr.length - 1 && arr[i] === ""));
-        const obj: Record<string, string> = {};
-        headers.forEach((h, i) => {
-          obj[h.replace(/\s+/g, "")] = cells[i] ?? "";
-        });
-        return normalizeJob({
-          title: obj.title || obj.role || obj.job,
-          company: obj.company || obj.where,
-          location: obj.location,
-          dateApplied: obj.dateapplied || obj.date,
-          rate: obj.rate || obj.salary,
-          status: obj.status,
-          description: obj.description || obj.notes,
-          source: obj.source,
-          tags: obj.tags,
-          notes: obj.notes,
-        });
-      })
-      .filter((j): j is JobApplication => Boolean(j));
-  }
+function money(n: number | null | undefined) {
+  if (n == null) return "—";
+  return `$${Math.round(n).toLocaleString()}`;
 }
 
 export function PipelineApp() {
@@ -110,7 +106,8 @@ export function PipelineApp() {
   const [password, setPassword] = useState("");
   const [authError, setAuthError] = useState("");
   const [jobs, setJobs] = useState<JobApplication[]>([]);
-  const [view, setView] = useState<ViewMode>("board");
+  const [meta, setMeta] = useState<TrackerMeta | null>(null);
+  const [view, setView] = useState<ViewMode>("insights");
   const [storageMode, setStorageMode] = useState<"local" | "blob">("local");
   const [importOpen, setImportOpen] = useState(false);
   const [importText, setImportText] = useState("");
@@ -120,12 +117,26 @@ export function PipelineApp() {
   const [detail, setDetail] = useState<JobApplication | null>(null);
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState("");
+  const [filter, setFilter] = useState("");
 
-  const insights = useMemo(() => computeInsights(jobs), [jobs]);
+  const insights = useMemo(() => computeInsights(jobs, meta), [jobs, meta]);
+  const filtered = useMemo(() => {
+    const q = filter.trim().toLowerCase();
+    if (!q) return jobs;
+    return jobs.filter(
+      (j) =>
+        j.company.toLowerCase().includes(q) ||
+        j.title.toLowerCase().includes(q) ||
+        j.location.toLowerCase().includes(q) ||
+        j.matchLevel.toLowerCase().includes(q) ||
+        j.tags.some((t) => t.toLowerCase().includes(q)),
+    );
+  }, [jobs, filter]);
 
-  const persist = useCallback(async (next: JobApplication[]) => {
+  const persist = useCallback(async (next: JobApplication[], nextMeta: TrackerMeta | null = meta) => {
     setJobs(next);
-    saveLocal(next);
+    if (nextMeta) setMeta(nextMeta);
+    saveLocal(next, nextMeta);
     setSaving(true);
     try {
       const res = await fetch("/api/pipeline/jobs", {
@@ -133,19 +144,25 @@ export function PipelineApp() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ jobs: next }),
       });
-      if (res.ok) {
-        setStorageMode("blob");
-        setNotice("Synced to private server storage");
-      } else if (res.status === 501) {
-        setStorageMode("local");
-      }
+      if (res.ok) setStorageMode("blob");
+      else if (res.status === 501) setStorageMode("local");
     } catch {
       setStorageMode("local");
     } finally {
       setSaving(false);
       setTimeout(() => setNotice(""), 2500);
     }
-  }, []);
+  }, [meta]);
+
+  function hydrateFromSeed() {
+    const seeded = loadSeedJobs();
+    const seededMeta = loadSeedMeta();
+    setJobs(seeded);
+    setMeta(seededMeta);
+    saveLocal(seeded, seededMeta);
+    setNotice(`Loaded ${seeded.length} applications from tracker seed`);
+    void persist(seeded, seededMeta);
+  }
 
   useEffect(() => {
     (async () => {
@@ -159,15 +176,24 @@ export function PipelineApp() {
         }
         setAuthed(true);
         const local = loadLocal();
-        const remote = await fetch("/api/pipeline/jobs").then((r) => r.json());
-        if (remote.storage === "blob" && Array.isArray(remote.jobs)) {
-          const merged = mergeJobs(local, remote.jobs);
-          setJobs(merged);
-          saveLocal(merged);
-          setStorageMode("blob");
-        } else {
+        const localMeta = loadMetaLocal();
+        if (local.length) {
           setJobs(local);
-          setStorageMode("local");
+          setMeta(localMeta ?? loadSeedMeta());
+        } else {
+          const seeded = loadSeedJobs();
+          const seededMeta = loadSeedMeta();
+          setJobs(seeded);
+          setMeta(seededMeta);
+          saveLocal(seeded, seededMeta);
+        }
+        const remote = await fetch("/api/pipeline/jobs").then((r) => r.json());
+        if (remote.storage === "blob" && Array.isArray(remote.jobs) && remote.jobs.length) {
+          const current = loadLocal();
+          const merged = mergeJobs(current, remote.jobs);
+          setJobs(merged);
+          saveLocal(merged, loadMetaLocal() ?? loadSeedMeta());
+          setStorageMode("blob");
         }
       } catch {
         setAuthed(false);
@@ -193,14 +219,11 @@ export function PipelineApp() {
     setPassword("");
     setAuthed(true);
     const local = loadLocal();
-    const remote = await fetch("/api/pipeline/jobs").then((r) => r.json());
-    if (remote.storage === "blob" && Array.isArray(remote.jobs)) {
-      const merged = mergeJobs(local, remote.jobs);
-      setJobs(merged);
-      saveLocal(merged);
-      setStorageMode("blob");
-    } else {
+    if (local.length) {
       setJobs(local);
+      setMeta(loadMetaLocal() ?? loadSeedMeta());
+    } else {
+      hydrateFromSeed();
     }
   }
 
@@ -229,6 +252,7 @@ export function PipelineApp() {
     void persist(next);
     setFormOpen(false);
     setEditing(null);
+    setNotice("Saved");
   }
 
   function deleteJob(id: string) {
@@ -247,17 +271,28 @@ export function PipelineApp() {
   function applyImport(mode: "merge" | "replace") {
     setImportError("");
     try {
-      const incoming = parseImport(importText);
+      const { jobs: incoming, meta: incomingMeta } = parseImport(importText);
       if (!incoming.length) {
         setImportError("No jobs found in paste.");
         return;
       }
       const stamped = incoming.map((j) => ({ ...j, updatedAt: new Date().toISOString() }));
       const next = mode === "replace" ? stamped : mergeJobs(jobs, stamped);
-      void persist(next);
+      const nextMeta: TrackerMeta = {
+        ...loadSeedMeta(),
+        ...meta,
+        ...incomingMeta,
+        targets: incomingMeta?.targets?.length ? incomingMeta.targets : meta?.targets ?? loadSeedMeta().targets,
+        strengths: incomingMeta?.strengths?.length
+          ? incomingMeta.strengths
+          : meta?.strengths ?? loadSeedMeta().strengths,
+        risks: incomingMeta?.risks?.length ? incomingMeta.risks : meta?.risks ?? loadSeedMeta().risks,
+      };
+      void persist(next, nextMeta);
       setImportOpen(false);
       setImportText("");
       setNotice(`Imported ${stamped.length} job(s)`);
+      setView("insights");
     } catch (err) {
       setImportError(err instanceof Error ? err.message : "Import failed");
     }
@@ -265,7 +300,7 @@ export function PipelineApp() {
 
   if (booting) {
     return (
-      <main className="min-h-screen grid place-items-center bg-[var(--ink)] text-[var(--muted)]">
+      <main className="grid min-h-screen place-items-center bg-[var(--ink)] text-[var(--muted)]">
         Loading pipeline…
       </main>
     );
@@ -273,15 +308,14 @@ export function PipelineApp() {
 
   if (!configured) {
     return (
-      <main className="min-h-screen grid place-items-center bg-[var(--ink)] px-6">
+      <main className="grid min-h-screen place-items-center bg-[var(--ink)] px-6">
         <div className="max-w-md rounded-2xl border border-white/10 bg-[var(--panel)] p-8">
           <p className="section-kicker">Pipeline</p>
           <h1 className="font-[family-name:var(--font-display)] text-3xl text-[var(--cream)]">
             Not configured
           </h1>
           <p className="mt-3 text-sm leading-relaxed text-[var(--muted)]">
-            Set <code className="text-[var(--accent)]">JOB_TRACKER_SECRET</code> in your environment
-            (Vercel project env vars), then redeploy.
+            Set <code className="text-[var(--accent)]">JOB_TRACKER_SECRET</code> in Vercel env vars.
           </p>
         </div>
       </main>
@@ -292,14 +326,13 @@ export function PipelineApp() {
     return (
       <main className="relative min-h-screen overflow-hidden bg-[var(--ink)]">
         <div className="pointer-events-none absolute -left-20 top-20 h-72 w-72 rounded-full bg-[var(--accent)]/15 blur-3xl" />
-        <div className="pointer-events-none absolute -right-16 bottom-10 h-80 w-80 rounded-full bg-[var(--warm)]/10 blur-3xl" />
         <div className="relative mx-auto flex min-h-screen max-w-md flex-col justify-center px-6">
           <p className="section-kicker">Private</p>
           <h1 className="font-[family-name:var(--font-display)] text-4xl tracking-tight text-[var(--cream)]">
             Pipeline
           </h1>
           <p className="mt-3 text-sm text-[var(--muted)]">
-            Password-gated job application tracker. Not linked from the public site.
+            Password-gated job tracker with match scores, salary trends, and outcome charts.
           </p>
           <form onSubmit={handleLogin} className="mt-8 space-y-4">
             <label className="block text-xs uppercase tracking-[0.2em] text-[var(--muted)]">
@@ -315,7 +348,7 @@ export function PipelineApp() {
             {authError ? <p className="text-sm text-red-300">{authError}</p> : null}
             <button
               type="submit"
-              className="w-full rounded-xl bg-[var(--accent)] px-4 py-3 text-sm font-semibold text-[var(--ink)] transition hover:brightness-110"
+              className="w-full rounded-xl bg-[var(--accent)] px-4 py-3 text-sm font-semibold text-[var(--ink)]"
             >
               Enter
             </button>
@@ -330,14 +363,25 @@ export function PipelineApp() {
       <header className="sticky top-0 z-20 border-b border-white/10 bg-[var(--ink)]/90 backdrop-blur">
         <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 px-4 py-4 sm:px-6">
           <div>
-            <p className="text-[10px] uppercase tracking-[0.28em] text-[var(--accent)]">Private · noindex</p>
-            <h1 className="font-[family-name:var(--font-display)] text-2xl tracking-tight">Pipeline</h1>
+            <p className="text-[10px] uppercase tracking-[0.28em] text-[var(--accent)]">
+              Private · updated {meta?.lastUpdated || "—"}
+            </p>
+            <h1 className="font-[family-name:var(--font-display)] text-2xl tracking-tight">
+              Pipeline
+            </h1>
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <span className="rounded-full border border-white/10 px-3 py-1 text-xs text-[var(--muted)]">
               {storageMode === "blob" ? "Synced" : "Browser storage"}
               {saving ? " · saving…" : ""}
             </span>
+            <button
+              type="button"
+              onClick={hydrateFromSeed}
+              className="rounded-lg border border-white/15 px-3 py-1.5 text-sm hover:border-[var(--accent)]"
+            >
+              Load latest seed
+            </button>
             <button
               type="button"
               onClick={() => setImportOpen(true)}
@@ -370,18 +414,31 @@ export function PipelineApp() {
           </p>
         ) : null}
 
-        <div className="grid gap-3 sm:grid-cols-3">
-          <Stat label="Applied this week" value={String(insights.appliedThisWeek)} />
-          <Stat label="Interviews open" value={String(insights.interviewsOpen)} />
-          <Stat label="Response rate" value={`${insights.responseRate}%`} />
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <StatCard label="Applications" value={String(insights.total)} hint={`${insights.appliedThisWeek} dated this week`} />
+          <StatCard
+            label="Avg match"
+            value={insights.avgMatchScore != null ? `${insights.avgMatchScore}/10` : "—"}
+            hint={`${insights.withMatchScore} scored roles`}
+          />
+          <StatCard
+            label="Interviews open"
+            value={String(insights.interviewsOpen)}
+            hint={`${insights.rejected} rejected`}
+          />
+          <StatCard
+            label="Avg known pay"
+            value={money(insights.avgAnnualMid)}
+            hint={`${insights.abovePriorSalary}/${insights.knownSalaryCount} ≥ prior ${money(meta?.lastSalary)}`}
+          />
         </div>
 
         <div className="mt-6 flex flex-wrap gap-2">
           {(
             [
+              ["insights", "Charts & trends"],
               ["board", "Board"],
-              ["timeline", "Timeline"],
-              ["insights", "Insights"],
+              ["list", "All applications"],
             ] as const
           ).map(([id, label]) => (
             <button
@@ -397,55 +454,128 @@ export function PipelineApp() {
               {label}
             </button>
           ))}
-          <span className="ml-auto self-center text-xs text-[var(--muted)]">{jobs.length} applications</span>
+          {view === "list" ? (
+            <input
+              value={filter}
+              onChange={(e) => setFilter(e.target.value)}
+              placeholder="Filter company, role, match…"
+              className="ml-auto min-w-[14rem] rounded-full border border-white/15 bg-black/20 px-4 py-1.5 text-sm outline-none focus:border-[var(--accent)]"
+            />
+          ) : (
+            <span className="ml-auto self-center text-xs text-[var(--muted)]">
+              Prior salary {money(meta?.lastSalary)} · W2 preferred
+            </span>
+          )}
         </div>
 
         <div className="mt-6">
-          {!jobs.length ? (
-            <div className="rounded-2xl border border-dashed border-white/15 px-6 py-14 text-center">
-              <p className="text-[var(--muted)]">No applications yet.</p>
-              <div className="mt-4 flex flex-wrap justify-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => setImportOpen(true)}
-                  className="rounded-lg bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-[var(--ink)]"
-                >
-                  Import ChatGPT export
-                </button>
-                <button
-                  type="button"
-                  onClick={openNew}
-                  className="rounded-lg border border-white/15 px-4 py-2 text-sm"
-                >
-                  Add manually
-                </button>
-                <button
-                  type="button"
-                  onClick={async () => {
-                    const sample = (await import("@/lib/jobs/sample-export.json")).default;
-                    const stamped = sample
-                      .map((row) => normalizeJob(row))
-                      .filter((j): j is JobApplication => Boolean(j))
-                      .map((j) => ({ ...j, updatedAt: new Date().toISOString() }));
-                    void persist(stamped);
-                    setNotice("Loaded sample data — replace with your export anytime");
-                  }}
-                  className="rounded-lg border border-white/15 px-4 py-2 text-sm text-[var(--muted)]"
-                >
-                  Load sample
-                </button>
+          {view === "insights" ? (
+            <div className="space-y-4">
+              <div className="grid gap-4 lg:grid-cols-2">
+                <DonutChart
+                  title="Pipeline mix"
+                  subtitle="Status across all applications"
+                  data={insights.statusChart}
+                />
+                <BarChart
+                  title="Match score bands"
+                  subtitle="Where your scored applications land"
+                  data={insights.matchScoreChart}
+                />
+                <BarChart
+                  title="Match level mix"
+                  subtitle="Excellent / Very Good / Good / Unknown"
+                  data={insights.matchLevelChart}
+                />
+                <TimelineChart data={insights.timelineChart} />
+                <BarChart
+                  title="Salary vs prior ($79K)"
+                  subtitle="Annualized midpoint where known · teal ≥ prior"
+                  data={insights.salaryVsPriorChart}
+                  formatValue={(n) => `$${Math.round(n / 1000)}k`}
+                />
+                <section className="rounded-2xl border border-white/10 bg-[var(--panel)] p-5">
+                  <h3 className="font-[family-name:var(--font-display)] text-xl">Current targets</h3>
+                  <p className="mt-1 text-sm text-[var(--muted)]">High-priority companies from the tracker</p>
+                  <ul className="mt-4 space-y-2">
+                    {(meta?.targets ?? []).map((t) => (
+                      <li key={t.company} className="rounded-xl border border-[var(--accent)]/20 bg-[var(--accent)]/5 px-3 py-2 text-sm">
+                        <strong className="text-[var(--accent)]">{t.company}</strong>
+                        <span className="text-[var(--muted)]"> — {t.reason}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </section>
               </div>
+
+              <div className="grid gap-4 lg:grid-cols-3">
+                <GuidanceCard title="Lean into" tone="good" items={insights.leanInto} />
+                <GuidanceCard title="Watch gaps" tone="warn" items={insights.gapThemes} />
+                <section className="rounded-2xl border border-white/10 bg-[var(--panel)] p-5">
+                  <h3 className="font-[family-name:var(--font-display)] text-xl">Strategy</h3>
+                  <p className="mt-2 text-sm text-[var(--muted)]">{meta?.preferredEmployment}</p>
+                  <p className="mt-3 text-xs uppercase tracking-[0.18em] text-[var(--accent)]">Prefer</p>
+                  <p className="mt-1 text-sm text-[var(--cream)]/90">
+                    {(meta?.preferredWork ?? []).slice(0, 5).join(" · ")}
+                  </p>
+                  <p className="mt-3 text-xs uppercase tracking-[0.18em] text-[var(--warm)]">Less preferred</p>
+                  <p className="mt-1 text-sm text-[var(--cream)]/90">
+                    {(meta?.lessPreferred ?? []).slice(0, 4).join(" · ")}
+                  </p>
+                  <p className="mt-4 text-sm text-[var(--muted)]">
+                    Target {meta?.preferredTarget || "~$80K+"} · stretch {meta?.highValueTarget || "$100K+"}
+                  </p>
+                </section>
+              </div>
+
+              <div className="grid gap-4 lg:grid-cols-2">
+                <RankList
+                  title="Top match scores"
+                  jobs={insights.topMatches}
+                  onSelect={setDetail}
+                  primary={(j) => (j.matchScore != null ? `${j.matchScore}/10` : "—")}
+                />
+                <RankList
+                  title="Highest known pay"
+                  jobs={insights.topPay}
+                  onSelect={setDetail}
+                  primary={(j) => money(j.annualMid)}
+                />
+              </div>
+
+              {(meta?.risks?.length || meta?.strengths?.length) ? (
+                <div className="grid gap-4 lg:grid-cols-2">
+                  <section className="rounded-2xl border border-white/10 bg-[var(--panel)] p-5">
+                    <h3 className="font-[family-name:var(--font-display)] text-xl">Profile strengths</h3>
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      {(meta?.strengths ?? []).map((s) => (
+                        <span key={s} className="rounded-full border border-white/15 px-3 py-1 text-xs text-[var(--cream)]/85">
+                          {s}
+                        </span>
+                      ))}
+                    </div>
+                  </section>
+                  <section className="rounded-2xl border border-white/10 bg-[var(--panel)] p-5">
+                    <h3 className="font-[family-name:var(--font-display)] text-xl">Application risks</h3>
+                    <ul className="mt-4 space-y-2 text-sm text-[var(--muted)]">
+                      {(meta?.risks ?? []).map((r) => (
+                        <li key={r.slice(0, 40)} className="border-l border-[var(--warm)]/40 pl-3">
+                          {r}
+                        </li>
+                      ))}
+                    </ul>
+                  </section>
+                </div>
+              ) : null}
             </div>
           ) : null}
 
-          {jobs.length && view === "board" ? (
+          {view === "board" ? (
             <Board jobs={jobs} onSelect={setDetail} onStatus={updateStatus} />
           ) : null}
-          {jobs.length && view === "timeline" ? (
-            <Timeline jobs={jobs} onSelect={setDetail} />
-          ) : null}
-          {jobs.length && view === "insights" ? (
-            <InsightsPanel insights={insights} jobs={jobs} />
+
+          {view === "list" ? (
+            <ApplicationTable jobs={filtered} onSelect={setDetail} prior={meta?.lastSalary ?? 79000} />
           ) : null}
         </div>
       </div>
@@ -453,48 +583,50 @@ export function PipelineApp() {
       {detail ? (
         <Drawer onClose={() => setDetail(null)} title={`${detail.title} · ${detail.company}`}>
           <div className="space-y-3 text-sm">
-            <MetaRow label="Status" value={STATUS_LABELS[detail.status]} />
+            <MetaRow label="Status" value={`${STATUS_LABELS[detail.status]}${detail.statusRaw ? ` (${detail.statusRaw})` : ""}`} />
+            <MetaRow label="Match" value={detail.matchScore != null ? `${detail.matchScore}/10 · ${detail.matchLevel || "—"}` : detail.matchLevel || "—"} />
             <MetaRow label="Location" value={detail.location || "—"} />
             <MetaRow label="Applied" value={detail.dateApplied || "—"} />
-            <MetaRow label="Rate" value={detail.rate || "—"} />
+            <MetaRow label="Pay" value={detail.rate || money(detail.annualMid)} />
+            <MetaRow label="Employment" value={detail.employmentType || "—"} />
             <MetaRow label="Source" value={detail.source || "—"} />
-            <MetaRow label="Tags" value={detail.tags.join(", ") || "—"} />
-            {detail.url ? (
-              <div className="flex gap-3 border-b border-white/5 pb-2">
-                <span className="w-24 shrink-0 text-xs uppercase tracking-[0.18em] text-[var(--muted)]">
-                  Link
-                </span>
-                <a
-                  href={detail.url}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="break-all text-[var(--accent)] underline-offset-2 hover:underline"
-                >
-                  Open posting
-                </a>
+            {detail.interviewDate ? (
+              <MetaRow label="Interview" value={`${detail.interviewDate}${detail.interviewNotes ? ` · ${detail.interviewNotes}` : ""}`} />
+            ) : null}
+            {detail.isTarget ? <MetaRow label="Target" value="Yes — current priority" /> : null}
+            {detail.strongMatches.length ? (
+              <div>
+                <p className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">Strong matches</p>
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {detail.strongMatches.map((t) => (
+                    <span key={t} className="rounded-full border border-[var(--accent)]/30 px-2.5 py-1 text-[11px] text-[var(--accent)]">
+                      {t}
+                    </span>
+                  ))}
+                </div>
               </div>
             ) : null}
-            <div>
-              <p className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">Description</p>
-              <p className="mt-1 whitespace-pre-wrap text-[var(--cream)]/90">{detail.description || "—"}</p>
-            </div>
+            {detail.gaps.length ? (
+              <div>
+                <p className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">Gaps</p>
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {detail.gaps.map((t) => (
+                    <span key={t} className="rounded-full border border-[var(--warm)]/30 px-2.5 py-1 text-[11px] text-[var(--warm)]">
+                      {t}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            ) : null}
             <div>
               <p className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">Notes</p>
               <p className="mt-1 whitespace-pre-wrap text-[var(--cream)]/90">{detail.notes || "—"}</p>
             </div>
             <div className="flex flex-wrap gap-2 pt-2">
-              <button
-                type="button"
-                onClick={() => openEdit(detail)}
-                className="rounded-lg bg-[var(--accent)] px-3 py-2 text-sm font-semibold text-[var(--ink)]"
-              >
+              <button type="button" onClick={() => openEdit(detail)} className="rounded-lg bg-[var(--accent)] px-3 py-2 text-sm font-semibold text-[var(--ink)]">
                 Edit
               </button>
-              <button
-                type="button"
-                onClick={() => deleteJob(detail.id)}
-                className="rounded-lg border border-red-400/40 px-3 py-2 text-sm text-red-300"
-              >
+              <button type="button" onClick={() => deleteJob(detail.id)} className="rounded-lg border border-red-400/40 px-3 py-2 text-sm text-red-300">
                 Delete
               </button>
             </div>
@@ -510,46 +642,30 @@ export function PipelineApp() {
           }}
           title={jobs.some((j) => j.id === editing.id) ? "Edit application" : "Add application"}
         >
-          <JobForm
-            job={editing}
-            onChange={setEditing}
-            onSave={saveForm}
-            onDelete={() => deleteJob(editing.id)}
-          />
+          <JobForm job={editing} onChange={setEditing} onSave={saveForm} onDelete={() => deleteJob(editing.id)} />
         </Drawer>
       ) : null}
 
       {importOpen ? (
-        <Drawer onClose={() => setImportOpen(false)} title="Import from ChatGPT">
+        <Drawer onClose={() => setImportOpen(false)} title="Import tracker JSON">
           <div className="space-y-4 text-sm">
-            <p className="text-[var(--muted)]">
-              Paste a JSON array (or markdown table). Use this prompt in ChatGPT:
-            </p>
-            <pre className="max-h-40 overflow-auto rounded-xl border border-white/10 bg-black/40 p-3 text-xs text-[var(--cream)]/90 whitespace-pre-wrap">
+            <p className="text-[var(--muted)]">Paste a full `job_application_tracker` export (or applications array).</p>
+            <pre className="max-h-36 overflow-auto rounded-xl border border-white/10 bg-black/40 p-3 text-xs whitespace-pre-wrap text-[var(--cream)]/90">
               {CHATGPT_PROMPT}
             </pre>
             <textarea
               value={importText}
               onChange={(e) => setImportText(e.target.value)}
               rows={12}
-              placeholder='[{"title":"…","company":"…","status":"applied",...}]'
               className="w-full rounded-xl border border-white/10 bg-black/30 p-3 font-mono text-xs outline-none focus:border-[var(--accent)]"
             />
             {importError ? <p className="text-red-300">{importError}</p> : null}
             <div className="flex flex-wrap gap-2">
-              <button
-                type="button"
-                onClick={() => applyImport("merge")}
-                className="rounded-lg bg-[var(--accent)] px-3 py-2 font-semibold text-[var(--ink)]"
-              >
-                Merge import
-              </button>
-              <button
-                type="button"
-                onClick={() => applyImport("replace")}
-                className="rounded-lg border border-[var(--warm)]/50 px-3 py-2 text-[var(--warm)]"
-              >
+              <button type="button" onClick={() => applyImport("replace")} className="rounded-lg bg-[var(--accent)] px-3 py-2 font-semibold text-[var(--ink)]">
                 Replace all
+              </button>
+              <button type="button" onClick={() => applyImport("merge")} className="rounded-lg border border-white/20 px-3 py-2">
+                Merge
               </button>
             </div>
           </div>
@@ -559,12 +675,69 @@ export function PipelineApp() {
   );
 }
 
-function Stat({ label, value }: { label: string; value: string }) {
+function GuidanceCard({
+  title,
+  tone,
+  items,
+}: {
+  title: string;
+  tone: "good" | "warn";
+  items: { label: string; reason: string }[];
+}) {
+  const color = tone === "good" ? "var(--accent)" : "var(--warm)";
   return (
-    <div className="rounded-2xl border border-white/10 bg-[var(--panel)] px-4 py-4">
-      <p className="text-[10px] uppercase tracking-[0.22em] text-[var(--muted)]">{label}</p>
-      <p className="mt-2 font-[family-name:var(--font-display)] text-3xl text-[var(--cream)]">{value}</p>
-    </div>
+    <section className="rounded-2xl border border-white/10 bg-[var(--panel)] p-5">
+      <h3 className="font-[family-name:var(--font-display)] text-xl" style={{ color }}>
+        {title}
+      </h3>
+      <ul className="mt-4 space-y-2">
+        {items.length ? (
+          items.map((item) => (
+            <li key={item.label} className="rounded-lg border border-white/10 px-3 py-2">
+              <p className="font-medium capitalize">{item.label}</p>
+              <p className="text-xs text-[var(--muted)]">{item.reason}</p>
+            </li>
+          ))
+        ) : (
+          <li className="text-xs text-[var(--muted)]">Not enough signal yet</li>
+        )}
+      </ul>
+    </section>
+  );
+}
+
+function RankList({
+  title,
+  jobs,
+  onSelect,
+  primary,
+}: {
+  title: string;
+  jobs: JobApplication[];
+  onSelect: (job: JobApplication) => void;
+  primary: (job: JobApplication) => string;
+}) {
+  return (
+    <section className="rounded-2xl border border-white/10 bg-[var(--panel)] p-5">
+      <h3 className="font-[family-name:var(--font-display)] text-xl">{title}</h3>
+      <ul className="mt-4 space-y-2">
+        {jobs.map((job) => (
+          <li key={job.id}>
+            <button
+              type="button"
+              onClick={() => onSelect(job)}
+              className="flex w-full items-baseline justify-between gap-3 rounded-xl border border-white/10 px-3 py-2 text-left hover:border-[var(--accent)]/40"
+            >
+              <span>
+                <span className="block text-sm font-medium">{job.company}</span>
+                <span className="text-xs text-[var(--muted)]">{job.title}</span>
+              </span>
+              <span className="shrink-0 text-sm tabular-nums text-[var(--accent)]">{primary(job)}</span>
+            </button>
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }
 
@@ -643,9 +816,13 @@ function Board({
                 >
                   <p className="text-sm font-medium">{job.title}</p>
                   <p className="mt-1 text-xs text-[var(--muted)]">{job.company}</p>
-                  {job.tags.length ? (
-                    <p className="mt-2 line-clamp-1 text-[10px] text-[var(--warm)]">{job.tags.join(" · ")}</p>
-                  ) : null}
+                  <div className="mt-2 flex flex-wrap gap-2 text-[10px]">
+                    {job.matchScore != null ? (
+                      <span className="text-[var(--accent)]">{job.matchScore}/10</span>
+                    ) : null}
+                    {job.isTarget ? <span className="text-[var(--warm)]">Target</span> : null}
+                    {job.rate ? <span className="text-[var(--muted)]">{job.rate}</span> : null}
+                  </div>
                 </button>
               ))}
               {!col.length ? (
@@ -659,163 +836,61 @@ function Board({
   );
 }
 
-function Timeline({
+function ApplicationTable({
   jobs,
   onSelect,
+  prior,
 }: {
   jobs: JobApplication[];
   onSelect: (job: JobApplication) => void;
+  prior: number;
 }) {
-  const grouped = useMemo(() => {
-    const map = new Map<string, JobApplication[]>();
-    for (const job of [...jobs].sort((a, b) => b.dateApplied.localeCompare(a.dateApplied))) {
-      const key = job.dateApplied.slice(0, 7) || "unknown";
-      map.set(key, [...(map.get(key) ?? []), job]);
-    }
-    return [...map.entries()];
-  }, [jobs]);
-
-  if (!jobs.length) {
-    return <EmptyState />;
-  }
-
   return (
-    <div className="space-y-6">
-      {grouped.map(([month, items]) => (
-        <section key={month}>
-          <h3 className="mb-3 font-[family-name:var(--font-display)] text-xl text-[var(--accent)]">
-            {month}
-          </h3>
-          <ol className="relative space-y-3 border-l border-white/15 pl-5">
-            {items.map((job) => (
-              <li key={job.id}>
-                <span className="absolute -left-[5px] mt-2 h-2.5 w-2.5 rounded-full bg-[var(--warm)]" />
-                <button
-                  type="button"
-                  onClick={() => onSelect(job)}
-                  className="w-full rounded-xl border border-white/10 bg-[var(--panel)] px-4 py-3 text-left hover:border-[var(--accent)]/40"
-                >
-                  <div className="flex flex-wrap items-baseline justify-between gap-2">
-                    <p className="font-medium">
-                      {job.title} <span className="text-[var(--muted)]">@ {job.company}</span>
-                    </p>
-                    <span className="text-xs text-[var(--muted)]">{job.dateApplied}</span>
-                  </div>
-                  <p className="mt-1 text-xs text-[var(--warm)]">{STATUS_LABELS[job.status]}</p>
-                </button>
-              </li>
-            ))}
-          </ol>
-        </section>
-      ))}
-    </div>
-  );
-}
-
-function InsightsPanel({
-  insights,
-  jobs,
-}: {
-  insights: ReturnType<typeof computeInsights>;
-  jobs: JobApplication[];
-}) {
-  const max = Math.max(1, ...Object.values(insights.byStatus));
-
-  return (
-    <div className="grid gap-4 lg:grid-cols-2">
-      <section className="rounded-2xl border border-white/10 bg-[var(--panel)] p-5">
-        <h3 className="font-[family-name:var(--font-display)] text-xl">Outcomes</h3>
-        <p className="mt-1 text-sm text-[var(--muted)]">Status mix across {insights.total} applications</p>
-        <div className="mt-5 space-y-2">
-          {BOARD_COLUMNS.map((status) => {
-            const n = insights.byStatus[status];
-            return (
-              <div key={status} className="grid grid-cols-[7rem_1fr_2rem] items-center gap-2 text-sm">
-                <span className="text-[var(--muted)]">{STATUS_LABELS[status]}</span>
-                <div className="h-2 overflow-hidden rounded-full bg-white/10">
-                  <div
-                    className="h-full rounded-full bg-[var(--accent)]"
-                    style={{ width: `${(n / max) * 100}%` }}
-                  />
-                </div>
-                <span className="text-right tabular-nums">{n}</span>
-              </div>
-            );
-          })}
-        </div>
-      </section>
-
-      <section className="rounded-2xl border border-white/10 bg-[var(--panel)] p-5">
-        <h3 className="font-[family-name:var(--font-display)] text-xl">Focus map</h3>
-        <p className="mt-1 text-sm text-[var(--muted)]">Tags weighted by interview/offer vs reject/avoid</p>
-        <div className="mt-5 grid gap-4 sm:grid-cols-2">
-          <GuidanceList title="Lean into" tone="good" items={insights.leanInto} />
-          <GuidanceList title="Be cautious" tone="warn" items={insights.beCautious} />
-        </div>
-      </section>
-
-      <section className="rounded-2xl border border-white/10 bg-[var(--panel)] p-5 lg:col-span-2">
-        <h3 className="font-[family-name:var(--font-display)] text-xl">Guidance</h3>
-        <p className="mt-1 text-sm text-[var(--muted)]">
-          Rules from your own outcomes — not external market data.
-        </p>
-        <ul className="mt-4 space-y-2 text-sm">
-          {insights.leanInto.slice(0, 3).map((item) => (
-            <li key={`g-${item.label}`} className="rounded-xl border border-[var(--accent)]/25 bg-[var(--accent)]/5 px-3 py-2">
-              <span className="text-[var(--accent)]">Apply toward</span> roles tagged{" "}
-              <strong>{item.label}</strong> — {item.reason}
-            </li>
+    <div className="overflow-x-auto rounded-2xl border border-white/10">
+      <table className="min-w-full text-left text-sm">
+        <thead className="border-b border-white/10 bg-[var(--panel)] text-[10px] uppercase tracking-[0.18em] text-[var(--muted)]">
+          <tr>
+            <th className="px-3 py-3">Company</th>
+            <th className="px-3 py-3">Role</th>
+            <th className="px-3 py-3">Status</th>
+            <th className="px-3 py-3">Match</th>
+            <th className="px-3 py-3">Pay</th>
+            <th className="px-3 py-3">Date</th>
+            <th className="px-3 py-3">Location</th>
+          </tr>
+        </thead>
+        <tbody>
+          {jobs.map((job) => (
+            <tr
+              key={job.id}
+              onClick={() => onSelect(job)}
+              className="cursor-pointer border-b border-white/5 hover:bg-white/5"
+            >
+              <td className="px-3 py-3">
+                <span className="font-medium">{job.shortName || job.company}</span>
+                {job.isTarget ? (
+                  <span className="ml-2 text-[10px] uppercase tracking-wider text-[var(--warm)]">Target</span>
+                ) : null}
+              </td>
+              <td className="max-w-[16rem] truncate px-3 py-3 text-[var(--muted)]">{job.title}</td>
+              <td className="px-3 py-3">{STATUS_LABELS[job.status]}</td>
+              <td className="px-3 py-3 tabular-nums">
+                {job.matchScore != null ? `${job.matchScore}/10` : "—"}
+              </td>
+              <td className="px-3 py-3 tabular-nums">
+                <span className={job.annualMid != null && job.annualMid >= prior ? "text-[var(--accent)]" : ""}>
+                  {job.rate || money(job.annualMid)}
+                </span>
+              </td>
+              <td className="px-3 py-3 text-[var(--muted)]">{job.dateApplied || "—"}</td>
+              <td className="max-w-[12rem] truncate px-3 py-3 text-[var(--muted)]">{job.location || "—"}</td>
+            </tr>
           ))}
-          {insights.beCautious.slice(0, 3).map((item) => (
-            <li key={`c-${item.label}`} className="rounded-xl border border-[var(--warm)]/30 bg-[var(--warm)]/5 px-3 py-2">
-              <span className="text-[var(--warm)]">Think twice</span> on{" "}
-              <strong>{item.label}</strong> — {item.reason}
-            </li>
-          ))}
-          {!jobs.length ? (
-            <li className="text-[var(--muted)]">Import or add a few applications to unlock guidance.</li>
-          ) : null}
-        </ul>
-      </section>
-    </div>
-  );
-}
-
-function GuidanceList({
-  title,
-  tone,
-  items,
-}: {
-  title: string;
-  tone: "good" | "warn";
-  items: { label: string; reason: string }[];
-}) {
-  const color = tone === "good" ? "var(--accent)" : "var(--warm)";
-  return (
-    <div>
-      <p className="text-xs uppercase tracking-[0.2em]" style={{ color }}>
-        {title}
-      </p>
-      <ul className="mt-2 space-y-2">
-        {items.length ? (
-          items.map((item) => (
-            <li key={item.label} className="rounded-lg border border-white/10 px-3 py-2">
-              <p className="font-medium capitalize">{item.label}</p>
-              <p className="text-xs text-[var(--muted)]">{item.reason}</p>
-            </li>
-          ))
-        ) : (
-          <li className="text-xs text-[var(--muted)]">Not enough signal yet</li>
-        )}
-      </ul>
-    </div>
-  );
-}
-
-function EmptyState() {
-  return (
-    <div className="rounded-2xl border border-dashed border-white/15 px-6 py-16 text-center text-[var(--muted)]">
-      No applications yet. Import a ChatGPT export or add a job.
+        </tbody>
+      </table>
+      {!jobs.length ? (
+        <p className="px-4 py-10 text-center text-sm text-[var(--muted)]">No matching applications</p>
+      ) : null}
     </div>
   );
 }
@@ -834,6 +909,8 @@ function JobForm({
   function set<K extends keyof JobApplication>(key: K, value: JobApplication[K]) {
     onChange({ ...job, [key]: value });
   }
+  const field =
+    "mt-1.5 w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2.5 outline-none focus:border-[var(--accent)]";
 
   return (
     <form
@@ -843,130 +920,64 @@ function JobForm({
         onSave();
       }}
     >
-      <Field label="Title">
-        <input
-          required
-          value={job.title}
-          onChange={(e) => set("title", e.target.value)}
-          className="mt-1.5 w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2.5 outline-none focus:border-[var(--accent)]"
-        />
-      </Field>
-      <Field label="Company">
-        <input
-          required
-          value={job.company}
-          onChange={(e) => set("company", e.target.value)}
-          className="mt-1.5 w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2.5 outline-none focus:border-[var(--accent)]"
-        />
-      </Field>
+      <label className="block">
+        <span className="text-[10px] uppercase tracking-[0.2em] text-[var(--muted)]">Title</span>
+        <input required value={job.title} onChange={(e) => set("title", e.target.value)} className={field} />
+      </label>
+      <label className="block">
+        <span className="text-[10px] uppercase tracking-[0.2em] text-[var(--muted)]">Company</span>
+        <input required value={job.company} onChange={(e) => set("company", e.target.value)} className={field} />
+      </label>
       <div className="grid grid-cols-2 gap-3">
-        <Field label="Location">
-          <input
-            value={job.location}
-            onChange={(e) => set("location", e.target.value)}
-            className="mt-1.5 w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2.5 outline-none focus:border-[var(--accent)]"
-          />
-        </Field>
-        <Field label="Date applied">
-          <input
-            type="date"
-            value={job.dateApplied}
-            onChange={(e) => set("dateApplied", e.target.value)}
-            className="mt-1.5 w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2.5 outline-none focus:border-[var(--accent)]"
-          />
-        </Field>
+        <label className="block">
+          <span className="text-[10px] uppercase tracking-[0.2em] text-[var(--muted)]">Location</span>
+          <input value={job.location} onChange={(e) => set("location", e.target.value)} className={field} />
+        </label>
+        <label className="block">
+          <span className="text-[10px] uppercase tracking-[0.2em] text-[var(--muted)]">Date applied</span>
+          <input type="date" value={job.dateApplied} onChange={(e) => set("dateApplied", e.target.value)} className={field} />
+        </label>
       </div>
       <div className="grid grid-cols-2 gap-3">
-        <Field label="Rate / salary">
-          <input
-            value={job.rate}
-            onChange={(e) => set("rate", e.target.value)}
-            className="mt-1.5 w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2.5 outline-none focus:border-[var(--accent)]"
-          />
-        </Field>
-        <Field label="Status">
-          <select
-            value={job.status}
-            onChange={(e) => set("status", e.target.value as JobStatus)}
-            className="mt-1.5 w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2.5 outline-none focus:border-[var(--accent)]"
-          >
+        <label className="block">
+          <span className="text-[10px] uppercase tracking-[0.2em] text-[var(--muted)]">Rate / salary</span>
+          <input value={job.rate} onChange={(e) => set("rate", e.target.value)} className={field} />
+        </label>
+        <label className="block">
+          <span className="text-[10px] uppercase tracking-[0.2em] text-[var(--muted)]">Status</span>
+          <select value={job.status} onChange={(e) => set("status", e.target.value as JobStatus)} className={field}>
             {BOARD_COLUMNS.map((s) => (
               <option key={s} value={s}>
                 {STATUS_LABELS[s]}
               </option>
             ))}
           </select>
-        </Field>
+        </label>
       </div>
-      <Field label="Source">
+      <label className="block">
+        <span className="text-[10px] uppercase tracking-[0.2em] text-[var(--muted)]">Match score (0–10)</span>
         <input
-          value={job.source}
-          onChange={(e) => set("source", e.target.value)}
-          className="mt-1.5 w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2.5 outline-none focus:border-[var(--accent)]"
+          type="number"
+          step="0.1"
+          min="0"
+          max="10"
+          value={job.matchScore ?? ""}
+          onChange={(e) => set("matchScore", e.target.value === "" ? null : Number(e.target.value))}
+          className={field}
         />
-      </Field>
-      <Field label="Job URL">
-        <input
-          value={job.url}
-          onChange={(e) => set("url", e.target.value)}
-          className="mt-1.5 w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2.5 outline-none focus:border-[var(--accent)]"
-        />
-      </Field>
-      <Field label="Tags (comma-separated)">
-        <input
-          value={job.tags.join(", ")}
-          onChange={(e) =>
-            set(
-              "tags",
-              e.target.value
-                .split(",")
-                .map((t) => t.trim())
-                .filter(Boolean),
-            )
-          }
-          className="mt-1.5 w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2.5 outline-none focus:border-[var(--accent)]"
-        />
-      </Field>
-      <Field label="Description">
-        <textarea
-          rows={4}
-          value={job.description}
-          onChange={(e) => set("description", e.target.value)}
-          className="mt-1.5 w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2.5 outline-none focus:border-[var(--accent)]"
-        />
-      </Field>
-      <Field label="Notes">
-        <textarea
-          rows={3}
-          value={job.notes}
-          onChange={(e) => set("notes", e.target.value)}
-          className="mt-1.5 w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2.5 outline-none focus:border-[var(--accent)]"
-        />
-      </Field>
+      </label>
+      <label className="block">
+        <span className="text-[10px] uppercase tracking-[0.2em] text-[var(--muted)]">Notes</span>
+        <textarea rows={4} value={job.notes} onChange={(e) => set("notes", e.target.value)} className={field} />
+      </label>
       <div className="flex flex-wrap gap-2 pt-2">
-        <button
-          type="submit"
-          className="rounded-lg bg-[var(--accent)] px-4 py-2 font-semibold text-[var(--ink)]"
-        >
+        <button type="submit" className="rounded-lg bg-[var(--accent)] px-4 py-2 font-semibold text-[var(--ink)]">
           Save
         </button>
-        <button
-          type="button"
-          onClick={onDelete}
-          className="rounded-lg border border-red-400/40 px-4 py-2 text-red-300"
-        >
+        <button type="button" onClick={onDelete} className="rounded-lg border border-red-400/40 px-4 py-2 text-red-300">
           Delete
         </button>
       </div>
     </form>
-  );
-}
-
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <label className="block">
-      <span className="text-[10px] uppercase tracking-[0.2em] text-[var(--muted)]">{label}</span>
-      {children}
-    </label>
   );
 }

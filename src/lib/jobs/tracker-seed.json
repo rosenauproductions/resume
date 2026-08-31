@@ -1,0 +1,406 @@
+{
+  "last_updated": "2026-08-31",
+  "candidate": {
+    "name": "Chris Rosenau",
+    "location": "Wylie, Texas, United States",
+    "preferred_employment_type": "W2 preferred",
+    "w2_reason": "Benefits and health insurance",
+    "last_salary": 79000
+  },
+  "professional_profile": {
+    "multimedia_experience_years": "15+",
+    "elearning_experience_years": "10+",
+    "instructional_design_experience_years": "3",
+    "instructional_design_note": "Has performed substantial instructional design work but does not hold a formal Instructional Design credential.",
+    "strengths": [
+      "Multimedia production",
+      "E-learning development",
+      "Video production",
+      "Visual design",
+      "Articulate Rise",
+      "Articulate Storyline",
+      "Canvas LMS",
+      "Vyond",
+      "Synthesia",
+      "Adobe Premiere Pro",
+      "Adobe After Effects",
+      "WellSaid Labs",
+      "AWS",
+      "Vimeo",
+      "SME collaboration",
+      "Converting complex information into learning content",
+      "AI-assisted content creation"
+    ]
+  },
+  "notable_current_targets": [
+    { "company": "LLNL", "reason": "Highest salary range and excellent multimedia/ID fit" },
+    { "company": "LMI", "reason": "Excellent multimedia + instructional design fit; remote; up to $125K" },
+    { "company": "Chewy", "reason": "Excellent match for e-learning, multimedia, maintenance, QA, and change control; $78.5K-$118K" },
+    { "company": "SRS Distribution", "reason": "Excellent skills match and McKinney location" },
+    { "company": "Capital Title", "reason": "Excellent match for LMS, e-learning, multimedia; Plano location" },
+    { "company": "ACU", "reason": "User particularly likes the role; strong Canvas/higher-ed/ID alignment" },
+    { "company": "Baylor College of Medicine", "reason": "Very strong multimedia + e-learning + healthcare + higher education fit" }
+  ],
+  "career_strategy": {
+    "preferred_direction": "Instructional Design / E-learning / Multimedia Developer roles",
+    "preferred_work": [
+      "E-learning development",
+      "Multimedia production",
+      "Instructional design",
+      "Video",
+      "Interactive learning",
+      "Visual design",
+      "AI-assisted learning development"
+    ],
+    "less_preferred": [
+      "Highly administrative project management",
+      "Personnel management",
+      "Roles dominated by live facilitation",
+      "Roles requiring extensive travel",
+      "Low-compensation positions"
+    ],
+    "employment_preference": "W2 preferred over 1099 because of benefits and insurance",
+    "salary_context": {
+      "previous_salary": 79000,
+      "preferred_general_target": "Approximately $80K+ when possible",
+      "high_value_target": "$100K+ for strong senior/technical multimedia-ID roles"
+    }
+  },
+  "important_application_risks": [
+    "Some roles require a Bachelor's or Master's degree while the strongest qualification is professional experience.",
+    "Some senior ID roles may weigh 3 years of explicit ID vs 10+ e-learning and 15+ multimedia.",
+    "Industry-specific gaps: construction, distribution, title insurance, safety/regulatory, federal, contact-center.",
+    "Xyleme is a significant gap where hands-on experience is explicitly required.",
+    "Some roles emphasize facilitation more than preferred multimedia/e-learning focus."
+  ],
+  "applications": [
+    {
+      "company": "Lawrence Livermore National Laboratory",
+      "short_name": "LLNL",
+      "position": "Instructional Designer/Web-Based Training Developer",
+      "department": "Safety Education & Training Office (SETO), Environment, Safety and Health Directorate",
+      "application_status": "Applied",
+      "application_method": "Company site",
+      "application_date": "2026-08-31",
+      "location": "Flexible/hybrid, LLNL",
+      "employment_type": "Full-time Flexible Term",
+      "funding_end": "2029-09-30",
+      "salary": { "min": 114900, "max": 140712, "currency": "USD", "period": "annual" },
+      "security": "No security clearance required; U.S. person requirement due to export controls",
+      "match_score_estimate": "9.5/10",
+      "match_level": "Excellent",
+      "strong_matches": ["Instructional design", "Adult learning", "Articulate Storyline", "Web-based training", "E-learning development", "Multimedia", "Graphics", "Video", "Audio", "Narration scripts", "Scenarios and simulations", "Course assessments", "Online and classroom training", "Complex project management", "SME collaboration"],
+      "potential_gaps": ["Specific ESH/safety regulatory training experience", "LLNL-specific systems", "Structured Job-Task Analysis experience may need to be demonstrated"],
+      "notes": "Very strong fit. Compensation is substantially above prior $79K salary."
+    },
+    {
+      "company": "LMI",
+      "position": "Multimedia Developer",
+      "job_id": "2026-14438",
+      "application_status": "Applied / Re-applied",
+      "application_method": "Company site",
+      "application_date": "2026-08-31",
+      "location": "US-Remote",
+      "client": "Department of Veterans Affairs",
+      "project": "VA enterprise contact center technology training initiative",
+      "salary": { "max": 125000, "currency": "USD", "period": "annual" },
+      "match_score_estimate": "9.5/10",
+      "match_level": "Excellent",
+      "strong_matches": ["15+ years multimedia experience", "Adobe Premiere Pro", "Adobe After Effects", "Video editing", "Audio editing", "Screen recordings", "Graphics", "Visual annotations", "Motion graphics", "E-learning", "Articulate Rise", "Articulate Storyline", "Accessibility awareness", "Instructional design", "Adult learning", "Job aids", "SME collaboration", "Technical training", "Remote collaboration"],
+      "potential_gaps": ["Genesys Cloud CX", "VA TMS", "Federal government experience", "Section 508 depth", "Agile/Scrum experience"],
+      "notes": "One of the strongest matches — multimedia production + instructional learning."
+    },
+    {
+      "company": "Chewy",
+      "position": "Instructional Designer",
+      "department": "Customer Care Learning and Development",
+      "application_status": "Applied",
+      "application_date": "2026-08-31",
+      "location": "Remote, but must be within range of a listed Chewy location",
+      "salary": { "min": 78500, "max": 118000, "currency": "USD", "period": "annual" },
+      "match_score_estimate": "9.5/10",
+      "match_level": "Excellent",
+      "strong_matches": ["Articulate Rise", "Storyline", "Vyond", "Camtasia or equivalent", "Adobe Creative Cloud", "E-learning", "Blended learning", "Instructor-led training", "Virtual instructor-led training", "Job aids", "Assessments", "Video", "Audio", "SME collaboration", "Course maintenance", "Change control", "Quality assurance", "Accessibility", "LMS", "AI-supported development", "Multimedia", "Visual design"],
+      "potential_gaps": ["Customer service/contact center training", "xAPI", "Asana", "Specific Chewy/Customer Care business knowledge"],
+      "notes": "Extremely strong technical match for multimedia + instructional design."
+    },
+    {
+      "company": "SRS Distribution",
+      "position": "Learning & Development Instructional Designer",
+      "requisition_id": "REQ54596",
+      "application_status": "Applied",
+      "application_date": "2026-08-31",
+      "location": "McKinney, Texas",
+      "salary": { "amount": null, "currency": "USD", "period": "annual" },
+      "match_score_estimate": "9.5/10",
+      "match_level": "Excellent",
+      "strong_matches": ["Instructional design", "Adult learning", "Articulate 360", "Synthesia", "Adobe Creative Cloud", "Vyond", "Camtasia or equivalent", "LMS", "Video", "Graphics", "Simulations", "AI", "Blended learning", "Cross-functional collaboration", "Training needs analysis", "Learning evaluation"],
+      "potential_gaps": ["Distribution industry experience", "Formal degree requirement may need equivalent experience depending on screening"],
+      "benefits": ["401(k) match", "Employee Stock Purchase Plan", "Medical", "Dental", "Vision", "Paid vacation", "Paid sick time", "Paid holidays", "Paid parental leave"],
+      "notes": "Excellent fit; McKinney location is geographically attractive."
+    },
+    {
+      "company": "Capital Title of Texas & Affiliates",
+      "position": "Instructional Designer",
+      "requisition_id": "1004",
+      "application_status": "Applied",
+      "application_date": "2026-08-31",
+      "location": "Plano, Texas",
+      "salary": { "amount": null, "currency": "USD", "period": "annual" },
+      "technology": ["SharePoint", "LearnUpon", "Microsoft 365", "Microsoft Teams", "Articulate Storyline", "Articulate Rise 360", "Camtasia", "Canva", "Adobe Creative Suite", "AI tools"],
+      "match_score_estimate": "9/10",
+      "match_level": "Excellent",
+      "strong_matches": ["Instructional design", "E-learning", "Articulate Rise", "Articulate Storyline", "Camtasia", "Canva", "Adobe Creative Suite", "LMS", "Digital learning", "Video", "Job aids", "Knowledge management", "AI productivity tools", "Adult learning", "Process improvement", "Technical writing"],
+      "potential_gaps": ["LearnUpon", "SharePoint depth", "Title insurance/escrow/real estate industry experience"],
+      "notes": "Strong fit; Plano location is convenient."
+    },
+    {
+      "company": "Endurance Warranty Services",
+      "position": "Learning & Development Facilitator",
+      "application_status": "Applied",
+      "application_date": "2026-08-31",
+      "location": "Remote",
+      "salary": { "min": 60000, "max": 65000, "currency": "USD", "period": "annual" },
+      "match_score_estimate": "7.5/10",
+      "match_level": "Good",
+      "strong_matches": ["Training", "Instructional design", "Virtual training", "PowerPoint", "Job aids", "Reference guides", "LMS", "Employee onboarding", "Adult learning", "Multimedia"],
+      "potential_gaps": ["Heavy facilitation requirement", "High-volume virtual new-hire classes", "Coaching/mentoring emphasis", "Spanish preferred"],
+      "notes": "More facilitator-heavy than preferred multimedia/ID work; pay below several other apps."
+    },
+    {
+      "company": "ABC Legal",
+      "position": "Unknown title",
+      "application_status": "Applied",
+      "application_date": "2026-08-31",
+      "location": "Unknown",
+      "salary": { "min": 24, "max": 29, "currency": "USD", "period": "hourly" },
+      "match_score_estimate": "Unknown",
+      "match_level": "Unknown",
+      "notes": "Most recent hourly-rate application. Exact title/description not captured."
+    },
+    {
+      "company": "CEC Companies",
+      "position": "Instructional Designer",
+      "application_status": "Applied",
+      "application_date": "2026-08-31",
+      "location": "Unknown/likely remote or company location",
+      "salary": { "min": null, "max": null, "currency": "USD", "period": "annual" },
+      "match_score_estimate": "8.5/10",
+      "match_level": "Very Good",
+      "strong_matches": ["Instructional design", "Articulate Rise", "Video development", "Canva", "E-learning", "Blended learning", "Job aids", "Assessments", "LMS", "Adult learning", "SME collaboration", "Multimedia", "Technical training"],
+      "potential_gaps": ["Construction/trades experience", "Safety-regulated environment experience", "3+ years senior/lead ID experience", "Camtasia specifically", "Observational assessments", "Cohort-based learning", "LMS reporting/data analysis", "Bachelor's degree requirement"],
+      "notes": "Strong skills match; industry-specific requirements are the main weakness."
+    },
+    {
+      "company": "Transfr",
+      "position": "Professional Learning Facilitator",
+      "application_status": "Considering / not confirmed applied",
+      "application_date": null,
+      "location": "Texas-based, field-based, extensive U.S. travel",
+      "employment_type": "1099 independent contractor",
+      "compensation": { "standard_rate": 800, "training_rate": 400, "currency": "USD", "period": "per day" },
+      "availability_requirement": "2-3 days per month minimum",
+      "match_score_estimate": "7.5/10",
+      "match_level": "Good",
+      "strong_matches": ["Instructional technology", "E-learning", "Higher education", "Training", "Professional learning", "Facilitation", "Educational technology"],
+      "potential_gaps": ["Extensive in-person facilitation", "CTE experience", "Workforce development experience", "Extensive travel", "1099 status"],
+      "notes": "Supplemental/contract opportunity; W2 preferred for benefits."
+    },
+    {
+      "company": "Baylor College of Medicine",
+      "position": "Instructional Technology Associate - eLearning Developer",
+      "reference_number": "24813-en_US",
+      "external_id": "7329895",
+      "application_status": "Previously discussed; application status not confirmed in current conversation",
+      "location": "Houston, Texas",
+      "work_arrangement": "Hybrid after 90-day onboarding",
+      "match_score_estimate": "9.5/10",
+      "match_level": "Excellent",
+      "strong_matches": ["Articulate Rise 360", "HTML", "CSS", "Adobe Premiere Pro", "Adobe After Effects", "Illustrator", "Photoshop", "Video production", "Motion graphics", "Canva", "AI tools", "HeyGen", "Canvas", "LMS", "Instructional design", "Healthcare/higher education"],
+      "potential_gaps": ["Blackboard", "WordPress depth", "WCAG AA depth if not already demonstrated"],
+      "notes": "Technically one of the strongest matches: healthcare education + multimedia + e-learning + Canvas + Adobe + AI."
+    },
+    {
+      "company": "Xyleme-based employer",
+      "position": "Instructional Designer",
+      "application_status": "Applied",
+      "application_date": "Unknown",
+      "location": "Unknown",
+      "match_score_estimate": "6.5/10",
+      "match_level": "Moderate",
+      "strong_matches": ["Instructional design", "E-learning", "Multimedia", "LMS", "SME collaboration"],
+      "major_gap": ["Hands-on Xyleme experience is explicitly required"],
+      "notes": "Xyleme requirement is a significant screening risk."
+    },
+    {
+      "company": "Embry-Riddle Aeronautical University",
+      "short_name": "ERAU",
+      "position": "Instructional Designer II",
+      "requisition": "R312050",
+      "application_status": "Applied",
+      "application_date": "Unknown",
+      "location": "Worldwide Campus",
+      "salary": { "max": 54760, "currency": "USD", "period": "annual" },
+      "match_score_estimate": "7/10",
+      "match_level": "Good skills match but qualification risk",
+      "strong_matches": ["Canvas", "E-learning", "Adult learning", "Multimedia", "Video", "Graphics", "Course development", "Quality assurance", "SME collaboration", "Project coordination"],
+      "major_gap": ["Master's degree is required"],
+      "notes": "Strong functional match but Master's required; salary below prior $79K."
+    },
+    {
+      "company": "ACU",
+      "position": "Instructional Design Specialist",
+      "application_status": "Applied",
+      "application_date": "Unknown",
+      "location": "100% remote",
+      "salary": { "amount": null, "currency": "USD", "period": "annual" },
+      "match_score_estimate": "9/10",
+      "match_level": "Excellent",
+      "strong_matches": ["Canvas", "Articulate", "Adult learning", "Online course development", "SME collaboration", "Curriculum design", "Instructional design", "Higher education"],
+      "notes": "Particularly liked role. Strong functional and organizational fit."
+    },
+    {
+      "company": "Hallmark Health Care Solutions",
+      "position": "Product Trainer - Physician Enterprise Implementation",
+      "application_status": "Applied / Interviewed",
+      "application_date": "Unknown",
+      "location": "Dallas, Texas",
+      "interview": { "date": "2026-08-17", "time": "10:15 AM - 10:45 AM CDT", "platform": "Microsoft Teams", "recruiter": "Christine Guenther" },
+      "salary": { "min": 70000, "max": 85000, "currency": "USD", "period": "annual" },
+      "travel": "20-30% U.S.",
+      "match_score_estimate": "8/10",
+      "match_level": "Very Good",
+      "notes": "Healthcare/product training with multimedia overlap. Interview August 17, 2026."
+    },
+    {
+      "company": "Brain health / cognitive science organization",
+      "position": "Associate, Instructional Design",
+      "application_status": "Applied",
+      "application_date": "Unknown",
+      "location": "Remote",
+      "salary": { "min": 65000, "max": 75000, "currency": "USD", "period": "annual" },
+      "match_score_estimate": "8.5/10",
+      "match_level": "Very Good",
+      "strong_matches": ["Articulate Storyline 360", "AI tools", "E-learning", "PowerPoint", "Healthcare/clinical training", "SME collaboration", "Instructional design"]
+    },
+    {
+      "company": "Associa",
+      "position": "Instructional Designer #26380",
+      "application_status": "Applied / Re-applied",
+      "application_date": "Unknown",
+      "location": "Unknown",
+      "match_score_estimate": "Unknown",
+      "match_level": "Unknown"
+    },
+    {
+      "company": "Internal Software Platform",
+      "position": "Instructional Designer",
+      "application_status": "Applied",
+      "application_date": "Unknown",
+      "location": "Unknown",
+      "project_timeline": { "platform_rollout": "October-March", "go_live": "2027-05-30" },
+      "match_score_estimate": "Unknown",
+      "match_level": "Unknown"
+    },
+    {
+      "company": "Peyton Resource Group",
+      "position": "Instructional Designer",
+      "application_status": "Applied",
+      "location": "Remote",
+      "match_score_estimate": "Unknown",
+      "match_level": "Unknown"
+    },
+    {
+      "company": "InStride Health",
+      "position": "LMS Coordinator",
+      "application_status": "Applied",
+      "location": "Unknown",
+      "match_score_estimate": "Unknown",
+      "match_level": "Unknown"
+    },
+    {
+      "company": "McKesson",
+      "position": "Instructional Designer",
+      "application_status": "Applied",
+      "application_date": "2026-07-24",
+      "location": "Unknown",
+      "match_score_estimate": "Unknown",
+      "match_level": "Unknown"
+    },
+    {
+      "company": "WM",
+      "position": "Specialist III, Instructional Design",
+      "application_status": "Rejected",
+      "location": "Unknown",
+      "match_score_estimate": "Unknown",
+      "match_level": "Unknown"
+    },
+    {
+      "company": "Banner",
+      "position": "LMS Coordinator",
+      "application_status": "Applied",
+      "location": "Unknown",
+      "match_score_estimate": "Unknown",
+      "match_level": "Unknown"
+    },
+    {
+      "company": "UnitedHealth Group",
+      "position": "Instructional Designer #2375741",
+      "application_status": "Rejected",
+      "location": "Unknown",
+      "match_score_estimate": "Unknown",
+      "match_level": "Unknown"
+    },
+    {
+      "company": "Acentra Health",
+      "position": "Instructional Design & Trainer, Associate",
+      "requisition": "2026-5818",
+      "application_status": "Applied",
+      "location": "Unknown",
+      "match_score_estimate": "Unknown",
+      "match_level": "Unknown"
+    },
+    {
+      "company": "Ashby",
+      "position": "Customer Education Program Manager",
+      "application_status": "Rejected",
+      "location": "Unknown",
+      "match_score_estimate": "Unknown",
+      "match_level": "Unknown"
+    },
+    {
+      "company": "Harbor Freight Tools",
+      "position": "Instructional Designer",
+      "application_status": "Discussed / proposed application",
+      "location": "Remote",
+      "salary": { "amount": 90000, "currency": "USD", "period": "annual" },
+      "match_score_estimate": "Unknown",
+      "match_level": "Unknown"
+    },
+    {
+      "company": "Creative Instructional Designer",
+      "position": "Instructional Designer",
+      "application_status": "Discussed",
+      "location": "Remote",
+      "salary": { "min": 35, "max": 40, "currency": "USD", "period": "hourly" },
+      "match_score_estimate": "Unknown",
+      "match_level": "Unknown"
+    },
+    {
+      "company": "Gainwell",
+      "position": "Professional Instructional Designer",
+      "application_status": "Applied / discussed",
+      "location": "Unknown",
+      "match_score_estimate": "Unknown",
+      "match_level": "Unknown"
+    },
+    {
+      "company": "Ryder",
+      "position": "Instructional Designer I",
+      "application_status": "Applied / discussed",
+      "location": "Austin, Texas / Remote",
+      "match_score_estimate": "Unknown",
+      "match_level": "Unknown"
+    }
+  ]
+}
