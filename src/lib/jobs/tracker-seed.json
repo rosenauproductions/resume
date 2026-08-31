@@ -77,6 +77,10 @@
     {
       "company": "JPMorgan Chase",
       "reason": "Leadership learning + video/digital content aligned with multimedia background."
+    },
+    {
+      "company": "Equinix",
+      "reason": "Senior Instructional Designer — strong ID/multimedia fit; application submitted 2026-08-31 via Workday."
     }
   ],
   "applications": [
@@ -652,6 +656,33 @@
         "AI-supported development"
       ],
       "notes": "User explicitly stated they just applied."
+    },
+    {
+      "company": "Equinix",
+      "role": "Senior Instructional Designer",
+      "location": null,
+      "status": "Applied",
+      "application_date": "2026-08-31",
+      "date_precision": "exact",
+      "salary": null,
+      "employment_type": "Full-time",
+      "application_source": "Company site (Workday)",
+      "source_channel": "LinkedIn",
+      "fit": "Excellent",
+      "fit_score": 9,
+      "key_match_reasons": [
+        "Instructional design",
+        "eLearning development",
+        "Multimedia",
+        "Video production",
+        "Articulate / Storyline experience",
+        "AI-assisted content creation",
+        "Canvas LMS",
+        "SME collaboration",
+        "Hybrid/online course development",
+        "Senior-level production ownership"
+      ],
+      "notes": "Application completed through Workday (Review / step 6 of 6) on 2026-08-31. Heard about role via LinkedIn. Resume site and LinkedIn included. Address on file: Sachse, TX."
     }
   ],
   "tracking_rules_for_future_updates": [

@@ -16,8 +16,8 @@ import { computeInsights } from "@/lib/jobs/insights";
 import { loadSeedJobs, loadSeedMeta } from "@/lib/jobs/seed";
 import { BarChart, DonutChart, StatCard, TimelineChart } from "./PipelineCharts";
 
-const LOCAL_KEY = "pipeline-jobs-v3";
-const META_KEY = "pipeline-meta-v3";
+const LOCAL_KEY = "pipeline-jobs-v4";
+const META_KEY = "pipeline-meta-v4";
 type ViewMode = "insights" | "board" | "list";
 
 const CHATGPT_PROMPT = `Export my job tracker as JSON with separate dates:
