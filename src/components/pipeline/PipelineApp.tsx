@@ -16,16 +16,18 @@ import { computeInsights } from "@/lib/jobs/insights";
 import { loadSeedJobs, loadSeedMeta } from "@/lib/jobs/seed";
 import { BarChart, DonutChart, StatCard, TimelineChart } from "./PipelineCharts";
 
-const LOCAL_KEY = "pipeline-jobs-v2";
-const META_KEY = "pipeline-meta-v2";
+const LOCAL_KEY = "pipeline-jobs-v3";
+const META_KEY = "pipeline-meta-v3";
 type ViewMode = "insights" | "board" | "list";
 
-const CHATGPT_PROMPT = `Export my job tracker as JSON. Preferred wrapper:
+const CHATGPT_PROMPT = `Export my job tracker as JSON with separate dates:
 
-{ "job_application_tracker": { "applications": [ ... ], "candidate": {...}, "notable_current_targets": [...], "career_strategy": {...} } }
+- application_date / date_applied = when I actually submitted (or null)
+- date_posting_shared_with_ChatGPT / dateDiscussed = when I showed ChatGPT the posting (never copy this into application_date)
+- date_precision = exact | week_estimate | unknown
 
-Per application fields understood: company, position, application_status, application_date, location, salary{min,max,amount,period}, match_score_estimate, match_level, strong_matches, potential_gaps, notes, interview, employment_type, etc.
-PascalCase and older formats still work.`;
+Also include: company, role, status, salary, fit/fit_score, key_match_reasons, concerns, notes, interview fields.
+Keep Transfr/Baylor as considering/not confirmed unless I explicitly say I applied.`;
 
 function loadLocal(): JobApplication[] {
   if (typeof window === "undefined") return [];
@@ -512,6 +514,19 @@ export function PipelineApp() {
                 <GuidanceCard title="Lean into" tone="good" items={insights.leanInto} />
                 <GuidanceCard title="Watch gaps" tone="warn" items={insights.gapThemes} />
                 <section className="rounded-2xl border border-white/10 bg-[var(--panel)] p-5">
+                  <h3 className="font-[family-name:var(--font-display)] text-xl">Date policy</h3>
+                  <p className="mt-2 text-sm leading-relaxed text-[var(--muted)]">
+                    {meta?.datePolicy ||
+                      "Keep application_date separate from when a posting was shared with ChatGPT. Never invent dates."}
+                  </p>
+                  <p className="mt-3 text-xs text-[var(--warm)]">
+                    Transfr + Baylor stay in Researching until you confirm “I applied.”
+                  </p>
+                </section>
+              </div>
+
+              <div className="grid gap-4 lg:grid-cols-2">
+                <section className="rounded-2xl border border-white/10 bg-[var(--panel)] p-5">
                   <h3 className="font-[family-name:var(--font-display)] text-xl">Strategy</h3>
                   <p className="mt-2 text-sm text-[var(--muted)]">{meta?.preferredEmployment}</p>
                   <p className="mt-3 text-xs uppercase tracking-[0.18em] text-[var(--accent)]">Prefer</p>
@@ -520,11 +535,28 @@ export function PipelineApp() {
                   </p>
                   <p className="mt-3 text-xs uppercase tracking-[0.18em] text-[var(--warm)]">Less preferred</p>
                   <p className="mt-1 text-sm text-[var(--cream)]/90">
-                    {(meta?.lessPreferred ?? []).slice(0, 4).join(" · ")}
+                    {(meta?.lessPreferred ?? []).slice(0, 4).join(" · ") || "Facilitation-heavy, travel-heavy, low-comp roles"}
                   </p>
                   <p className="mt-4 text-sm text-[var(--muted)]">
                     Target {meta?.preferredTarget || "~$80K+"} · stretch {meta?.highValueTarget || "$100K+"}
                   </p>
+                </section>
+                <section className="rounded-2xl border border-white/10 bg-[var(--panel)] p-5">
+                  <h3 className="font-[family-name:var(--font-display)] text-xl">Exact dates only</h3>
+                  <ul className="mt-4 space-y-2 text-sm">
+                    {jobs
+                      .filter((j) => j.dateApplied && j.datePrecision === "exact")
+                      .sort((a, b) => b.dateApplied.localeCompare(a.dateApplied))
+                      .map((j) => (
+                        <li key={j.id} className="flex justify-between gap-3 border-b border-white/5 pb-2">
+                          <span>
+                            <span className="font-medium">{j.shortName || j.company}</span>
+                            <span className="block text-xs text-[var(--muted)]">{j.title}</span>
+                          </span>
+                          <span className="shrink-0 tabular-nums text-[var(--accent)]">{j.dateApplied}</span>
+                        </li>
+                      ))}
+                  </ul>
                 </section>
               </div>
 
@@ -585,11 +617,24 @@ export function PipelineApp() {
           <div className="space-y-3 text-sm">
             <MetaRow label="Status" value={`${STATUS_LABELS[detail.status]}${detail.statusRaw ? ` (${detail.statusRaw})` : ""}`} />
             <MetaRow label="Match" value={detail.matchScore != null ? `${detail.matchScore}/10 · ${detail.matchLevel || "—"}` : detail.matchLevel || "—"} />
-            <MetaRow label="Location" value={detail.location || "—"} />
-            <MetaRow label="Applied" value={detail.dateApplied || "—"} />
+            <MetaRow
+              label="Applied"
+              value={
+                detail.dateApplied
+                  ? `${detail.dateApplied}${detail.datePrecision ? ` (${detail.datePrecision})` : ""}`
+                  : detail.datePrecision === "unknown"
+                    ? "Unknown"
+                    : "—"
+              }
+            />
+            {detail.dateDiscussed ? (
+              <MetaRow label="Shared w/ AI" value={detail.dateDiscussed} />
+            ) : null}
             <MetaRow label="Pay" value={detail.rate || money(detail.annualMid)} />
             <MetaRow label="Employment" value={detail.employmentType || "—"} />
             <MetaRow label="Source" value={detail.source || "—"} />
+            {detail.userInterest ? <MetaRow label="Interest" value={detail.userInterest} /> : null}
+            <MetaRow label="Location" value={detail.location || "—"} />
             {detail.interviewDate ? (
               <MetaRow label="Interview" value={`${detail.interviewDate}${detail.interviewNotes ? ` · ${detail.interviewNotes}` : ""}`} />
             ) : null}
@@ -856,6 +901,7 @@ function ApplicationTable({
             <th className="px-3 py-3">Match</th>
             <th className="px-3 py-3">Pay</th>
             <th className="px-3 py-3">Date</th>
+            <th className="px-3 py-3">Precision</th>
             <th className="px-3 py-3">Location</th>
           </tr>
         </thead>
@@ -883,6 +929,9 @@ function ApplicationTable({
                 </span>
               </td>
               <td className="px-3 py-3 text-[var(--muted)]">{job.dateApplied || "—"}</td>
+              <td className="px-3 py-3 text-[10px] uppercase tracking-wider text-[var(--muted)]">
+                {job.datePrecision || "—"}
+              </td>
               <td className="max-w-[12rem] truncate px-3 py-3 text-[var(--muted)]">{job.location || "—"}</td>
             </tr>
           ))}
@@ -934,8 +983,26 @@ function JobForm({
           <input value={job.location} onChange={(e) => set("location", e.target.value)} className={field} />
         </label>
         <label className="block">
+          <span className="text-[10px] uppercase tracking-[0.2em] text-[var(--muted)]">Date precision</span>
+          <select
+            value={job.datePrecision || "unknown"}
+            onChange={(e) => set("datePrecision", e.target.value as JobApplication["datePrecision"])}
+            className={field}
+          >
+            <option value="exact">exact</option>
+            <option value="week_estimate">week_estimate</option>
+            <option value="unknown">unknown</option>
+          </select>
+        </label>
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <label className="block">
           <span className="text-[10px] uppercase tracking-[0.2em] text-[var(--muted)]">Date applied</span>
           <input type="date" value={job.dateApplied} onChange={(e) => set("dateApplied", e.target.value)} className={field} />
+        </label>
+        <label className="block">
+          <span className="text-[10px] uppercase tracking-[0.2em] text-[var(--muted)]">Shared w/ ChatGPT</span>
+          <input type="date" value={job.dateDiscussed} onChange={(e) => set("dateDiscussed", e.target.value)} className={field} />
         </label>
       </div>
       <div className="grid grid-cols-2 gap-3">

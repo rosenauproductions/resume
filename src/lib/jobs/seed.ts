@@ -6,7 +6,7 @@ import {
   type TrackerMeta,
 } from "./types";
 
-const TARGETS = (seed.notable_current_targets ?? []).map((t) => t.company);
+const TARGETS = (seed.highest_priority_applications ?? []).map((t) => t.company);
 
 export function loadSeedJobs(): JobApplication[] {
   return seed.applications
@@ -17,21 +17,27 @@ export function loadSeedJobs(): JobApplication[] {
 
 export function loadSeedMeta(): TrackerMeta {
   const meta = extractTrackerMeta(seed);
+  const profile = seed.user_profile_for_matching;
   return {
-    lastUpdated: meta?.lastUpdated || seed.last_updated,
-    candidateName: meta?.candidateName || seed.candidate.name,
-    location: meta?.location || seed.candidate.location,
-    preferredEmployment:
-      meta?.preferredEmployment || seed.candidate.preferred_employment_type,
-    lastSalary: meta?.lastSalary || seed.candidate.last_salary,
-    preferredTarget:
-      meta?.preferredTarget || seed.career_strategy.salary_context.preferred_general_target,
-    highValueTarget:
-      meta?.highValueTarget || seed.career_strategy.salary_context.high_value_target,
-    preferredWork: meta?.preferredWork || seed.career_strategy.preferred_work,
-    lessPreferred: meta?.lessPreferred || seed.career_strategy.less_preferred,
-    risks: meta?.risks || seed.important_application_risks,
-    strengths: meta?.strengths || seed.professional_profile.strengths,
-    targets: meta?.targets || seed.notable_current_targets,
+    lastUpdated: meta?.lastUpdated || seed.tracker_metadata.last_updated,
+    candidateName: meta?.candidateName || seed.tracker_metadata.user,
+    location: meta?.location || profile.location,
+    preferredEmployment: meta?.preferredEmployment || profile.preferred_work_type,
+    lastSalary: meta?.lastSalary || profile.previous_salary,
+    preferredTarget: meta?.preferredTarget || "Approximately $80K+ when possible",
+    highValueTarget: meta?.highValueTarget || "$100K+ for strong senior/technical multimedia-ID roles",
+    preferredWork: meta?.preferredWork?.length
+      ? meta.preferredWork
+      : profile.strongest_role_types,
+    lessPreferred: meta?.lessPreferred ?? [],
+    risks: meta?.risks ?? seed.tracking_rules_for_future_updates ?? [],
+    strengths: meta?.strengths?.length ? meta.strengths : profile.strengths,
+    targets: meta?.targets?.length
+      ? meta.targets
+      : seed.highest_priority_applications,
+    datePolicy:
+      meta?.datePolicy ||
+      seed.tracker_metadata.important_instruction_for_next_ai ||
+      "",
   };
 }
