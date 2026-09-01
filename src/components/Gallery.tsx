@@ -11,62 +11,52 @@ export function Gallery() {
           <p className="mt-4 max-w-2xl text-[var(--muted)]">{work.note}</p>
         </Reveal>
 
-        <div className="mt-12 grid gap-6 lg:grid-cols-2">
-          <Reveal delay={0.06}>
-            <div className="overflow-hidden border border-white/10">
-              <div className="relative aspect-video bg-black">
-                <iframe
-                  src={work.portfolioVideo.embed}
-                  title={work.portfolioVideo.label}
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                  allowFullScreen
-                  className="absolute inset-0 h-full w-full"
-                />
-              </div>
-              <div className="flex flex-col gap-3 border-t border-white/10 px-5 py-5 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <h3 className="font-[family-name:var(--font-display)] text-xl text-[var(--cream)]">
-                    {work.portfolioVideo.label}
-                  </h3>
-                  <p className="mt-1 text-sm text-[var(--muted)]">
-                    {work.portfolioVideo.detail}
-                  </p>
+        <div className="mt-12 grid gap-6 md:grid-cols-3">
+          {work.featured.map((item, i) => (
+            <Reveal key={item.label} delay={0.06 + i * 0.04}>
+              <div className="overflow-hidden border border-white/10">
+                <div className="relative aspect-video bg-black">
+                  {item.kind === "youtube" ? (
+                    <iframe
+                      src={item.embed}
+                      title={item.label}
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                      allowFullScreen
+                      className="absolute inset-0 h-full w-full"
+                    />
+                  ) : (
+                    <video
+                      src={item.src}
+                      autoPlay
+                      loop
+                      muted
+                      playsInline
+                      aria-label={item.label}
+                      className="absolute inset-0 h-full w-full object-cover"
+                    />
+                  )}
                 </div>
-                <a
-                  href={work.portfolioVideo.href}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="shrink-0 rounded-full border border-white/20 px-5 py-2.5 text-sm text-[var(--cream)] transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)]"
-                >
-                  Open on YouTube
-                </a>
+                <div className="border-t border-white/10 px-4 py-4">
+                  <h3 className="font-[family-name:var(--font-display)] text-lg text-[var(--cream)]">
+                    {item.label}
+                  </h3>
+                  {item.detail ? (
+                    <p className="mt-1 text-sm text-[var(--muted)]">{item.detail}</p>
+                  ) : null}
+                  {item.kind === "youtube" ? (
+                    <a
+                      href={item.href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="mt-3 inline-block text-sm text-[var(--accent)] transition-colors hover:text-[var(--cream)]"
+                    >
+                      Open on YouTube
+                    </a>
+                  ) : null}
+                </div>
               </div>
-            </div>
-          </Reveal>
-
-          <Reveal delay={0.1}>
-            <div className="overflow-hidden border border-white/10">
-              <div className="relative aspect-video bg-black">
-                <video
-                  src={work.demoGif.src}
-                  autoPlay
-                  loop
-                  muted
-                  playsInline
-                  aria-label={work.demoGif.title}
-                  className="absolute inset-0 h-full w-full object-cover"
-                />
-              </div>
-              <div className="border-t border-white/10 px-5 py-5">
-                <h3 className="font-[family-name:var(--font-display)] text-xl text-[var(--cream)]">
-                  {work.demoGif.title}
-                </h3>
-                {work.demoGif.detail ? (
-                  <p className="mt-1 text-sm text-[var(--muted)]">{work.demoGif.detail}</p>
-                ) : null}
-              </div>
-            </div>
-          </Reveal>
+            </Reveal>
+          ))}
         </div>
 
         <div className="mt-6 grid gap-4 md:grid-cols-3">

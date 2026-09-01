@@ -213,21 +213,32 @@ export const portraits = {
   texture: "/images/texture-concrete.png",
 };
 
-/** Selected work — video reel + looping demo + short cases */
+/** Selected work — featured media (order = display) + short cases */
 export const work = {
   heading: "Selected work",
   note: "Courses, video, and learning systems — with a few highlights that show range.",
-  portfolioVideo: {
-    href: "https://www.youtube.com/watch?v=ja7QZxXej7w",
-    embed: "https://www.youtube.com/embed/ja7QZxXej7w",
-    label: "Watch portfolio reel",
-    detail: "2-year portfolio overview",
-  },
-  demoGif: {
-    src: "/images/work-diagnostic-scope.mp4",
-    title: "PPT Animation Samples",
-    detail: "Animated training video built primarily in PowerPoint",
-  },
+  featured: [
+    {
+      kind: "youtube" as const,
+      href: "https://www.youtube.com/watch?v=AmHxT9Kxoms",
+      embed: "https://www.youtube.com/embed/AmHxT9Kxoms",
+      label: "Ednet platform introduction",
+      detail: "Platform overview video",
+    },
+    {
+      kind: "video" as const,
+      src: "/images/work-diagnostic-scope.mp4",
+      label: "PPT Animation Samples",
+      detail: "Animated training video built primarily in PowerPoint",
+    },
+    {
+      kind: "youtube" as const,
+      href: "https://www.youtube.com/watch?v=ja7QZxXej7w",
+      embed: "https://www.youtube.com/embed/ja7QZxXej7w",
+      label: "Watch portfolio reel",
+      detail: "2-year portfolio overview",
+    },
+  ],
   cases: [
     {
       title: "Hybrid course migration",
