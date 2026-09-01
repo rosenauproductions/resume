@@ -1,5 +1,8 @@
+"use client";
+
 import { sideProjects } from "@/content/resume";
 import { Reveal } from "./Reveal";
+import { ProjectNetwork } from "./ProjectNetwork";
 
 export function SideProjects() {
   return (
@@ -11,7 +14,11 @@ export function SideProjects() {
           <p className="mt-4 max-w-2xl text-[var(--muted)]">{sideProjects.note}</p>
         </Reveal>
 
-        <div className="mt-12 grid gap-6 lg:grid-cols-3">
+        <Reveal className="mt-8" delay={0.05}>
+          <ProjectNetwork />
+        </Reveal>
+
+        <div className="mt-10 grid gap-6 lg:grid-cols-3">
           {sideProjects.projects.map((project, i) => (
             <Reveal key={project.title} delay={0.05 + i * 0.05}>
               <article className="flex h-full flex-col border border-white/10 px-5 py-6">
