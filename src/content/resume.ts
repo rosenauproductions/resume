@@ -332,6 +332,9 @@ export const projectNetwork = {
     ["stepbot", "courses"],
   ],
 } as const;
+
+/** Independent builds that keep programming / UX / systems skills sharp */
+export const sideProjects = {
   heading: "Selected Side Projects",
   note: "Beyond institutional work I build tools for learners, instructors, and musicians. These projects keep programming, UX, and systems skills sharp.",
   projects: [
