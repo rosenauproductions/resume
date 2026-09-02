@@ -1,6 +1,6 @@
 {
   "tracker_metadata": {
-    "last_updated": "2026-08-31",
+    "last_updated": "2026-09-02",
     "user": "Chris Rosenau",
     "purpose": "Track all job applications, statuses, dates, compensation, fit, and follow-up activity.",
     "date_policy": {
@@ -683,6 +683,120 @@
         "Senior-level production ownership"
       ],
       "notes": "Application completed through Workday (Review / step 6 of 6) on 2026-08-31. Heard about role via LinkedIn. Resume site and LinkedIn included. Address on file: Sachse, TX."
+    },
+    {
+      "company": "AAA",
+      "role": "Instructional Designer",
+      "location": "Coppell, TX",
+      "status": "Applied",
+      "application_date": "2026-09-02",
+      "date_precision": "exact",
+      "salary": null,
+      "notes": ""
+    },
+    {
+      "company": "American Airlines",
+      "role": "Flight Service Training / Program Development",
+      "location": "Fort Worth, TX",
+      "status": "Researching",
+      "application_date": null,
+      "date_precision": "unknown",
+      "salary": null,
+      "notes": "Application in progress / not confirmed — tracking as researching."
+    },
+    {
+      "company": "Cogstate",
+      "role": "Associate, Instructional Design",
+      "location": "Remote, US",
+      "status": "Rejected",
+      "application_date": null,
+      "date_precision": "unknown",
+      "salary": null,
+      "employment_type": "Remote",
+      "notes": "Rejected 2026-09-02."
+    },
+    {
+      "company": "Embry-Riddle",
+      "role": "Instructional Design",
+      "location": "",
+      "status": "Applied",
+      "application_date": null,
+      "date_precision": "unknown",
+      "salary": null,
+      "notes": ""
+    },
+    {
+      "company": "Instructure",
+      "role": "Learning Consultant",
+      "location": "Remote, US",
+      "status": "Applied",
+      "application_date": null,
+      "date_precision": "unknown",
+      "salary": null,
+      "employment_type": "Remote",
+      "notes": "Confirmed applied (date unknown)."
+    },
+    {
+      "company": "KBS",
+      "role": "Instructional Designer",
+      "location": "Remote, US",
+      "status": "Applied",
+      "application_date": "2026-08-19",
+      "date_precision": "exact",
+      "salary": null,
+      "employment_type": "Remote",
+      "notes": ""
+    },
+    {
+      "company": "Purple",
+      "role": "Multimedia Designer",
+      "location": "",
+      "status": "Applied",
+      "application_date": null,
+      "date_precision": "unknown",
+      "salary": null,
+      "notes": ""
+    },
+    {
+      "company": "Sacred Heart Schools, Atherton",
+      "role": "Multimedia Content Producer",
+      "location": "Atherton, CA",
+      "status": "Applied",
+      "application_date": "2026-08-25",
+      "date_precision": "exact",
+      "salary": null,
+      "notes": ""
+    },
+    {
+      "company": "SAIC",
+      "role": "Multimedia Specialist",
+      "location": "Remote, NC",
+      "status": "Applied",
+      "application_date": null,
+      "date_precision": "unknown",
+      "salary": null,
+      "employment_type": "Remote",
+      "notes": ""
+    },
+    {
+      "company": "Vasculitis Foundation",
+      "role": "Multimedia Content Manager",
+      "location": "",
+      "status": "Applied",
+      "application_date": null,
+      "date_precision": "unknown",
+      "salary": null,
+      "notes": ""
+    },
+    {
+      "company": "Xyleme",
+      "role": "Instructional Designer",
+      "location": "",
+      "status": "Applied",
+      "application_date": null,
+      "date_precision": "unknown",
+      "salary": null,
+      "notes": ""
     }
   ],
   "tracking_rules_for_future_updates": [
