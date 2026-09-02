@@ -15,6 +15,21 @@ export const US_CENTER: GeoPoint = {
   label: "Remote (US)",
 };
 
+/**
+ * Canvas cluster for remote / empty / unplaced apps.
+ * Placed in empty Albers USA space south of AZ–NM / west Texas (visually near Mexico).
+ * ViewBox is 975×610 — keep the box fully inside.
+ */
+export const REMOTE_CLUSTER = {
+  boxX: 205,
+  boxY: 498,
+  boxW: 220,
+  boxH: 100,
+  padX: 16,
+  padY: 28,
+  label: "Remote / No Location",
+} as const;
+
 /** Resume / candidate hub (Wylie–DFW area). */
 export const RESUME_HUB: GeoPoint = {
   lat: 32.9762,
@@ -62,6 +77,7 @@ const CITY_COORDS: Record<string, GeoPoint> = {
   dfw: { lat: 32.8998, lng: -97.0403, label: "DFW, TX" },
 
   // Texas
+  texas: { lat: 31.0, lng: -99.9, label: "Texas" },
   houston: { lat: 29.7604, lng: -95.3698, label: "Houston, TX" },
   austin: { lat: 30.2672, lng: -97.7431, label: "Austin, TX" },
   "san antonio": { lat: 29.4241, lng: -98.4936, label: "San Antonio, TX" },
@@ -243,6 +259,34 @@ export function jitterOffset(seed: string, index: number): { dx: number; dy: num
   const angle = ((Math.abs(h) % 360) + index * 47) * (Math.PI / 180);
   const r = 10 + (Math.abs(h) % 8);
   return { dx: Math.cos(angle) * r, dy: Math.sin(angle) * r };
+}
+
+/**
+ * Pack remote / unplaced targets into REMOTE_CLUSTER as a scattered grid
+ * so dots don't fully overlap.
+ */
+export function packRemoteClusterPoint(
+  index: number,
+  total: number,
+  seed: string,
+): { x: number; y: number } {
+  const { boxX, boxY, boxW, boxH, padX, padY } = REMOTE_CLUSTER;
+  const innerW = Math.max(24, boxW - padX * 2);
+  const innerH = Math.max(24, boxH - padY - 14);
+  const count = Math.max(1, total);
+  const aspect = innerW / innerH;
+  const cols = Math.max(1, Math.ceil(Math.sqrt(count * aspect)));
+  const rows = Math.max(1, Math.ceil(count / cols));
+  const col = index % cols;
+  const row = Math.floor(index / cols);
+  const cellW = innerW / cols;
+  const cellH = innerH / rows;
+  const jitter = jitterOffset(seed || String(index), index);
+  const jScale = Math.min(0.35, 0.55 / Math.max(cols, rows));
+  return {
+    x: boxX + padX + cellW * (col + 0.5) + jitter.dx * jScale,
+    y: boxY + padY + cellH * (row + 0.5) + jitter.dy * jScale,
+  };
 }
 
 export function companyMatchesAliases(company: string, cityKey: string): boolean {

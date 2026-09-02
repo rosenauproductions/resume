@@ -4,12 +4,14 @@ import { useMemo, useState } from "react";
 import type { JobApplication } from "@/lib/jobs/types";
 import {
   CITY_COMPANY_ALIASES,
+  REMOTE_CLUSTER,
   RESUME_HUB,
   companyMatchesAliases,
   extractCityKey,
   isRemoteLocation,
   jitterOffset,
   lookupCity,
+  packRemoteClusterPoint,
   projectUS,
 } from "@/lib/pipeline/geo-cities";
 import { US_MAP_VIEWBOX, US_STATE_PATHS } from "@/lib/pipeline/us-map-paths";
@@ -62,6 +64,12 @@ function edgeStroke(hits: number, maxHits: number) {
   return { width: 0.8 + t * 3.2, opacity: 0.2 + t * 0.55 };
 }
 
+function remoteDotRadius(hits: number, maxHits: number) {
+  if (hits <= 0) return 4;
+  const t = Math.min(1, hits / Math.max(1, maxHits));
+  return 4.5 + t * 8;
+}
+
 export function TargetMap({
   jobs,
   visits,
@@ -85,134 +93,144 @@ export function TargetMap({
     return p ? { ...RESUME_HUB, ...p } : { ...RESUME_HUB, x: 500, y: 350 };
   }, []);
 
-  const { targets, unlinked, maxHits, geoTargets, remoteCount, totalHits } = useMemo(() => {
-    const activeVisits = visits.filter((v) => v.linkConfidence !== "ignored");
+  const { targets, unlinked, maxHits, geoTargets, remoteTargets, remoteCount, totalHits } =
+    useMemo(() => {
+      const activeVisits = visits.filter((v) => v.linkConfidence !== "ignored");
 
-    const cityBuckets = new Map<string, MapVisit[]>();
-    for (const v of activeVisits) {
-      const key = extractCityKey(v.city) || extractCityKey(v.locationLabel);
-      if (!key) continue;
-      const list = cityBuckets.get(key) ?? [];
-      list.push(v);
-      cityBuckets.set(key, list);
-    }
-
-    // Unique city-alias → jobId (null = ambiguous among open apps)
-    const aliasOwner = new Map<string, string | null>();
-    for (const cityKey of Object.keys(CITY_COMPANY_ALIASES)) {
-      const matches = jobs.filter((j) => companyMatchesAliases(j.company, cityKey));
-      if (matches.length === 1) aliasOwner.set(cityKey, matches[0].id);
-      else if (matches.length > 1) aliasOwner.set(cityKey, null);
-    }
-
-    const claimedVisitIds = new Set<string>();
-    const nodes: TargetNode[] = [];
-    let remoteCount = 0;
-    const byCityIndex = new Map<string, number>();
-
-    for (const job of jobs) {
-      const remote = isRemoteLocation(job.location);
-      const geo = lookupCity(job.location);
-      const cityKey = extractCityKey(job.location);
-
-      let linkedHits = 0;
-      let suggestedHits = 0;
-
+      const cityBuckets = new Map<string, MapVisit[]>();
       for (const v of activeVisits) {
-        if (v.linkedApplicationId === job.id) {
-          linkedHits += 1;
-          claimedVisitIds.add(v.id);
-          continue;
-        }
-        if (v.linkedApplicationId) continue;
-        const vKey = extractCityKey(v.city) || extractCityKey(v.locationLabel);
-        if (!vKey) continue;
-        // Only attribute when city alias uniquely points at this job
-        if (aliasOwner.get(vKey) === job.id) {
-          suggestedHits += 1;
-          claimedVisitIds.add(v.id);
-        }
+        const key = extractCityKey(v.city) || extractCityKey(v.locationLabel);
+        if (!key) continue;
+        const list = cityBuckets.get(key) ?? [];
+        list.push(v);
+        cityBuckets.set(key, list);
       }
 
-      const hits = linkedHits + suggestedHits;
+      // Unique city-alias → jobId (null = ambiguous among open apps)
+      const aliasOwner = new Map<string, string | null>();
+      for (const cityKey of Object.keys(CITY_COMPANY_ALIASES)) {
+        const matches = jobs.filter((j) => companyMatchesAliases(j.company, cityKey));
+        if (matches.length === 1) aliasOwner.set(cityKey, matches[0].id);
+        else if (matches.length > 1) aliasOwner.set(cityKey, null);
+      }
 
-      if (remote || !geo) {
-        remoteCount += 1;
-        nodes.push({
+      const claimedVisitIds = new Set<string>();
+      const nodes: TargetNode[] = [];
+      const pendingRemote: Omit<TargetNode, "x" | "y">[] = [];
+      const byCityIndex = new Map<string, number>();
+
+      for (const job of jobs) {
+        const remote = isRemoteLocation(job.location);
+        const geo = lookupCity(job.location);
+        const cityKey = extractCityKey(job.location);
+
+        let linkedHits = 0;
+        let suggestedHits = 0;
+
+        for (const v of activeVisits) {
+          if (v.linkedApplicationId === job.id) {
+            linkedHits += 1;
+            claimedVisitIds.add(v.id);
+            continue;
+          }
+          if (v.linkedApplicationId) continue;
+          const vKey = extractCityKey(v.city) || extractCityKey(v.locationLabel);
+          if (!vKey) continue;
+          // Only attribute when city alias uniquely points at this job
+          if (aliasOwner.get(vKey) === job.id) {
+            suggestedHits += 1;
+            claimedVisitIds.add(v.id);
+          }
+        }
+
+        const hits = linkedHits + suggestedHits;
+        const locLabel = (job.location || "").trim();
+        const emptyish =
+          !locLabel ||
+          /^not\s*specified$/i.test(locLabel) ||
+          /^n\/?a$/i.test(locLabel) ||
+          /^unknown$/i.test(locLabel);
+
+        // Prefer a geocodable city (e.g. "Remote / Austin, TX") over the remote box
+        if (geo) {
+          const projected = projectUS(geo.lng, geo.lat);
+          if (projected) {
+            const idx = byCityIndex.get(geo.label) ?? 0;
+            byCityIndex.set(geo.label, idx + 1);
+            const jitter = jitterOffset(job.id || job.company, idx);
+            nodes.push({
+              job,
+              cityKey,
+              geoLabel: geo.label,
+              x: projected.x + jitter.dx,
+              y: projected.y + jitter.dy,
+              hits,
+              linkedHits,
+              suggestedHits,
+              remote: false,
+            });
+            continue;
+          }
+        }
+
+        // Remote / empty / unprojected → cluster box near Mexico
+        pendingRemote.push({
           job,
           cityKey,
-          geoLabel: remote ? "Remote" : job.location || "Unknown",
-          x: 0,
-          y: 0,
+          geoLabel: remote
+            ? locLabel || "Remote"
+            : emptyish
+              ? "No location"
+              : locLabel || "Unknown",
           hits,
           linkedHits,
           suggestedHits,
           remote: true,
         });
-        continue;
       }
 
-      const projected = projectUS(geo.lng, geo.lat);
-      if (!projected) {
-        remoteCount += 1;
-        nodes.push({
-          job,
+      const remoteCount = pendingRemote.length;
+      pendingRemote.forEach((node, index) => {
+        const pt = packRemoteClusterPoint(index, remoteCount, node.job.id || node.job.company);
+        nodes.push({ ...node, x: pt.x, y: pt.y });
+      });
+
+      const unlinked: UnlinkedPin[] = [];
+      for (const [cityKey, list] of cityBuckets) {
+        const remaining = list.filter((v) => !claimedVisitIds.has(v.id));
+        if (!remaining.length) continue;
+        const geo = lookupCity(cityKey);
+        if (!geo) continue;
+        const projected = projectUS(geo.lng, geo.lat);
+        if (!projected) continue;
+        unlinked.push({
           cityKey,
-          geoLabel: geo.label,
-          x: 0,
-          y: 0,
-          hits,
-          linkedHits,
-          suggestedHits,
-          remote: true,
+          label: geo.label,
+          x: projected.x,
+          y: projected.y,
+          count: remaining.length,
         });
-        continue;
       }
 
-      const idx = byCityIndex.get(geo.label) ?? 0;
-      byCityIndex.set(geo.label, idx + 1);
-      const jitter = jitterOffset(job.id || job.company, idx);
+      const geoTargets = nodes.filter((n) => !n.remote);
+      const remoteTargets = nodes.filter((n) => n.remote);
+      const maxHits = Math.max(
+        1,
+        ...nodes.map((n) => n.hits),
+        ...unlinked.map((u) => u.count),
+      );
+      const totalHits = nodes.reduce((s, n) => s + n.hits, 0);
 
-      nodes.push({
-        job,
-        cityKey,
-        geoLabel: geo.label,
-        x: projected.x + jitter.dx,
-        y: projected.y + jitter.dy,
-        hits,
-        linkedHits,
-        suggestedHits,
-        remote: false,
-      });
-    }
+      return { targets: nodes, unlinked, maxHits, geoTargets, remoteTargets, remoteCount, totalHits };
+    }, [jobs, visits]);
 
-    const unlinked: UnlinkedPin[] = [];
-    for (const [cityKey, list] of cityBuckets) {
-      const remaining = list.filter((v) => !claimedVisitIds.has(v.id));
-      if (!remaining.length) continue;
-      const geo = lookupCity(cityKey);
-      if (!geo) continue;
-      const projected = projectUS(geo.lng, geo.lat);
-      if (!projected) continue;
-      unlinked.push({
-        cityKey,
-        label: geo.label,
-        x: projected.x,
-        y: projected.y,
-        count: remaining.length,
-      });
-    }
-
-    const geoTargets = nodes.filter((n) => !n.remote);
-    const maxHits = Math.max(1, ...geoTargets.map((n) => n.hits), ...unlinked.map((u) => u.count));
-    const totalHits = nodes.reduce((s, n) => s + n.hits, 0);
-
-    return { targets: nodes, unlinked, maxHits, geoTargets, remoteCount, totalHits };
-  }, [jobs, visits]);
-
-  const visibleTargets = showZero ? geoTargets : geoTargets.filter((t) => t.hits > 0);
+  const visibleGeo = showZero ? geoTargets : geoTargets.filter((t) => t.hits > 0);
+  const visibleRemote = showZero ? remoteTargets : remoteTargets.filter((t) => t.hits > 0);
+  const visibleTargets = [...visibleGeo, ...visibleRemote];
   const hovered = hoverId ? targets.find((t) => t.job.id === hoverId) : null;
   const ranked = [...targets].sort((a, b) => b.hits - a.hits || a.job.company.localeCompare(b.job.company));
+
+  const { boxX, boxY, boxW, boxH, label: remoteLabel } = REMOTE_CLUSTER;
 
   return (
     <div className="space-y-4">
@@ -223,7 +241,7 @@ export function TargetMap({
           </h2>
           <p className="mt-1 max-w-2xl text-sm text-[var(--muted)]">
             Applications as targets · resume visits as hits. Stronger glow and thicker links mean more
-            linked or city-suggested views.
+            linked or city-suggested views. Remote and unplaced roles sit in the Mexico-side cluster.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -355,7 +373,46 @@ export function TargetMap({
                 ))
               : null}
 
-            {visibleTargets.map((t) => {
+            {/* Remote / no-location cluster near Mexico */}
+            {remoteTargets.length > 0 ? (
+              <g aria-label={remoteLabel}>
+                <rect
+                  x={boxX}
+                  y={boxY}
+                  width={boxW}
+                  height={boxH}
+                  rx={14}
+                  ry={14}
+                  fill="color-mix(in oklab, var(--ink) 55%, transparent)"
+                  stroke="color-mix(in oklab, var(--warm) 45%, var(--cream))"
+                  strokeWidth={1.2}
+                  strokeOpacity={0.55}
+                />
+                <rect
+                  x={boxX + 1.5}
+                  y={boxY + 1.5}
+                  width={boxW - 3}
+                  height={boxH - 3}
+                  rx={12}
+                  ry={12}
+                  fill="color-mix(in oklab, var(--accent) 6%, transparent)"
+                  stroke="none"
+                />
+                <text
+                  x={boxX + boxW / 2}
+                  y={boxY + 16}
+                  textAnchor="middle"
+                  fill="var(--cream)"
+                  fontSize={10}
+                  fontFamily="var(--font-display), Georgia, serif"
+                  opacity={0.92}
+                >
+                  {remoteLabel}
+                </text>
+              </g>
+            ) : null}
+
+            {visibleGeo.map((t) => {
               const r = hitRadius(t.hits, maxHits);
               const op = hitOpacity(t.hits, maxHits);
               const active = hoverId === t.job.id;
@@ -401,6 +458,46 @@ export function TargetMap({
                 </g>
               );
             })}
+
+            {visibleRemote.map((t) => {
+              const r = remoteDotRadius(t.hits, maxHits);
+              const op = hitOpacity(t.hits, maxHits);
+              const active = hoverId === t.job.id;
+              const color = t.hits > 0 ? "var(--accent)" : "color-mix(in oklab, var(--warm) 75%, var(--muted))";
+              return (
+                <g
+                  key={t.job.id}
+                  className="cursor-pointer"
+                  onMouseEnter={() => setHoverId(t.job.id)}
+                  onMouseLeave={() => setHoverId(null)}
+                  onClick={() => onSelectJob(t.job)}
+                  opacity={hoverId && !active ? 0.4 : 1}
+                >
+                  {t.hits >= 2 ? (
+                    <circle
+                      className="pulse-ring"
+                      cx={t.x}
+                      cy={t.y}
+                      r={8}
+                      style={{ animationDelay: `${(t.hits % 5) * 0.2}s` }}
+                    />
+                  ) : null}
+                  <circle
+                    cx={t.x}
+                    cy={t.y}
+                    r={r}
+                    fill={color}
+                    fillOpacity={op}
+                    stroke={active ? "var(--cream)" : "color-mix(in oklab, var(--ink) 35%, transparent)"}
+                    strokeWidth={active ? 1.8 : 0.9}
+                    filter={t.hits > 0 ? "url(#hit-glow)" : undefined}
+                  />
+                  <title>
+                    {`${t.job.company} — ${t.job.title}\n${t.geoLabel}\n${t.hits} hit${t.hits === 1 ? "" : "s"} (${t.linkedHits} linked · ${t.suggestedHits} suggested)`}
+                  </title>
+                </g>
+              );
+            })}
           </svg>
 
           {hovered ? (
@@ -435,6 +532,12 @@ export function TargetMap({
                 Target, 0 hits
               </li>
               <li className="flex items-center gap-2">
+                <span className="inline-flex h-4 w-7 items-center justify-center rounded border border-[color-mix(in_oklab,var(--warm)_45%,var(--cream))] bg-[color-mix(in_oklab,var(--ink)_40%,transparent)]">
+                  <span className="h-1.5 w-1.5 rounded-full bg-[var(--warm)]" />
+                </span>
+                Remote / no location
+              </li>
+              <li className="flex items-center gap-2">
                 <span className="inline-block h-2.5 w-2.5 rounded-full bg-[var(--muted)] opacity-60" />
                 Unlinked visit city
               </li>
@@ -466,7 +569,7 @@ export function TargetMap({
                     <span className="min-w-0 truncate">
                       <span className="text-[var(--cream)]">{t.job.shortName || t.job.company}</span>
                       <span className="block truncate text-[10px] text-[var(--muted)]">
-                        {t.remote ? "Remote / unplaced" : t.geoLabel}
+                        {t.remote ? `Remote · ${t.geoLabel}` : t.geoLabel}
                       </span>
                     </span>
                     <span
