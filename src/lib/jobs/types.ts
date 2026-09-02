@@ -171,18 +171,39 @@ function mapStatus(raw: unknown): JobStatus {
   if (text.includes("offer")) return "offer";
   if (text.includes("withdraw")) return "withdrawn";
   if (
+    text.includes("previous_employment") ||
+    text.includes("not_applied") ||
+    text.includes("not applied") ||
+    text.includes("application_in_progress") ||
+    text.includes("in progress") ||
     text.includes("consider") ||
+    text.includes("not_applicable") ||
     text.includes("not confirmed") ||
     text.includes("unknown - application") ||
     text.includes("application not confirmed") ||
-    text.includes("discussed") && !text.includes("applied")
+    (text.includes("discussed") && !text.includes("applied"))
   ) {
     return "researching";
   }
-  if (text.includes("applied") || text.includes("re-applied") || text.includes("pending") || text.includes("considered")) {
+  if (
+    text.includes("applied") ||
+    text.includes("re-applied") ||
+    text.includes("pending") ||
+    text.includes("considered")
+  ) {
     return "applied";
   }
   return "applied";
+}
+
+/** Skip non-application tracker rows (e.g. prior employer listed in dumps). */
+export function shouldSkipJobRecord(raw: unknown): boolean {
+  if (!raw || typeof raw !== "object") return true;
+  const o = canonicalizeRecord(raw as Record<string, unknown>);
+  const status = String(pick(o, "applicationstatus", "status") ?? "")
+    .trim()
+    .toLowerCase();
+  return status.includes("previous_employment") || status === "previous employment";
 }
 
 function parseMatchScore(raw: unknown): number | null {
@@ -205,7 +226,18 @@ function parseDateField(raw: unknown): string {
 function parseDatePrecision(raw: unknown): DatePrecision {
   const text = String(raw ?? "").trim().toLowerCase();
   if (text === "exact" || text === "week_estimate" || text === "unknown") return text;
+  if (text === "not_applicable" || text === "n/a" || text === "na") return "unknown";
   return text ? "unknown" : "";
+}
+
+function readMinMaxObject(raw: unknown): { min: number | null; max: number | null } {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+    return { min: null, max: null };
+  }
+  const s = raw as Record<string, unknown>;
+  const min = typeof s.min === "number" ? s.min : null;
+  const max = typeof s.max === "number" ? s.max : null;
+  return { min, max };
 }
 
 type SalaryBag = {
@@ -217,13 +249,30 @@ type SalaryBag = {
 };
 
 function parseSalary(o: Record<string, unknown>): SalaryBag {
-  const salary = pick(o, "salary", "compensation");
+  const salary = pick(o, "salary", "compensation", "salaryrange");
+  const hourly = pick(o, "hourlyrate");
+  const daily = pick(o, "dailyrate");
+  const salaryTarget = pick(o, "salarytarget");
   let min: number | null = null;
   let max: number | null = null;
   let period: SalaryBag["period"] = "";
   let rateLabel = "";
 
-  if (salary && typeof salary === "object" && !Array.isArray(salary)) {
+  if (hourly && typeof hourly === "object") {
+    const mm = readMinMaxObject(hourly);
+    min = mm.min;
+    max = mm.max;
+    period = "hourly";
+  } else if (daily && typeof daily === "object") {
+    const mm = readMinMaxObject(daily);
+    min = mm.min;
+    max = mm.max;
+    period = "daily";
+  } else if (typeof daily === "number") {
+    min = daily;
+    max = daily;
+    period = "daily";
+  } else if (salary && typeof salary === "object" && !Array.isArray(salary)) {
     const s = salary as Record<string, unknown>;
     const amount = s.amount ?? s.mentioned;
     const minRaw = s.min;
@@ -247,6 +296,10 @@ function parseSalary(o: Record<string, unknown>): SalaryBag {
     else if (periodRaw.includes("annual") || periodRaw.includes("year")) period = "annual";
     else if (min != null && min < 200) period = "hourly";
     else if (min != null || max != null) period = "annual";
+  } else if (typeof salaryTarget === "number") {
+    min = salaryTarget;
+    max = salaryTarget;
+    period = "annual";
   } else {
     const rateStr = String(pick(o, "rate", "salary") ?? "").trim();
     rateLabel = rateStr;
@@ -361,6 +414,7 @@ export function extractTrackerMeta(payload: unknown): Partial<TrackerMeta> | nul
     location: String(candidate.location ?? ""),
     preferredEmployment: String(
       candidate.preferred_work_type ??
+        candidate.preferred_employment ??
         candidate.preferred_employment_type ??
         strategy.employment_preference ??
         "",
@@ -371,7 +425,10 @@ export function extractTrackerMeta(payload: unknown): Partial<TrackerMeta> | nul
     preferredTarget: String(salaryContext.preferred_general_target ?? "Approximately $80K+ when possible"),
     highValueTarget: String(salaryContext.high_value_target ?? "$100K+ for strong senior/technical multimedia-ID roles"),
     preferredWork: asStringList(
-      strategy.preferred_work ?? candidate.strongest_role_types ?? candidate.career_direction,
+      strategy.preferred_work ??
+        candidate.strongest_role_types ??
+        candidate.target_roles ??
+        candidate.career_direction,
     ),
     lessPreferred: asStringList(strategy.less_preferred),
     risks: asStringList(tracker.important_application_risks ?? tracker.tracking_rules_for_future_updates),
@@ -392,6 +449,7 @@ export function extractTrackerMeta(payload: unknown): Partial<TrackerMeta> | nul
 
 export function normalizeJob(raw: unknown, targets: string[] = []): JobApplication | null {
   if (!raw || typeof raw !== "object") return null;
+  if (shouldSkipJobRecord(raw)) return null;
   const o = canonicalizeRecord(raw as Record<string, unknown>);
 
   const title = String(pick(o, "title", "position", "role") ?? "").trim();
@@ -412,7 +470,7 @@ export function normalizeJob(raw: unknown, targets: string[] = []): JobApplicati
   );
   // Never fall back discussed → applied
   const datePrecision =
-    parseDatePrecision(pick(o, "dateprecision")) ||
+    parseDatePrecision(pick(o, "dateprecision", "applicationdateprecision")) ||
     (dateApplied ? "exact" : dateDiscussed ? "unknown" : "unknown");
 
   const salary = parseSalary(o);
@@ -454,8 +512,19 @@ export function normalizeJob(raw: unknown, targets: string[] = []): JobApplicati
     .map(String)
     .join(" · ");
 
+  const rejection =
+    pick(o, "rejectionreason") || pick(o, "rejectiondate")
+      ? [
+          pick(o, "rejectiondate") ? `Rejected: ${pick(o, "rejectiondate")}` : "",
+          pick(o, "rejectionreason") ? `Reason: ${pick(o, "rejectionreason")}` : "",
+        ]
+          .filter(Boolean)
+          .join(" · ")
+      : "";
+
   const noteParts = [
     asNotes(pick(o, "notes")),
+    rejection,
     pick(o, "client") ? `Client: ${pick(o, "client")}` : "",
     pick(o, "project") || pick(o, "program")
       ? `Project: ${pick(o, "project") || pick(o, "program")}`
@@ -463,6 +532,7 @@ export function normalizeJob(raw: unknown, targets: string[] = []): JobApplicati
     pick(o, "security") ? `Security: ${pick(o, "security")}` : "",
     pick(o, "travel") ? `Travel: ${pick(o, "travel")}` : "",
     pick(o, "userinterest") ? `Interest: ${pick(o, "userinterest")}` : "",
+    pick(o, "jobid") ? `Job ID: ${pick(o, "jobid")}` : "",
     asStringList(pick(o, "benefits")).length
       ? `Benefits: ${asStringList(pick(o, "benefits")).join(", ")}`
       : "",
@@ -470,6 +540,13 @@ export function normalizeJob(raw: unknown, targets: string[] = []): JobApplicati
       ? `Tech: ${asStringList(pick(o, "technology")).join(", ")}`
       : "",
   ];
+
+  const employmentType = [
+    String(pick(o, "employmenttype", "workarrangement", "worktype") ?? "").trim(),
+    pick(o, "hoursperweek") ? `${pick(o, "hoursperweek")} hrs/wk` : "",
+  ]
+    .filter(Boolean)
+    .join(" · ");
 
   return {
     id: String(pick(o, "id") ?? crypto.randomUUID()),
@@ -496,12 +573,25 @@ export function normalizeJob(raw: unknown, targets: string[] = []): JobApplicati
     matchLevel: String(pick(o, "fit", "matchlevel") ?? "").trim(),
     userInterest: String(pick(o, "userinterest") ?? "").trim(),
     notes: noteParts.filter(Boolean).join("\n"),
-    url: String(pick(o, "url", "joburl", "link") ?? "").trim(),
+    url: String(pick(o, "url", "joburl", "link", "sourceurl") ?? "").trim(),
     department: String(pick(o, "department") ?? "").trim(),
-    employmentType: String(pick(o, "employmenttype", "workarrangement") ?? "").trim(),
+    employmentType,
     interviewDate,
     interviewNotes,
     isTarget,
-    updatedAt: String(pick(o, "updatedat") ?? new Date().toISOString()),
+    updatedAt: String(pick(o, "updatedat") ?? pick(o, "updated") ?? new Date().toISOString()),
   };
+}
+
+export function parseTrackerPayload(payload: unknown): {
+  jobs: JobApplication[];
+  meta: Partial<TrackerMeta> | null;
+} {
+  const meta = extractTrackerMeta(payload);
+  const targets = (meta?.targets ?? []).map((t) => t.company);
+  const jobs = extractJobRecords(payload)
+    .map((row) => normalizeJob(row, targets))
+    .filter((j): j is JobApplication => Boolean(j))
+    .map((j) => ({ ...j, updatedAt: new Date().toISOString() }));
+  return { jobs, meta };
 }

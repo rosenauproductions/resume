@@ -22,26 +22,45 @@ All copy lives in one place:
 1. Put files in [`public/images/`](public/images/)
 2. Update paths / set `placeholder: false` in `src/content/resume.ts`
 
+## Private job pipeline (`/pipeline`)
+
+Password-gated tracker. **Neon Postgres** is the source of truth for applications + visit logs. **ntfy** still sends phone pings (dual-track).
+
+### Neon
+
+Provisioned as Vercel Marketplace resource `resume-pipeline-db`. Pull env locally:
+
+```bash
+npx vercel env pull .env.local --yes --scope rosenau-productions
+npm run db:push   # after schema changes
+```
+
+Seed / re-seed from bundled JSON:
+
+```bash
+npx dotenv -e .env.local -- npx tsx scripts/seed-db.ts
+```
+
+In `/pipeline`: badge shows **Neon DB**. Use **Import Drive → DB** or **Import bundled** to load applications. **Visits** tab lists geo visits with Confirm / Ignore / Link.
+
+### Env vars
+
+```
+JOB_TRACKER_SECRET=
+DATABASE_URL=
+VISIT_NOTIFY_NTFY_TOPIC=
+VISIT_NOTIFY_NTFY_TOKEN=
+JOB_TRACKER_DRIVE_FILE_ID=
+```
+
 ## Deploy to Vercel
 
 ```bash
-npx vercel
+npx vercel --prod --scope rosenau-productions
 ```
 
-Or connect the GitHub repo in the Vercel dashboard — every push to `main` deploys automatically.
+Or connect GitHub — pushes to `main` deploy automatically.
 
 ## Visit notifications
 
-Get a ping (with approximate location + time) when someone opens the site.
-
-1. Create a **Discord webhook** (Server → Integrations → Webhooks → New Webhook → Copy URL), and/or
-2. Install the free **[ntfy](https://ntfy.sh)** app and subscribe to a private topic (e.g. `chris-resume-visits-xyz123`).
-
-Add either or both in Vercel → Project → Settings → Environment Variables:
-
-```
-VISIT_NOTIFY_DISCORD_WEBHOOK=https://discord.com/api/webhooks/...
-VISIT_NOTIFY_NTFY_TOPIC=your-private-topic
-```
-
-Redeploy after saving. Notifications fire once per browser session (not on every refresh).
+ntfy/Discord pings still fire on resume opens. The same request also writes a detailed row to Neon for `/pipeline` → Visits (city matching can suggest a job; status never auto-changes).

@@ -5,8 +5,7 @@ import {
   BOARD_COLUMNS,
   STATUS_LABELS,
   createEmptyJob,
-  extractJobRecords,
-  extractTrackerMeta,
+  parseTrackerPayload,
   normalizeJob,
   type JobApplication,
   type JobStatus,
@@ -18,7 +17,25 @@ import { BarChart, DonutChart, StatCard, TimelineChart } from "./PipelineCharts"
 
 const LOCAL_KEY = "pipeline-jobs-v4";
 const META_KEY = "pipeline-meta-v4";
-type ViewMode = "insights" | "board" | "list";
+type ViewMode = "insights" | "board" | "list" | "visits";
+type StorageMode = "local" | "blob" | "db";
+
+type VisitRow = {
+  id: string;
+  occurredAt: string;
+  path: string;
+  city: string;
+  region: string;
+  country: string;
+  device: string;
+  locationLabel: string;
+  linkConfidence: string;
+  linkReason: string;
+  linkedApplicationId: string | null;
+  linkedJob: { id: string; company: string; title: string; location: string } | null;
+};
+
+type VisitJobOption = { id: string; company: string; title: string; location: string };
 
 const CHATGPT_PROMPT = `Export my job tracker as JSON with separate dates:
 
@@ -27,7 +44,8 @@ const CHATGPT_PROMPT = `Export my job tracker as JSON with separate dates:
 - date_precision = exact | week_estimate | unknown
 
 Also include: company, role, status, salary, fit/fit_score, key_match_reasons, concerns, notes, interview fields.
-Keep Transfr/Baylor as considering/not confirmed unless I explicitly say I applied.`;
+Keep Transfr/Baylor as considering/not confirmed unless I explicitly say I applied.
+Save/overwrite the Google Drive job-tracker.json, then use Load from Drive in /pipeline.`;
 
 function loadLocal(): JobApplication[] {
   if (typeof window === "undefined") return [];
@@ -86,13 +104,8 @@ function parseImport(text: string): { jobs: JobApplication[]; meta: Partial<Trac
   const fenced = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/i);
   const candidate = fenced ? fenced[1].trim() : trimmed;
   const data = JSON.parse(candidate) as unknown;
-  const meta = extractTrackerMeta(data);
-  const targets = (meta?.targets ?? []).map((t) => t.company);
-  const list = extractJobRecords(data);
-  if (!list.length) throw new Error("No applications found in JSON.");
-  const jobs = list
-    .map((row) => normalizeJob(row, targets))
-    .filter((j): j is JobApplication => Boolean(j));
+  const { jobs, meta } = parseTrackerPayload(data);
+  if (!jobs.length) throw new Error("No applications found in JSON.");
   return { jobs, meta };
 }
 
@@ -110,7 +123,7 @@ export function PipelineApp() {
   const [jobs, setJobs] = useState<JobApplication[]>([]);
   const [meta, setMeta] = useState<TrackerMeta | null>(null);
   const [view, setView] = useState<ViewMode>("insights");
-  const [storageMode, setStorageMode] = useState<"local" | "blob">("local");
+  const [storageMode, setStorageMode] = useState<StorageMode>("local");
   const [importOpen, setImportOpen] = useState(false);
   const [importText, setImportText] = useState("");
   const [importError, setImportError] = useState("");
@@ -118,8 +131,12 @@ export function PipelineApp() {
   const [editing, setEditing] = useState<JobApplication | null>(null);
   const [detail, setDetail] = useState<JobApplication | null>(null);
   const [saving, setSaving] = useState(false);
+  const [seedLoading, setSeedLoading] = useState(false);
   const [notice, setNotice] = useState("");
   const [filter, setFilter] = useState("");
+  const [visits, setVisits] = useState<VisitRow[]>([]);
+  const [visitJobs, setVisitJobs] = useState<VisitJobOption[]>([]);
+  const [visitsLoading, setVisitsLoading] = useState(false);
 
   const insights = useMemo(() => computeInsights(jobs, meta), [jobs, meta]);
   const filtered = useMemo(() => {
@@ -135,7 +152,7 @@ export function PipelineApp() {
     );
   }, [jobs, filter]);
 
-  const persist = useCallback(async (next: JobApplication[], nextMeta: TrackerMeta | null = meta) => {
+  const persist = useCallback(async (next: JobApplication[], nextMeta: TrackerMeta | null = meta, mode: "replace" | "upsert" = "replace") => {
     setJobs(next);
     if (nextMeta) setMeta(nextMeta);
     saveLocal(next, nextMeta);
@@ -144,10 +161,15 @@ export function PipelineApp() {
       const res = await fetch("/api/pipeline/jobs", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ jobs: next }),
+        body: JSON.stringify({ jobs: next, mode }),
       });
-      if (res.ok) setStorageMode("blob");
-      else if (res.status === 501) setStorageMode("local");
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) {
+        setStorageMode(data.storage === "db" ? "db" : data.storage === "blob" ? "blob" : "local");
+        if (Array.isArray(data.jobs)) setJobs(data.jobs);
+      } else if (res.status === 501) {
+        setStorageMode("local");
+      }
     } catch {
       setStorageMode("local");
     } finally {
@@ -156,14 +178,97 @@ export function PipelineApp() {
     }
   }, [meta]);
 
-  function hydrateFromSeed() {
-    const seeded = loadSeedJobs();
-    const seededMeta = loadSeedMeta();
-    setJobs(seeded);
-    setMeta(seededMeta);
-    saveLocal(seeded, seededMeta);
-    setNotice(`Loaded ${seeded.length} applications from tracker seed`);
-    void persist(seeded, seededMeta);
+  async function refreshVisits() {
+    setVisitsLoading(true);
+    try {
+      const res = await fetch("/api/pipeline/visits");
+      const data = await res.json();
+      if (res.ok) {
+        setVisits(data.visits ?? []);
+        setVisitJobs(data.jobs ?? []);
+      }
+    } catch {
+      // ignore
+    } finally {
+      setVisitsLoading(false);
+    }
+  }
+
+  async function importIntoDb(source: "drive" | "bundled" | "json", payload?: unknown, mode: "upsert" | "replace" = "upsert") {
+    setSeedLoading(true);
+    setNotice("");
+    try {
+      const res = await fetch("/api/pipeline/seed", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ source, payload, mode }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        if (source === "drive" && (res.status === 501 || res.status === 502)) {
+          setNotice(data.error || "Drive unavailable — try Bundled fallback");
+          return false;
+        }
+        setNotice(data.error || "Import failed");
+        return false;
+      }
+      const nextJobs = (data.jobs ?? []) as JobApplication[];
+      const nextMeta = (data.meta as TrackerMeta) ?? loadSeedMeta();
+      setJobs(nextJobs);
+      setMeta(nextMeta);
+      saveLocal(nextJobs, nextMeta);
+      setStorageMode("db");
+      setNotice(`Imported ${nextJobs.length} applications into database (${mode})`);
+      return true;
+    } catch {
+      setNotice("Network error during import");
+      return false;
+    } finally {
+      setSeedLoading(false);
+    }
+  }
+
+  async function hydrateFromBundledSeed() {
+    const ok = await importIntoDb("bundled", undefined, "replace");
+    if (!ok) {
+      const seeded = loadSeedJobs();
+      const seededMeta = loadSeedMeta();
+      setJobs(seeded);
+      setMeta(seededMeta);
+      saveLocal(seeded, seededMeta);
+      setNotice(`Loaded ${seeded.length} applications from bundled fallback (local only)`);
+      void persist(seeded, seededMeta, "replace");
+    }
+  }
+
+  async function hydrateFromDrive() {
+    await importIntoDb("drive", undefined, "upsert");
+  }
+
+  async function loadFromServer() {
+    const remote = await fetch("/api/pipeline/jobs").then((r) => r.json());
+    if (remote.storage === "db" && Array.isArray(remote.jobs)) {
+      setJobs(remote.jobs);
+      setMeta(loadMetaLocal() ?? loadSeedMeta());
+      saveLocal(remote.jobs, loadMetaLocal() ?? loadSeedMeta());
+      setStorageMode("db");
+      return remote.jobs.length as number;
+    }
+    if (remote.storage === "blob" && Array.isArray(remote.jobs) && remote.jobs.length) {
+      const current = loadLocal();
+      const merged = mergeJobs(current, remote.jobs);
+      setJobs(merged);
+      saveLocal(merged, loadMetaLocal() ?? loadSeedMeta());
+      setStorageMode("blob");
+      return merged.length;
+    }
+    const local = loadLocal();
+    if (local.length) {
+      setJobs(local);
+      setMeta(loadMetaLocal() ?? loadSeedMeta());
+      return local.length;
+    }
+    return 0;
   }
 
   useEffect(() => {
@@ -177,26 +282,12 @@ export function PipelineApp() {
           return;
         }
         setAuthed(true);
-        const local = loadLocal();
-        const localMeta = loadMetaLocal();
-        if (local.length) {
-          setJobs(local);
-          setMeta(localMeta ?? loadSeedMeta());
-        } else {
-          const seeded = loadSeedJobs();
-          const seededMeta = loadSeedMeta();
-          setJobs(seeded);
-          setMeta(seededMeta);
-          saveLocal(seeded, seededMeta);
+        const count = await loadFromServer();
+        if (!count) {
+          setMeta(loadSeedMeta());
+          setNotice("Database empty — Load from Drive or Bundled fallback to import applications");
         }
-        const remote = await fetch("/api/pipeline/jobs").then((r) => r.json());
-        if (remote.storage === "blob" && Array.isArray(remote.jobs) && remote.jobs.length) {
-          const current = loadLocal();
-          const merged = mergeJobs(current, remote.jobs);
-          setJobs(merged);
-          saveLocal(merged, loadMetaLocal() ?? loadSeedMeta());
-          setStorageMode("blob");
-        }
+        void refreshVisits();
       } catch {
         setAuthed(false);
       } finally {
@@ -220,13 +311,12 @@ export function PipelineApp() {
     }
     setPassword("");
     setAuthed(true);
-    const local = loadLocal();
-    if (local.length) {
-      setJobs(local);
-      setMeta(loadMetaLocal() ?? loadSeedMeta());
-    } else {
-      hydrateFromSeed();
+    const count = await loadFromServer();
+    if (!count) {
+      setMeta(loadSeedMeta());
+      setNotice("Database empty — Load from Drive or Bundled fallback to import applications");
     }
+    void refreshVisits();
   }
 
   async function handleLogout() {
@@ -257,9 +347,21 @@ export function PipelineApp() {
     setNotice("Saved");
   }
 
-  function deleteJob(id: string) {
+  async function deleteJob(id: string) {
     if (!confirm("Delete this application?")) return;
-    void persist(jobs.filter((j) => j.id !== id));
+    try {
+      const res = await fetch(`/api/pipeline/jobs?id=${encodeURIComponent(id)}`, { method: "DELETE" });
+      if (res.ok) {
+        const next = jobs.filter((j) => j.id !== id);
+        setJobs(next);
+        saveLocal(next, meta);
+        setStorageMode("db");
+      } else {
+        void persist(jobs.filter((j) => j.id !== id));
+      }
+    } catch {
+      void persist(jobs.filter((j) => j.id !== id));
+    }
     setDetail(null);
     setFormOpen(false);
   }
@@ -270,7 +372,7 @@ export function PipelineApp() {
     );
   }
 
-  function applyImport(mode: "merge" | "replace") {
+  async function applyImport(mode: "merge" | "replace") {
     setImportError("");
     try {
       const { jobs: incoming, meta: incomingMeta } = parseImport(importText);
@@ -278,8 +380,6 @@ export function PipelineApp() {
         setImportError("No jobs found in paste.");
         return;
       }
-      const stamped = incoming.map((j) => ({ ...j, updatedAt: new Date().toISOString() }));
-      const next = mode === "replace" ? stamped : mergeJobs(jobs, stamped);
       const nextMeta: TrackerMeta = {
         ...loadSeedMeta(),
         ...meta,
@@ -290,13 +390,47 @@ export function PipelineApp() {
           : meta?.strengths ?? loadSeedMeta().strengths,
         risks: incomingMeta?.risks?.length ? incomingMeta.risks : meta?.risks ?? loadSeedMeta().risks,
       };
-      void persist(next, nextMeta);
+      const ok = await importIntoDb(
+        "json",
+        JSON.parse(
+          (importText.trim().match(/```(?:json)?\s*([\s\S]*?)```/i)?.[1] ?? importText).trim(),
+        ),
+        mode === "replace" ? "replace" : "upsert",
+      );
+      if (!ok) {
+        const stamped = incoming.map((j) => ({ ...j, updatedAt: new Date().toISOString() }));
+        const next = mode === "replace" ? stamped : mergeJobs(jobs, stamped);
+        void persist(next, nextMeta, mode === "replace" ? "replace" : "upsert");
+      } else if (incomingMeta) {
+        setMeta(nextMeta);
+        saveLocal(jobs, nextMeta);
+      }
       setImportOpen(false);
       setImportText("");
-      setNotice(`Imported ${stamped.length} job(s)`);
       setView("insights");
     } catch (err) {
       setImportError(err instanceof Error ? err.message : "Import failed");
+    }
+  }
+
+  async function handleVisitAction(
+    visitId: string,
+    action: "confirm" | "ignore" | "link",
+    applicationId?: string,
+  ) {
+    const res = await fetch("/api/pipeline/visits", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ visitId, action, applicationId }),
+    });
+    if (res.ok) {
+      setNotice(action === "ignore" ? "Visit ignored" : "Visit linked");
+      void refreshVisits();
+      const remote = await fetch("/api/pipeline/jobs").then((r) => r.json());
+      if (Array.isArray(remote.jobs)) setJobs(remote.jobs);
+    } else {
+      const data = await res.json().catch(() => ({}));
+      setNotice(data.error || "Visit action failed");
     }
   }
 
@@ -374,15 +508,24 @@ export function PipelineApp() {
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <span className="rounded-full border border-white/10 px-3 py-1 text-xs text-[var(--muted)]">
-              {storageMode === "blob" ? "Synced" : "Browser storage"}
+              {storageMode === "db" ? "Neon DB" : storageMode === "blob" ? "Synced" : "Browser storage"}
               {saving ? " · saving…" : ""}
             </span>
             <button
               type="button"
-              onClick={hydrateFromSeed}
-              className="rounded-lg border border-white/15 px-3 py-1.5 text-sm hover:border-[var(--accent)]"
+              onClick={() => void hydrateFromDrive()}
+              disabled={seedLoading}
+              className="rounded-lg border border-white/15 px-3 py-1.5 text-sm hover:border-[var(--accent)] disabled:opacity-50"
             >
-              Load latest seed
+              {seedLoading ? "Importing…" : "Import Drive → DB"}
+            </button>
+            <button
+              type="button"
+              onClick={() => void hydrateFromBundledSeed()}
+              className="rounded-lg border border-white/15 px-3 py-1.5 text-sm text-[var(--muted)] hover:border-white/30 hover:text-[var(--cream)]"
+              title="Import the JSON baked into the site into the database"
+            >
+              Import bundled
             </button>
             <button
               type="button"
@@ -441,12 +584,16 @@ export function PipelineApp() {
               ["insights", "Charts & trends"],
               ["board", "Board"],
               ["list", "All applications"],
+              ["visits", "Visits"],
             ] as const
           ).map(([id, label]) => (
             <button
               key={id}
               type="button"
-              onClick={() => setView(id)}
+              onClick={() => {
+                setView(id);
+                if (id === "visits") void refreshVisits();
+              }}
               className={`rounded-full px-4 py-1.5 text-sm ${
                 view === id
                   ? "bg-[var(--cream)] text-[var(--ink)]"
@@ -465,7 +612,7 @@ export function PipelineApp() {
             />
           ) : (
             <span className="ml-auto self-center text-xs text-[var(--muted)]">
-              Prior salary {money(meta?.lastSalary)} · W2 preferred
+              Prior salary {money(meta?.lastSalary)} · W2 preferred · ntfy + DB dual-track
             </span>
           )}
         </div>
@@ -608,6 +755,108 @@ export function PipelineApp() {
 
           {view === "list" ? (
             <ApplicationTable jobs={filtered} onSelect={setDetail} prior={meta?.lastSalary ?? 79000} />
+          ) : null}
+
+          {view === "visits" ? (
+            <div className="space-y-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="text-sm text-[var(--muted)]">
+                  Detailed visit log (ntfy still pings your phone). Unique city matches auto-suggest a job — confirm or ignore.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => void refreshVisits()}
+                  className="rounded-lg border border-white/15 px-3 py-1.5 text-sm hover:border-[var(--accent)]"
+                >
+                  {visitsLoading ? "Refreshing…" : "Refresh"}
+                </button>
+              </div>
+              {!visits.length ? (
+                <p className="rounded-xl border border-white/10 px-4 py-8 text-center text-sm text-[var(--muted)]">
+                  No visits stored yet. They appear when someone opens the live resume.
+                </p>
+              ) : (
+                <ul className="divide-y divide-white/10 rounded-xl border border-white/10">
+                  {visits.map((v) => (
+                    <li key={v.id} className="flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-start sm:justify-between">
+                      <div className="min-w-0 space-y-1">
+                        <p className="font-[family-name:var(--font-display)] text-[var(--cream)]">
+                          {v.locationLabel}
+                        </p>
+                        <p className="text-xs text-[var(--muted)]">
+                          {new Date(v.occurredAt).toLocaleString("en-US", {
+                            timeZone: "America/Chicago",
+                            dateStyle: "medium",
+                            timeStyle: "short",
+                          })}{" "}
+                          CT · {v.device || "Unknown"} · {v.path}
+                        </p>
+                        {v.linkConfidence === "suggested" || v.linkConfidence === "confirmed" ? (
+                          <p className="text-sm text-[var(--accent)]">
+                            {v.linkConfidence === "suggested" ? "Suggested: " : "Linked: "}
+                            {v.linkedJob
+                              ? `${v.linkedJob.company} — ${v.linkedJob.title}`
+                              : v.linkReason || "job"}
+                          </p>
+                        ) : v.linkReason ? (
+                          <p className="text-xs text-[var(--muted)]">{v.linkReason}</p>
+                        ) : (
+                          <p className="text-xs text-[var(--muted)]">No auto-match</p>
+                        )}
+                      </div>
+                      <div className="flex shrink-0 flex-wrap items-center gap-2">
+                        {v.linkConfidence === "suggested" && v.linkedApplicationId ? (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => void handleVisitAction(v.id, "confirm")}
+                              className="rounded-lg bg-[var(--accent)] px-3 py-1.5 text-xs font-semibold text-[var(--ink)]"
+                            >
+                              Confirm
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => void handleVisitAction(v.id, "ignore")}
+                              className="rounded-lg border border-white/15 px-3 py-1.5 text-xs"
+                            >
+                              Ignore
+                            </button>
+                          </>
+                        ) : null}
+                        {v.linkConfidence === "none" || v.linkConfidence === "ignored" ? (
+                          <select
+                            defaultValue=""
+                            onChange={(e) => {
+                              const id = e.target.value;
+                              if (!id) return;
+                              void handleVisitAction(v.id, "link", id);
+                              e.target.value = "";
+                            }}
+                            className="max-w-[14rem] rounded-lg border border-white/15 bg-black/30 px-2 py-1.5 text-xs outline-none"
+                          >
+                            <option value="">Link to job…</option>
+                            {visitJobs.map((j) => (
+                              <option key={j.id} value={j.id}>
+                                {j.company} — {j.title}
+                              </option>
+                            ))}
+                          </select>
+                        ) : null}
+                        {v.linkConfidence === "confirmed" ? (
+                          <button
+                            type="button"
+                            onClick={() => void handleVisitAction(v.id, "ignore")}
+                            className="rounded-lg border border-white/15 px-3 py-1.5 text-xs text-[var(--muted)]"
+                          >
+                            Unlink
+                          </button>
+                        ) : null}
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
           ) : null}
         </div>
       </div>

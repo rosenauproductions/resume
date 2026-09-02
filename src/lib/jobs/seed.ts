@@ -1,18 +1,13 @@
 import seed from "./tracker-seed.json";
 import {
   extractTrackerMeta,
-  normalizeJob,
+  parseTrackerPayload,
   type JobApplication,
   type TrackerMeta,
 } from "./types";
 
-const TARGETS = (seed.highest_priority_applications ?? []).map((t) => t.company);
-
 export function loadSeedJobs(): JobApplication[] {
-  return seed.applications
-    .map((row) => normalizeJob(row, TARGETS))
-    .filter((j): j is JobApplication => Boolean(j))
-    .map((j) => ({ ...j, updatedAt: new Date().toISOString() }));
+  return parseTrackerPayload(seed).jobs;
 }
 
 export function loadSeedMeta(): TrackerMeta {

@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
+import { dbConfigured } from "@/lib/db";
+import { recordVisit } from "@/lib/db/visits";
 
-export const runtime = "edge";
+export const runtime = "nodejs";
 
 type VisitPayload = {
   path?: string;
@@ -8,6 +10,7 @@ type VisitPayload = {
   language?: string;
   screen?: string;
   timezone?: string;
+  fingerprint?: string;
 };
 
 function pickHeader(req: NextRequest, name: string) {
@@ -68,7 +71,6 @@ async function notifyNtfy(topic: string, title: string, message: string) {
     token ? { ...baseHeaders, Authorization: `Bearer ${token}` } : baseHeaders,
   );
 
-  // Token may be invalid for public topics — fall back to unauthenticated publish
   if (res.status === 401 || res.status === 403) {
     res = await post(baseHeaders);
   }
@@ -82,13 +84,6 @@ async function notifyNtfy(topic: string, title: string, message: string) {
 export async function POST(req: NextRequest) {
   const discordWebhook = process.env.VISIT_NOTIFY_DISCORD_WEBHOOK;
   const ntfyTopic = process.env.VISIT_NOTIFY_NTFY_TOPIC;
-
-  if (!discordWebhook && !ntfyTopic) {
-    return NextResponse.json(
-      { ok: false, error: "No notification channel configured" },
-      { status: 503 },
-    );
-  }
 
   let payload: VisitPayload = {};
   try {
@@ -111,11 +106,14 @@ export async function POST(req: NextRequest) {
     [decodeURIComponent(city || ""), region, country].filter(Boolean).join(", ") ||
     "Unknown location";
 
+  const path = payload.path || "/";
+  const device = summarizeUa(ua);
+
   const lines = [
     `**When:** ${when} (Central)`,
     `**Where:** ${location}`,
-    `**Device:** ${summarizeUa(ua)}`,
-    `**Page:** ${payload.path || "/"}`,
+    `**Device:** ${device}`,
+    `**Page:** ${path}`,
     payload.referrer ? `**From:** ${payload.referrer}` : null,
     payload.timezone ? `**Visitor TZ:** ${payload.timezone}` : null,
     payload.language ? `**Language:** ${payload.language}` : null,
@@ -123,18 +121,69 @@ export async function POST(req: NextRequest) {
   ].filter(Boolean) as string[];
 
   const plain = lines.map((l) => l.replace(/\*\*/g, "")).join("\n");
-  const title = titleForPath(payload.path || "/");
+  const title = titleForPath(path);
+
+  let visitId: string | null = null;
+  let linkConfidence: string | null = null;
+
+  // Dual-track: persist detailed visit even if notifications are off
+  if (dbConfigured()) {
+    try {
+      const visit = await recordVisit({
+        path,
+        city,
+        region,
+        country,
+        device,
+        referrer: payload.referrer || "",
+        timezone: payload.timezone || "",
+        language: payload.language || "",
+        screen: payload.screen || "",
+        sessionFingerprint: payload.fingerprint || "",
+      });
+      visitId = visit.id;
+      linkConfidence = visit.linkConfidence;
+      if (visit.linkConfidence === "suggested" && visit.linkReason) {
+        lines.push(`**Suggested job:** ${visit.linkReason}`);
+      }
+    } catch (error) {
+      console.error("visit db write failed", error);
+    }
+  }
+
+  if (!discordWebhook && !ntfyTopic) {
+    return NextResponse.json({
+      ok: true,
+      stored: Boolean(visitId),
+      visitId,
+      linkConfidence,
+      notified: false,
+    });
+  }
 
   try {
     const jobs: Promise<unknown>[] = [];
     if (discordWebhook) jobs.push(notifyDiscord(discordWebhook, title, lines));
     if (ntfyTopic) {
-      jobs.push(notifyNtfy(ntfyTopic, title, plain));
+      const ntfyBody =
+        linkConfidence === "suggested"
+          ? `${plain}\nSuggested: ${lines.find((l) => l.includes("Suggested job"))?.replace(/\*\*/g, "") || ""}`
+          : plain;
+      jobs.push(notifyNtfy(ntfyTopic, title, ntfyBody));
     }
     await Promise.all(jobs);
-    return NextResponse.json({ ok: true });
+    return NextResponse.json({
+      ok: true,
+      stored: Boolean(visitId),
+      visitId,
+      linkConfidence,
+      notified: true,
+    });
   } catch (error) {
     console.error("visit notify failed", error);
-    return NextResponse.json({ ok: false }, { status: 500 });
+    return NextResponse.json(
+      { ok: false, stored: Boolean(visitId), visitId, linkConfidence },
+      { status: 500 },
+    );
   }
 }
