@@ -11,11 +11,19 @@ import {
   type JobStatus,
   type TrackerMeta,
 } from "@/lib/jobs/types";
+import {
+  MISSING_PROMPTS,
+  missingRequiredFields,
+  type IngestFields,
+  type RequiredIngestKey,
+} from "@/lib/jobs/ingest-shared";
 import { computeInsights } from "@/lib/jobs/insights";
 import { loadSeedJobs, loadSeedMeta } from "@/lib/jobs/seed";
 import { getOrCreateDeviceId } from "@/lib/device-id";
 import { BarChart, DonutChart, StatCard, TimelineChart } from "./PipelineCharts";
 import { TargetMap } from "./TargetMap";
+
+type IngestStep = "paste" | "review";
 
 const LOCAL_KEY = "pipeline-jobs-v4";
 const META_KEY = "pipeline-meta-v4";
@@ -137,6 +145,15 @@ export function PipelineApp() {
   const [importOpen, setImportOpen] = useState(false);
   const [importText, setImportText] = useState("");
   const [importError, setImportError] = useState("");
+  const [ingestOpen, setIngestOpen] = useState(false);
+  const [ingestStep, setIngestStep] = useState<IngestStep>("paste");
+  const [ingestInput, setIngestInput] = useState("");
+  const [ingestError, setIngestError] = useState("");
+  const [ingestLoading, setIngestLoading] = useState(false);
+  const [ingestMode, setIngestMode] = useState<"ai" | "heuristic" | "">("");
+  const [ingestWarning, setIngestWarning] = useState("");
+  const [ingestDraft, setIngestDraft] = useState<IngestFields | null>(null);
+  const [ingestStatus, setIngestStatus] = useState<JobStatus>("researching");
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<JobApplication | null>(null);
   const [detail, setDetail] = useState<JobApplication | null>(null);
@@ -346,6 +363,103 @@ export function PipelineApp() {
     setEditing({ ...job });
     setFormOpen(true);
     setDetail(null);
+  }
+
+  function resetIngest() {
+    setIngestStep("paste");
+    setIngestInput("");
+    setIngestError("");
+    setIngestLoading(false);
+    setIngestMode("");
+    setIngestWarning("");
+    setIngestDraft(null);
+    setIngestStatus("researching");
+  }
+
+  function openIngest() {
+    resetIngest();
+    setIngestOpen(true);
+  }
+
+  function setIngestField<K extends keyof IngestFields>(key: K, value: IngestFields[K]) {
+    setIngestDraft((prev) => (prev ? { ...prev, [key]: value } : prev));
+  }
+
+  async function runIngest() {
+    const input = ingestInput.trim();
+    if (!input) {
+      setIngestError("Paste a job posting URL or the full description text.");
+      return;
+    }
+    setIngestLoading(true);
+    setIngestError("");
+    setIngestWarning("");
+    try {
+      const res = await fetch("/api/pipeline/ingest", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ input }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setIngestError(data.error || "Ingest failed");
+        return;
+      }
+      const fields = (data.fields ?? data.job ?? {}) as IngestFields;
+      setIngestDraft({
+        company: fields.company || "",
+        title: fields.title || "",
+        location: fields.location || "",
+        url: fields.url || "",
+        description: fields.description || "",
+        rate: fields.rate || "",
+        salaryMin: fields.salaryMin ?? null,
+        salaryMax: fields.salaryMax ?? null,
+        salaryPeriod: fields.salaryPeriod || "",
+        employmentType: fields.employmentType || "",
+        source: fields.source || "",
+      });
+      setIngestMode(data.mode === "ai" ? "ai" : "heuristic");
+      setIngestWarning(typeof data.fetchWarning === "string" ? data.fetchWarning : "");
+      setIngestStatus("researching");
+      setIngestStep("review");
+    } catch {
+      setIngestError("Network error during ingest");
+    } finally {
+      setIngestLoading(false);
+    }
+  }
+
+  function saveIngestDraft() {
+    if (!ingestDraft) return;
+    const missing = missingRequiredFields(ingestDraft);
+    if (missing.length) {
+      setIngestError(`Still needed: ${missing.map((k) => MISSING_PROMPTS[k]).join(" · ")}`);
+      return;
+    }
+    const nextJob = createEmptyJob({
+      company: ingestDraft.company.trim(),
+      title: ingestDraft.title.trim(),
+      shortName: ingestDraft.company.trim().slice(0, 24),
+      location: ingestDraft.location.trim(),
+      url: ingestDraft.url.trim(),
+      description: ingestDraft.description.trim(),
+      rate: ingestDraft.rate.trim(),
+      salaryMin: ingestDraft.salaryMin,
+      salaryMax: ingestDraft.salaryMax,
+      salaryPeriod: ingestDraft.salaryPeriod,
+      employmentType: ingestDraft.employmentType.trim(),
+      source: ingestDraft.source.trim(),
+      status: ingestStatus,
+      dateApplied: "",
+      dateDiscussed: "",
+      datePrecision: "unknown",
+    });
+    void persist([nextJob, ...jobs], meta, "upsert");
+    setIngestOpen(false);
+    resetIngest();
+    setDetail(nextJob);
+    setNotice("Saved application with description + URL");
   }
 
   function saveForm() {
@@ -590,6 +704,13 @@ export function PipelineApp() {
               className="rounded-lg border border-white/15 px-3 py-1.5 text-sm hover:border-[var(--accent)]"
             >
               Import
+            </button>
+            <button
+              type="button"
+              onClick={openIngest}
+              className="rounded-lg border border-[var(--accent)]/40 px-3 py-1.5 text-sm text-[var(--accent)] hover:border-[var(--accent)]"
+            >
+              Ingest JD
             </button>
             <button
               type="button"
@@ -1002,6 +1123,21 @@ export function PipelineApp() {
             <MetaRow label="Source" value={detail.source || "—"} />
             {detail.userInterest ? <MetaRow label="Interest" value={detail.userInterest} /> : null}
             <MetaRow label="Location" value={detail.location || "—"} />
+            {detail.url ? (
+              <div className="flex gap-3 border-b border-white/5 pb-2">
+                <span className="w-24 shrink-0 text-xs uppercase tracking-[0.18em] text-[var(--muted)]">URL</span>
+                <a
+                  href={detail.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="break-all text-[var(--accent)] underline-offset-2 hover:underline"
+                >
+                  {detail.url}
+                </a>
+              </div>
+            ) : (
+              <MetaRow label="URL" value="—" />
+            )}
             {detail.interviewDate ? (
               <MetaRow label="Interview" value={`${detail.interviewDate}${detail.interviewNotes ? ` · ${detail.interviewNotes}` : ""}`} />
             ) : null}
@@ -1030,6 +1166,12 @@ export function PipelineApp() {
                 </div>
               </div>
             ) : null}
+            <div>
+              <p className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">Description</p>
+              <p className="mt-1 max-h-64 overflow-y-auto whitespace-pre-wrap text-[var(--cream)]/90">
+                {detail.description || "—"}
+              </p>
+            </div>
             <div>
               <p className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">Notes</p>
               <p className="mt-1 whitespace-pre-wrap text-[var(--cream)]/90">{detail.notes || "—"}</p>
@@ -1081,6 +1223,55 @@ export function PipelineApp() {
               </button>
             </div>
           </div>
+        </Drawer>
+      ) : null}
+
+      {ingestOpen ? (
+        <Drawer
+          onClose={() => {
+            setIngestOpen(false);
+            resetIngest();
+          }}
+          title={ingestStep === "paste" ? "Ingest job description" : "Review & complete"}
+        >
+          {ingestStep === "paste" ? (
+            <div className="space-y-4 text-sm">
+              <p className="text-[var(--muted)]">
+                Paste a posting URL or the full job description. We extract company, title, location, pay hints, and keep the cleaned text as the description — then ask for anything still missing.
+              </p>
+              <textarea
+                value={ingestInput}
+                onChange={(e) => setIngestInput(e.target.value)}
+                rows={14}
+                placeholder={"https://…\n\nor paste the full job posting text here"}
+                className="w-full rounded-xl border border-white/10 bg-black/30 p-3 font-mono text-xs outline-none focus:border-[var(--accent)]"
+              />
+              {ingestError ? <p className="text-red-300">{ingestError}</p> : null}
+              <button
+                type="button"
+                disabled={ingestLoading}
+                onClick={() => void runIngest()}
+                className="rounded-lg bg-[var(--accent)] px-4 py-2 font-semibold text-[var(--ink)] disabled:opacity-50"
+              >
+                {ingestLoading ? "Sorting…" : "Sort & extract"}
+              </button>
+            </div>
+          ) : ingestDraft ? (
+            <IngestReviewForm
+              draft={ingestDraft}
+              status={ingestStatus}
+              mode={ingestMode}
+              warning={ingestWarning}
+              error={ingestError}
+              onField={setIngestField}
+              onStatus={setIngestStatus}
+              onBack={() => {
+                setIngestStep("paste");
+                setIngestError("");
+              }}
+              onSave={saveIngestDraft}
+            />
+          ) : null}
         </Drawer>
       ) : null}
     </main>
@@ -1311,6 +1502,187 @@ function ApplicationTable({
   );
 }
 
+function IngestReviewForm({
+  draft,
+  status,
+  mode,
+  warning,
+  error,
+  onField,
+  onStatus,
+  onBack,
+  onSave,
+}: {
+  draft: IngestFields;
+  status: JobStatus;
+  mode: "ai" | "heuristic" | "";
+  warning: string;
+  error: string;
+  onField: <K extends keyof IngestFields>(key: K, value: IngestFields[K]) => void;
+  onStatus: (status: JobStatus) => void;
+  onBack: () => void;
+  onSave: () => void;
+}) {
+  const missing = missingRequiredFields(draft);
+  const missingSet = new Set<RequiredIngestKey>(missing);
+  const field =
+    "mt-1.5 w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2.5 outline-none focus:border-[var(--accent)]";
+  const needed =
+    "mt-1.5 w-full rounded-xl border border-[var(--warm)]/50 bg-[var(--warm)]/5 px-3 py-2.5 outline-none focus:border-[var(--warm)]";
+
+  function labelFor(key: RequiredIngestKey, filledLabel: string) {
+    return missingSet.has(key) ? MISSING_PROMPTS[key] : filledLabel;
+  }
+
+  return (
+    <form
+      className="space-y-4 text-sm"
+      onSubmit={(e) => {
+        e.preventDefault();
+        onSave();
+      }}
+    >
+      <div className="flex flex-wrap items-center gap-2 text-xs text-[var(--muted)]">
+        <span className="rounded-full border border-white/15 px-2.5 py-1">
+          {mode === "ai" ? "AI extract" : "Heuristic extract"}
+        </span>
+        {missing.length ? (
+          <span className="rounded-full border border-[var(--warm)]/40 px-2.5 py-1 text-[var(--warm)]">
+            {missing.length} field{missing.length === 1 ? "" : "s"} still needed
+          </span>
+        ) : (
+          <span className="rounded-full border border-[var(--accent)]/40 px-2.5 py-1 text-[var(--accent)]">
+            Ready to save
+          </span>
+        )}
+      </div>
+
+      {warning ? <p className="text-[var(--warm)]">{warning}</p> : null}
+
+      {missing.length ? (
+        <div className="rounded-xl border border-[var(--warm)]/30 bg-[var(--warm)]/5 px-3 py-3">
+          <p className="text-xs uppercase tracking-[0.18em] text-[var(--warm)]">Fill these in</p>
+          <ul className="mt-2 space-y-1 text-[var(--cream)]/90">
+            {missing.map((key) => (
+              <li key={key}>· {MISSING_PROMPTS[key]}</li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+
+      <label className="block">
+        <span className={`text-[10px] uppercase tracking-[0.2em] ${missingSet.has("title") ? "text-[var(--warm)]" : "text-[var(--muted)]"}`}>
+          {labelFor("title", "Title")}
+        </span>
+        <input
+          required
+          autoFocus={missingSet.has("title")}
+          value={draft.title}
+          onChange={(e) => onField("title", e.target.value)}
+          placeholder="e.g. Senior Instructional Designer"
+          className={missingSet.has("title") ? needed : field}
+        />
+      </label>
+
+      <label className="block">
+        <span className={`text-[10px] uppercase tracking-[0.2em] ${missingSet.has("company") ? "text-[var(--warm)]" : "text-[var(--muted)]"}`}>
+          {labelFor("company", "Company")}
+        </span>
+        <input
+          required
+          autoFocus={!missingSet.has("title") && missingSet.has("company")}
+          value={draft.company}
+          onChange={(e) => onField("company", e.target.value)}
+          placeholder="Employer name"
+          className={missingSet.has("company") ? needed : field}
+        />
+      </label>
+
+      <label className="block">
+        <span className={`text-[10px] uppercase tracking-[0.2em] ${missingSet.has("location") ? "text-[var(--warm)]" : "text-[var(--muted)]"}`}>
+          {labelFor("location", "Location")}
+        </span>
+        <input
+          required
+          value={draft.location}
+          onChange={(e) => onField("location", e.target.value)}
+          placeholder="City, ST · Remote · Hybrid"
+          className={missingSet.has("location") ? needed : field}
+        />
+      </label>
+
+      <label className="block">
+        <span className={`text-[10px] uppercase tracking-[0.2em] ${missingSet.has("url") ? "text-[var(--warm)]" : "text-[var(--muted)]"}`}>
+          {labelFor("url", "Posting URL")}
+        </span>
+        <input
+          required
+          type="url"
+          value={draft.url}
+          onChange={(e) => onField("url", e.target.value)}
+          placeholder="https://"
+          className={missingSet.has("url") ? needed : field}
+        />
+      </label>
+
+      <div className="grid grid-cols-2 gap-3">
+        <label className="block">
+          <span className="text-[10px] uppercase tracking-[0.2em] text-[var(--muted)]">Rate / salary (optional)</span>
+          <input
+            value={draft.rate}
+            onChange={(e) => onField("rate", e.target.value)}
+            placeholder="$120k–$140k"
+            className={field}
+          />
+        </label>
+        <label className="block">
+          <span className="text-[10px] uppercase tracking-[0.2em] text-[var(--muted)]">Status</span>
+          <select value={status} onChange={(e) => onStatus(e.target.value as JobStatus)} className={field}>
+            {BOARD_COLUMNS.map((s) => (
+              <option key={s} value={s}>
+                {STATUS_LABELS[s]}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+
+      <label className="block">
+        <span className="text-[10px] uppercase tracking-[0.2em] text-[var(--muted)]">Employment type (optional)</span>
+        <input
+          value={draft.employmentType}
+          onChange={(e) => onField("employmentType", e.target.value)}
+          placeholder="Full-time · Remote"
+          className={field}
+        />
+      </label>
+
+      <label className="block">
+        <span className="text-[10px] uppercase tracking-[0.2em] text-[var(--muted)]">Description</span>
+        <textarea
+          rows={8}
+          value={draft.description}
+          onChange={(e) => onField("description", e.target.value)}
+          className={field}
+        />
+      </label>
+
+      <p className="text-xs text-[var(--muted)]">Dates are left blank — set applied date later when you submit.</p>
+
+      {error ? <p className="text-red-300">{error}</p> : null}
+
+      <div className="flex flex-wrap gap-2 pt-1">
+        <button type="submit" className="rounded-lg bg-[var(--accent)] px-4 py-2 font-semibold text-[var(--ink)]">
+          Save application
+        </button>
+        <button type="button" onClick={onBack} className="rounded-lg border border-white/20 px-4 py-2">
+          Back
+        </button>
+      </div>
+    </form>
+  );
+}
+
 function JobForm({
   job,
   onChange,
@@ -1362,6 +1734,10 @@ function JobForm({
           </select>
         </label>
       </div>
+      <label className="block">
+        <span className="text-[10px] uppercase tracking-[0.2em] text-[var(--muted)]">Posting URL</span>
+        <input type="url" value={job.url} onChange={(e) => set("url", e.target.value)} className={field} placeholder="https://" />
+      </label>
       <div className="grid grid-cols-2 gap-3">
         <label className="block">
           <span className="text-[10px] uppercase tracking-[0.2em] text-[var(--muted)]">Date applied</span>
@@ -1389,6 +1765,10 @@ function JobForm({
         </label>
       </div>
       <label className="block">
+        <span className="text-[10px] uppercase tracking-[0.2em] text-[var(--muted)]">Employment type</span>
+        <input value={job.employmentType} onChange={(e) => set("employmentType", e.target.value)} className={field} />
+      </label>
+      <label className="block">
         <span className="text-[10px] uppercase tracking-[0.2em] text-[var(--muted)]">Match score (0–10)</span>
         <input
           type="number"
@@ -1399,6 +1779,10 @@ function JobForm({
           onChange={(e) => set("matchScore", e.target.value === "" ? null : Number(e.target.value))}
           className={field}
         />
+      </label>
+      <label className="block">
+        <span className="text-[10px] uppercase tracking-[0.2em] text-[var(--muted)]">Description</span>
+        <textarea rows={6} value={job.description} onChange={(e) => set("description", e.target.value)} className={field} />
       </label>
       <label className="block">
         <span className="text-[10px] uppercase tracking-[0.2em] text-[var(--muted)]">Notes</span>
