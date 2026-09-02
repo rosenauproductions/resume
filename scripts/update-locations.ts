@@ -17,7 +17,7 @@ const EXPORT: LocExport[] = [
   {
     company: "Chewy",
     role: "Instructional Designer",
-    location: "Remote / Location-Restricted",
+    location: "Richardson, TX",
   },
   {
     company: "SRS Distribution",
@@ -37,12 +37,12 @@ const EXPORT: LocExport[] = [
   {
     company: "ABC Legal",
     role: "Instructional Design / Learning Role",
-    location: "Not specified",
+    location: "Remote, US",
   },
   {
     company: "CEC Companies",
     role: "Instructional Designer / Learning & Development",
-    location: "Not specified",
+    location: "Remote, US",
   },
   { company: "KBS", role: "Instructional Designer", location: "Remote, US" },
   {
@@ -78,26 +78,31 @@ const EXPORT: LocExport[] = [
   {
     company: "Associa",
     role: "Instructional Designer #26380",
-    location: "Not specified",
+    location: "Richardson, TX",
   },
   {
     company: "Internal Software Platform",
     role: "Instructional Designer",
-    location: "Not specified",
+    location: "",
   },
   {
     company: "Peyton Resource Group",
     role: "Instructional Designer",
     location: "Remote, US",
   },
-  { company: "InStride Health", role: "LMS Coordinator", location: "Not specified" },
+  { company: "InStride Health", role: "LMS Coordinator", location: "Remote, US" },
   { company: "McKesson", role: "Instructional Designer", location: "Not specified" },
   {
     company: "Acentra Health",
     role: "Instructional Design & Trainer, Associate",
-    location: "Not specified",
+    location: "Remote, US",
   },
-  { company: "Banner", role: "LMS Coordinator", location: "Not specified" },
+  { company: "Banner", role: "LMS Coordinator", location: "" },
+  {
+    company: "Ashby",
+    role: "Customer Education Program Manager",
+    location: "Remote, US",
+  },
   {
     company: "Harbor Freight Tools",
     role: "Instructional Designer",
@@ -111,7 +116,7 @@ const EXPORT: LocExport[] = [
   {
     company: "Gainwell",
     role: "Professional Instructional Designer",
-    location: "Not specified",
+    location: "Remote, US",
   },
   {
     company: "Ryder",
@@ -119,7 +124,7 @@ const EXPORT: LocExport[] = [
     location: "Remote / Austin, TX",
   },
   { company: "Xyleme", role: "Instructional Designer", location: "Not specified" },
-  { company: "Embry-Riddle", role: "Instructional Design", location: "Not specified" },
+  { company: "Embry-Riddle", role: "Instructional Design", location: "Remote, US" },
   { company: "Purple", role: "Multimedia Designer", location: "Not specified" },
   {
     company: "Vasculitis Foundation",
@@ -190,6 +195,12 @@ const COMPANY_ALIASES: Record<string, string[]> = {
   "abc legal": ["abc legal"],
   "cec companies": ["cec"],
   "acu": ["acu", "abilene christian"],
+  ashby: ["ashby"],
+  associa: ["associa"],
+  chewy: ["chewy"],
+  "acentra health": ["acentra"],
+  gainwell: ["gainwell"],
+  "instride health": ["instride"],
 };
 
 function companiesMatch(exportCompany: string, dbCompany: string): boolean {
@@ -245,7 +256,14 @@ function roleScore(exportRole: string, dbTitle: string): number {
 
 function normalizeLocation(loc: string): string {
   const t = (loc || "").trim();
-  if (!t || /^not\s+specified$/i.test(t)) return "";
+  if (
+    !t ||
+    /^not\s+specified$/i.test(t) ||
+    /^unknown$/i.test(t) ||
+    /^needs\s+verification$/i.test(t)
+  ) {
+    return "";
+  }
   return t;
 }
 

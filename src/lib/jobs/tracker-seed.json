@@ -105,7 +105,7 @@
         "Christian university environment"
       ],
       "user_interest": "High",
-      "notes": "User specifically said they really like this job."
+      "notes": "User specifically said they really like this job. Optional travel to Dallas ~once/year."
     },
     {
       "company": "Lawrence Livermore National Laboratory (LLNL)",
@@ -188,7 +188,7 @@
       "company": "Associa",
       "role": "Instructional Designer",
       "job_id": "26380",
-      "location": null,
+      "location": "Richardson, TX",
       "status": "Applied / Re-applied",
       "application_date": null,
       "date_precision": "unknown",
@@ -226,7 +226,7 @@
       "company": "Acentra Health",
       "role": "Instructional Design & Trainer, Associate",
       "job_id": "2026-5818",
-      "location": null,
+      "location": "Remote, US",
       "status": "Applied",
       "application_date": null,
       "date_precision": "unknown",
@@ -248,7 +248,7 @@
     {
       "company": "InStride Health",
       "role": "LMS Coordinator",
-      "location": null,
+      "location": "Remote, US",
       "status": "Applied",
       "application_date": null,
       "date_precision": "unknown",
@@ -281,7 +281,7 @@
     {
       "company": "Ashby",
       "role": "Customer Education Program Manager",
-      "location": null,
+      "location": "Remote, US",
       "status": "Rejected",
       "application_date": null,
       "date_precision": "unknown",
@@ -333,7 +333,7 @@
     {
       "company": "Gainwell",
       "role": "Professional Instructional Designer",
-      "location": null,
+      "location": "Remote, US",
       "status": "Applied",
       "application_date": null,
       "date_precision": "unknown",
@@ -455,7 +455,7 @@
     {
       "company": "CEC Companies",
       "role": "Instructional Designer",
-      "location": null,
+      "location": "Remote, US",
       "status": "Applied",
       "application_date": null,
       "date_precision": "unknown",
@@ -519,7 +519,7 @@
     {
       "company": "ABC Legal",
       "role": "Unknown - hourly-rate application",
-      "location": null,
+      "location": "Remote, US",
       "status": "Applied",
       "application_date": null,
       "date_precision": "unknown",
@@ -619,7 +619,7 @@
     {
       "company": "Chewy",
       "role": "Instructional Designer - Customer Care Learning and Development",
-      "location": "Remote / Location-Restricted",
+      "location": "Richardson, TX",
       "status": "Applied",
       "application_date": "2026-08-31",
       "date_precision": "exact",
@@ -718,7 +718,7 @@
     {
       "company": "Embry-Riddle",
       "role": "Instructional Design",
-      "location": "",
+      "location": "Remote, US",
       "status": "Applied",
       "application_date": null,
       "date_precision": "unknown",
