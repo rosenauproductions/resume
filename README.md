@@ -41,7 +41,18 @@ Seed / re-seed from bundled JSON:
 npx dotenv -e .env.local -- npx tsx scripts/seed-db.ts
 ```
 
-In `/pipeline`: badge shows **Neon DB**. Use **Import Drive → DB** or **Import bundled** to load applications. **Visits** tab lists geo visits with Confirm / Ignore / Link.
+In `/pipeline`: badge shows **Neon DB**. Use **Import Drive → DB** or **Import bundled** to load applications. **Visits** tab lists geo visits with Confirm / Ignore / Link. **Target map** pins jobs by `location` (curated city lookup); pure Remote listings stay unplaced.
+
+### ChatGPT / Drive export
+
+When re-exporting `job-tracker.json` for Drive, every application should include location from the posting only (never invent):
+
+- `location` — `"City, ST"` (e.g. `"Plano, TX"`) or `"Remote"`
+- `location_city` / `location_state` / `location_country` — optional structured parts
+- `work_type` — `remote` | `hybrid` | `onsite` when the posting says so
+- `employment_type` — Full-time / Part-time / 1099 (separate from `work_type`)
+
+Copy the in-app prompt on `/pipeline` for the full export instructions.
 
 ### Env vars
 

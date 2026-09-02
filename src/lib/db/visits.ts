@@ -99,8 +99,10 @@ const CITY_COMPANY_ALIASES: Record<string, string[]> = {
   atherton: ["sacred heart"],
   bedford: ["propricer"],
   houston: ["baylor"],
-  "dallas-fort worth": ["american airlines"],
-  dfw: ["american airlines"],
+  dallas: ["hallmark", "associa"],
+  austin: ["ryder"],
+  "dallas-fort worth": ["american airlines", "chewy"],
+  dfw: ["american airlines", "chewy"],
 };
 
 function normalizeCity(raw: string) {

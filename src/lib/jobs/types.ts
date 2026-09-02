@@ -230,6 +230,131 @@ function parseDatePrecision(raw: unknown): DatePrecision {
   return text ? "unknown" : "";
 }
 
+/** US state / territory → postal abbreviation for clean map location strings. */
+const US_STATE_ABBR: Record<string, string> = {
+  alabama: "AL",
+  alaska: "AK",
+  arizona: "AZ",
+  arkansas: "AR",
+  california: "CA",
+  colorado: "CO",
+  connecticut: "CT",
+  delaware: "DE",
+  florida: "FL",
+  georgia: "GA",
+  hawaii: "HI",
+  idaho: "ID",
+  illinois: "IL",
+  indiana: "IN",
+  iowa: "IA",
+  kansas: "KS",
+  kentucky: "KY",
+  louisiana: "LA",
+  maine: "ME",
+  maryland: "MD",
+  massachusetts: "MA",
+  michigan: "MI",
+  minnesota: "MN",
+  mississippi: "MS",
+  missouri: "MO",
+  montana: "MT",
+  nebraska: "NE",
+  nevada: "NV",
+  "new hampshire": "NH",
+  "new jersey": "NJ",
+  "new mexico": "NM",
+  "new york": "NY",
+  "north carolina": "NC",
+  "north dakota": "ND",
+  ohio: "OH",
+  oklahoma: "OK",
+  oregon: "OR",
+  pennsylvania: "PA",
+  "rhode island": "RI",
+  "south carolina": "SC",
+  "south dakota": "SD",
+  tennessee: "TN",
+  texas: "TX",
+  utah: "UT",
+  vermont: "VT",
+  virginia: "VA",
+  washington: "WA",
+  "west virginia": "WV",
+  wisconsin: "WI",
+  wyoming: "WY",
+  "district of columbia": "DC",
+  "washington dc": "DC",
+  "washington d c": "DC",
+};
+
+function abbreviateRegion(raw: string): string {
+  const n = raw.trim().toLowerCase().replace(/\./g, "").replace(/\s+/g, " ");
+  if (!n) return "";
+  if (/^[a-z]{2}$/i.test(n)) return n.toUpperCase();
+  return US_STATE_ABBR[n] ?? raw.trim();
+}
+
+/** Normalize remote | hybrid | onsite from import aliases. Empty if unknown / invent-prone. */
+export function normalizeWorkType(raw: unknown): "" | "remote" | "hybrid" | "onsite" {
+  const text = String(raw ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/[_-]+/g, " ");
+  if (!text) return "";
+  if (/\bhybrid\b/.test(text)) return "hybrid";
+  if (/\b(on\s*site|onsite|in\s*office|office)\b/.test(text)) return "onsite";
+  if (/\b(remote|fully remote|us[- ]?remote|work from home|wfh)\b/.test(text)) return "remote";
+  if (text === "remote" || text === "hybrid" || text === "onsite") return text;
+  return "";
+}
+
+/**
+ * Build a geocode-friendly location string for Target map.
+ * Prefers structured city/state/country; falls back to free-text `location`.
+ * Never invents — only uses fields present on the record.
+ */
+export function composeLocation(fields: {
+  location?: unknown;
+  city?: unknown;
+  state?: unknown;
+  country?: unknown;
+  workType?: unknown;
+}): string {
+  const free = String(fields.location ?? "").trim();
+  const city = String(fields.city ?? "").trim();
+  const stateRaw = String(fields.state ?? "").trim();
+  const country = String(fields.country ?? "").trim();
+  const workType = normalizeWorkType(fields.workType);
+
+  if (city) {
+    const state = abbreviateRegion(stateRaw);
+    const place = [city, state].filter(Boolean).join(", ");
+    if (workType === "hybrid") return `Hybrid · ${place}`;
+    if (workType === "remote") return `${place} / Remote`;
+    return place;
+  }
+
+  if (workType === "remote" && !free) return "Remote";
+
+  if (free) {
+    // If free text is pure remote and we also have hybrid/onsite, prefer work type label
+    if (workType === "hybrid" && !/\bhybrid\b/i.test(free)) {
+      return `Hybrid · ${free}`;
+    }
+    return free;
+  }
+
+  if (country && !city) {
+    if (workType === "remote") return "Remote";
+    return country;
+  }
+
+  if (workType === "remote") return "Remote";
+  if (workType === "hybrid") return "Hybrid";
+  if (workType === "onsite") return "Onsite";
+  return "";
+}
+
 function readMinMaxObject(raw: unknown): { min: number | null; max: number | null } {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
     return { min: null, max: null };
@@ -541,19 +666,41 @@ export function normalizeJob(raw: unknown, targets: string[] = []): JobApplicati
       : "",
   ];
 
+  // Employment type (FT/PT/1099) separate from work arrangement (remote/hybrid/onsite)
+  const employmentBase = String(pick(o, "employmenttype", "jobtype") ?? "").trim();
+  const workTypeRaw = pick(
+    o,
+    "worktype",
+    "workarrangement",
+    "workarrangementtype",
+    "arrangement",
+  );
+  const workType =
+    normalizeWorkType(workTypeRaw) || normalizeWorkType(employmentBase);
+  // If employment_type was only "Remote"/"Hybrid", don't repeat it as the employment label
+  const employmentLabel = normalizeWorkType(employmentBase) ? "" : employmentBase;
   const employmentType = [
-    String(pick(o, "employmenttype", "workarrangement", "worktype") ?? "").trim(),
+    employmentLabel,
+    workType ? workType.charAt(0).toUpperCase() + workType.slice(1) : "",
     pick(o, "hoursperweek") ? `${pick(o, "hoursperweek")} hrs/wk` : "",
   ]
     .filter(Boolean)
     .join(" · ");
+
+  const location = composeLocation({
+    location: pick(o, "location", "joblocation", "office"),
+    city: pick(o, "locationcity", "city"),
+    state: pick(o, "locationstate", "state", "region", "locationregion"),
+    country: pick(o, "locationcountry", "country"),
+    workType: workType || workTypeRaw,
+  });
 
   return {
     id: String(pick(o, "id") ?? crypto.randomUUID()),
     title: title || "Untitled role",
     company: company || "Unknown company",
     shortName,
-    location: String(pick(o, "location") ?? "").trim(),
+    location,
     dateApplied,
     dateDiscussed,
     datePrecision,

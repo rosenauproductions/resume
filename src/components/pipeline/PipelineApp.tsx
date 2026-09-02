@@ -40,15 +40,22 @@ type VisitRow = {
 
 type VisitJobOption = { id: string; company: string; title: string; location: string };
 
-const CHATGPT_PROMPT = `Export my job tracker as JSON with separate dates:
+const CHATGPT_PROMPT = `Export my job tracker as JSON with separate dates AND location for every job (from the posting only — never invent):
 
+Dates:
 - application_date / date_applied = when I actually submitted (or null)
 - date_posting_shared_with_ChatGPT / dateDiscussed = when I showed ChatGPT the posting (never copy this into application_date)
 - date_precision = exact | week_estimate | unknown
 
+Location (required on every application; use posting text only):
+- location = "City, ST" when onsite/hybrid is known (e.g. "Plano, TX"), or "Remote" when fully remote with no city
+- location_city, location_state, location_country = structured parts when known (omit if unknown)
+- work_type = remote | hybrid | onsite (from the posting; omit if unclear)
+- employment_type = Full-time / Part-time / 1099 / etc. (separate from work_type)
+
 Also include: company, role, status, salary, fit/fit_score, key_match_reasons, concerns, notes, interview fields.
 Keep Transfr/Baylor as considering/not confirmed unless I explicitly say I applied.
-Save/overwrite the Google Drive job-tracker.json, then use Load from Drive in /pipeline.`;
+Save/overwrite the Google Drive job-tracker.json, then use Load from Drive / Import Drive → DB in /pipeline.`;
 
 function loadLocal(): JobApplication[] {
   if (typeof window === "undefined") return [];
