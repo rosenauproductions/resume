@@ -1,7 +1,65 @@
 import { desc, eq } from "drizzle-orm";
 import { getDb } from "./index";
-import { visits, type VisitRow } from "./schema";
+import { ignoredDevices, visits, type VisitRow } from "./schema";
 import { appendApplicationNote, listOpenApplicationsForAssociation } from "./applications";
+
+/** Comma-separated stable device ids from VISIT_IGNORE_DEVICE_IDS (env still works alongside DB). */
+function parseEnvIgnoreDeviceIds(): Set<string> {
+  const raw = process.env.VISIT_IGNORE_DEVICE_IDS || "";
+  return new Set(
+    raw
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean),
+  );
+}
+
+/** True if device id is in env VISIT_IGNORE_DEVICE_IDS or ignored_devices table. */
+export async function isDeviceIgnored(deviceId: string): Promise<boolean> {
+  const id = (deviceId || "").trim();
+  if (!id) return false;
+  if (parseEnvIgnoreDeviceIds().has(id)) return true;
+
+  const db = getDb();
+  const rows = await db
+    .select({ id: ignoredDevices.id })
+    .from(ignoredDevices)
+    .where(eq(ignoredDevices.deviceId, id))
+    .limit(1);
+  return rows.length > 0;
+}
+
+/** Add a device fingerprint to the DB ignore list (idempotent). */
+export async function addIgnoredDevice(
+  deviceId: string,
+  note = "",
+): Promise<{ deviceId: string; created: boolean }> {
+  const id = (deviceId || "").trim();
+  if (!id) throw new Error("deviceId required");
+
+  const db = getDb();
+  const existing = await db
+    .select({ id: ignoredDevices.id })
+    .from(ignoredDevices)
+    .where(eq(ignoredDevices.deviceId, id))
+    .limit(1);
+  if (existing.length) {
+    return { deviceId: id, created: false };
+  }
+
+  await db.insert(ignoredDevices).values({
+    deviceId: id,
+    note: note || "",
+  });
+  return { deviceId: id, created: true };
+}
+
+/** Permanently delete a visit row. */
+export async function deleteVisit(id: string): Promise<boolean> {
+  const db = getDb();
+  const deleted = await db.delete(visits).where(eq(visits.id, id)).returning({ id: visits.id });
+  return deleted.length > 0;
+}
 
 export type LinkConfidence = "none" | "suggested" | "confirmed" | "ignored";
 

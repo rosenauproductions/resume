@@ -29,6 +29,7 @@ type VisitRow = {
   region: string;
   country: string;
   device: string;
+  sessionFingerprint: string;
   locationLabel: string;
   linkConfidence: string;
   linkReason: string;
@@ -437,6 +438,51 @@ export function PipelineApp() {
     }
   }
 
+  async function handleIgnoreDevice(deviceId: string, visitId?: string) {
+    const id = deviceId.trim();
+    if (!id) {
+      setNotice("No device ID to ignore");
+      return;
+    }
+    const res = await fetch("/api/pipeline/visits", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "ignore-device",
+        deviceId: id,
+        visitId,
+        note: visitId ? "Ignored from Visits tab" : "Ignored this browser",
+      }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (res.ok) {
+      setNotice(
+        data.ignoredDevice?.created === false
+          ? "Device already on ignore list"
+          : "Device added to ignore list — future visits skip ntfy/Discord",
+      );
+      void refreshVisits();
+      setTimeout(() => setNotice(""), 3500);
+    } else {
+      setNotice(data.error || "Ignore device failed");
+    }
+  }
+
+  async function handleDeleteVisit(visitId: string) {
+    if (!window.confirm("Permanently delete this visit from the database?")) return;
+    const res = await fetch(`/api/pipeline/visits?id=${encodeURIComponent(visitId)}`, {
+      method: "DELETE",
+    });
+    const data = await res.json().catch(() => ({}));
+    if (res.ok) {
+      setVisits((prev) => prev.filter((v) => v.id !== visitId));
+      setNotice("Visit deleted");
+      setTimeout(() => setNotice(""), 2500);
+    } else {
+      setNotice(data.error || "Delete failed");
+    }
+  }
+
   if (booting) {
     return (
       <main className="grid min-h-screen place-items-center bg-[var(--ink)] text-[var(--muted)]">
@@ -777,9 +823,9 @@ export function PipelineApp() {
               {thisDeviceId ? (
                 <div className="rounded-xl border border-white/10 bg-black/20 px-4 py-3">
                   <p className="text-xs text-[var(--muted)]">
-                    This browser&apos;s device ID (not a MAC — browsers can&apos;t expose those). Add to{" "}
-                    <code className="text-[var(--cream)]">VISIT_IGNORE_DEVICE_IDS</code> on Vercel to skip
-                    ntfy/Discord for this device.
+                    This browser&apos;s device ID (not a MAC — browsers can&apos;t expose those). Ignore it
+                    here to skip ntfy/Discord without redeploying (also works via{" "}
+                    <code className="text-[var(--cream)]">VISIT_IGNORE_DEVICE_IDS</code>).
                   </p>
                   <div className="mt-2 flex flex-wrap items-center gap-2">
                     <code className="break-all rounded-md border border-white/10 bg-black/40 px-2 py-1.5 font-mono text-xs text-[var(--cream)]">
@@ -796,6 +842,13 @@ export function PipelineApp() {
                       className="rounded-lg border border-white/15 px-3 py-1.5 text-xs hover:border-[var(--accent)]"
                     >
                       Copy
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void handleIgnoreDevice(thisDeviceId)}
+                      className="rounded-lg border border-[var(--accent)]/40 px-3 py-1.5 text-xs text-[var(--accent)] hover:border-[var(--accent)]"
+                    >
+                      Ignore this browser
                     </button>
                   </div>
                 </div>
@@ -880,6 +933,23 @@ export function PipelineApp() {
                             Unlink
                           </button>
                         ) : null}
+                        {v.sessionFingerprint ? (
+                          <button
+                            type="button"
+                            onClick={() => void handleIgnoreDevice(v.sessionFingerprint, v.id)}
+                            className="rounded-lg border border-white/15 px-3 py-1.5 text-xs hover:border-[var(--accent)]"
+                            title={`Ignore device ${v.sessionFingerprint}`}
+                          >
+                            Ignore device
+                          </button>
+                        ) : null}
+                        <button
+                          type="button"
+                          onClick={() => void handleDeleteVisit(v.id)}
+                          className="rounded-lg border border-red-400/30 px-3 py-1.5 text-xs text-red-300/90 hover:border-red-400/60"
+                        >
+                          Delete
+                        </button>
                       </div>
                     </li>
                   ))}

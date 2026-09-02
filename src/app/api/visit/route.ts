@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { dbConfigured } from "@/lib/db";
-import { recordVisit } from "@/lib/db/visits";
+import { isDeviceIgnored, recordVisit } from "@/lib/db/visits";
 
 export const runtime = "nodejs";
 
@@ -81,17 +81,6 @@ async function notifyNtfy(topic: string, title: string, message: string) {
   }
 }
 
-/** Comma-separated stable device ids from VISIT_IGNORE_DEVICE_IDS (browser localStorage, not MAC). */
-function parseIgnoreDeviceIds(): Set<string> {
-  const raw = process.env.VISIT_IGNORE_DEVICE_IDS || "";
-  return new Set(
-    raw
-      .split(",")
-      .map((s) => s.trim())
-      .filter(Boolean),
-  );
-}
-
 export async function POST(req: NextRequest) {
   const discordWebhook = process.env.VISIT_NOTIFY_DISCORD_WEBHOOK;
   const ntfyTopic = process.env.VISIT_NOTIFY_NTFY_TOPIC;
@@ -122,8 +111,32 @@ export async function POST(req: NextRequest) {
   const fingerprint = (payload.fingerprint || "").trim();
   const isPipeline =
     path === "/pipeline" || path.startsWith("/pipeline/");
-  const ignoreIds = parseIgnoreDeviceIds();
-  const deviceIgnored = Boolean(fingerprint && ignoreIds.has(fingerprint));
+
+  // Env VISIT_IGNORE_DEVICE_IDS still works; DB ignored_devices enables runtime button
+  let deviceIgnored = false;
+  if (fingerprint) {
+    if (dbConfigured()) {
+      try {
+        deviceIgnored = await isDeviceIgnored(fingerprint);
+      } catch (error) {
+        console.error("visit ignore-list check failed", error);
+        // Fall back to env-only if DB check fails
+        const raw = process.env.VISIT_IGNORE_DEVICE_IDS || "";
+        deviceIgnored = raw
+          .split(",")
+          .map((s) => s.trim())
+          .filter(Boolean)
+          .includes(fingerprint);
+      }
+    } else {
+      const raw = process.env.VISIT_IGNORE_DEVICE_IDS || "";
+      deviceIgnored = raw
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean)
+        .includes(fingerprint);
+    }
+  }
 
   const lines = [
     `**When:** ${when} (Central)`,

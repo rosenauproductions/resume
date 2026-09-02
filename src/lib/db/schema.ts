@@ -64,5 +64,14 @@ export const visits = pgTable("visits", {
   linkReason: text("link_reason").notNull().default(""),
 });
 
+/** Device fingerprints that should skip ntfy/Discord (also dual-checked with VISIT_IGNORE_DEVICE_IDS). */
+export const ignoredDevices = pgTable("ignored_devices", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  deviceId: text("device_id").notNull().unique(),
+  note: text("note").notNull().default(""),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 export type ApplicationRow = typeof applications.$inferSelect;
 export type VisitRow = typeof visits.$inferSelect;
+export type IgnoredDeviceRow = typeof ignoredDevices.$inferSelect;
