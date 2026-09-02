@@ -15,10 +15,11 @@ import { computeInsights } from "@/lib/jobs/insights";
 import { loadSeedJobs, loadSeedMeta } from "@/lib/jobs/seed";
 import { getOrCreateDeviceId } from "@/lib/device-id";
 import { BarChart, DonutChart, StatCard, TimelineChart } from "./PipelineCharts";
+import { TargetMap } from "./TargetMap";
 
 const LOCAL_KEY = "pipeline-jobs-v4";
 const META_KEY = "pipeline-meta-v4";
-type ViewMode = "insights" | "board" | "list" | "visits";
+type ViewMode = "insights" | "board" | "list" | "visits" | "map";
 type StorageMode = "local" | "blob" | "db";
 
 type VisitRow = {
@@ -634,6 +635,7 @@ export function PipelineApp() {
               ["board", "Board"],
               ["list", "All applications"],
               ["visits", "Visits"],
+              ["map", "Target map"],
             ] as const
           ).map(([id, label]) => (
             <button
@@ -641,7 +643,7 @@ export function PipelineApp() {
               type="button"
               onClick={() => {
                 setView(id);
-                if (id === "visits") void refreshVisits();
+                if (id === "visits" || id === "map") void refreshVisits();
               }}
               className={`rounded-full px-4 py-1.5 text-sm ${
                 view === id
@@ -956,6 +958,16 @@ export function PipelineApp() {
                 </ul>
               )}
             </div>
+          ) : null}
+
+          {view === "map" ? (
+            <TargetMap
+              jobs={jobs}
+              visits={visits}
+              onSelectJob={setDetail}
+              loading={visitsLoading}
+              onRefresh={() => void refreshVisits()}
+            />
           ) : null}
         </div>
       </div>
