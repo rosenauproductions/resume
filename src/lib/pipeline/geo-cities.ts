@@ -143,6 +143,7 @@ export const CITY_COMPANY_ALIASES: Record<string, string[]> = {
   austin: ["ryder"],
   "dallas-fort worth": ["american airlines", "chewy"],
   dfw: ["american airlines", "chewy"],
+  "fort worth": ["american airlines"],
 };
 
 const REMOTE_HINT =

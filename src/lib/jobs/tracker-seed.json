@@ -11,10 +11,10 @@
     "important_instruction_for_next_ai": "Do not invent application dates. Preserve exact dates when known. When only a week can reasonably be inferred from conversation history, use the Monday of that week as the date and mark date_precision as week_estimate. Keep application date separate from the date the user discussed the job with ChatGPT. If new evidence conflicts with an estimated date, replace the estimate and mark it exact."
   },
   "user_profile_for_matching": {
+    "1099": "Open to negotiating 1099 to W2 when possible",
     "location": "Wylie/Dallas-Fort Worth, Texas",
     "preferred_work_type": "W2 preferred",
     "w2_reason": "Health insurance/benefits",
-    "1099": "Open to negotiating 1099 to W2 when possible",
     "previous_salary": 79000,
     "strengths": [
       "Multimedia production",
@@ -87,7 +87,7 @@
     {
       "company": "ACU",
       "role": "Instructional Design Specialist",
-      "location": "Remote",
+      "location": "Remote, US",
       "status": "Applied",
       "application_date": null,
       "date_precision": "unknown",
@@ -110,7 +110,7 @@
     {
       "company": "Lawrence Livermore National Laboratory (LLNL)",
       "role": "Instructional Designer/Web-Based Training Developer",
-      "location": "Livermore, California / Hybrid possible",
+      "location": "Livermore, CA",
       "status": "Applied on company site",
       "application_date": "2026-08-31",
       "date_precision": "exact",
@@ -149,7 +149,7 @@
       "company": "LMI",
       "role": "Multimedia Developer",
       "job_id": "2026-14438",
-      "location": "US-Remote",
+      "location": "Remote, US",
       "status": "Applied / Re-applied",
       "application_date": null,
       "date_precision": "unknown",
@@ -237,7 +237,7 @@
     {
       "company": "Peyton Resource Group",
       "role": "Instructional Designer",
-      "location": "Remote",
+      "location": "Remote, US",
       "status": "Applied",
       "application_date": null,
       "date_precision": "unknown",
@@ -292,7 +292,7 @@
     {
       "company": "Hallmark Health Care Solutions",
       "role": "Product Trainer - Physician Enterprise Implementation",
-      "location": "Dallas, Texas",
+      "location": "Dallas, TX",
       "status": "Applied / Interviewed",
       "application_date": null,
       "date_precision": "unknown",
@@ -321,7 +321,7 @@
     {
       "company": "Ryder",
       "role": "Instructional Designer I",
-      "location": "Austin, Texas / Remote",
+      "location": "Remote / Austin, TX",
       "status": "Applied",
       "application_date": null,
       "date_precision": "unknown",
@@ -345,7 +345,7 @@
     {
       "company": "Harbor Freight Tools",
       "role": "Instructional Designer",
-      "location": "Remote",
+      "location": "Remote, US",
       "status": "Applied / discussed",
       "application_date": null,
       "date_precision": "unknown",
@@ -360,7 +360,7 @@
     {
       "company": "Creative Instructional Designer employer",
       "role": "Creative Instructional Designer",
-      "location": "Remote",
+      "location": "Remote, US",
       "status": "Applied / considered",
       "application_date": null,
       "date_precision": "unknown",
@@ -397,7 +397,7 @@
     {
       "company": "Capital Title of Texas & Affiliates",
       "role": "Instructional Designer",
-      "location": "Plano, Texas",
+      "location": "Plano, TX",
       "status": "Applied",
       "application_date": null,
       "date_precision": "unknown",
@@ -428,7 +428,7 @@
       "company": "SRS Distribution",
       "role": "Learning & Development Instructional Designer",
       "requisition": "REQ54596",
-      "location": "McKinney, Texas",
+      "location": "McKinney, TX",
       "status": "Applied",
       "application_date": null,
       "date_precision": "unknown",
@@ -485,7 +485,7 @@
     {
       "company": "Endurance Warranty Services",
       "role": "Learning & Development Facilitator",
-      "location": "Remote",
+      "location": "Remote, US",
       "status": "Applied",
       "application_date": null,
       "date_precision": "unknown",
@@ -536,7 +536,7 @@
     {
       "company": "Transfr",
       "role": "Professional Learning Facilitator",
-      "location": "Texas / Field-based / Remote listing",
+      "location": "Texas",
       "status": "Considering, not confirmed applied",
       "application_date": null,
       "date_precision": "unknown",
@@ -607,7 +607,7 @@
     {
       "company": "JPMorgan Chase",
       "role": "Leadership Learning Designer - Video & Digital Content",
-      "location": null,
+      "location": "Plano, TX",
       "status": "Applied",
       "application_date": "2026-08-31",
       "date_precision": "exact",
@@ -619,7 +619,7 @@
     {
       "company": "Chewy",
       "role": "Instructional Designer - Customer Care Learning and Development",
-      "location": "Remote, within range of specified Chewy locations",
+      "location": "Remote / Location-Restricted",
       "status": "Applied",
       "application_date": "2026-08-31",
       "date_precision": "exact",
@@ -660,7 +660,7 @@
     {
       "company": "Equinix",
       "role": "Senior Instructional Designer",
-      "location": null,
+      "location": "Dallas, TX",
       "status": "Applied",
       "application_date": "2026-08-31",
       "date_precision": "exact",
