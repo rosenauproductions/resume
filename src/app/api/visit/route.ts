@@ -108,6 +108,8 @@ export async function POST(req: NextRequest) {
 
   const path = payload.path || "/";
   const device = summarizeUa(ua);
+  const isPipeline =
+    path === "/pipeline" || path.startsWith("/pipeline/");
 
   const lines = [
     `**When:** ${when} (Central)`,
@@ -149,6 +151,18 @@ export async function POST(req: NextRequest) {
     } catch (error) {
       console.error("visit db write failed", error);
     }
+  }
+
+  // Never ntfy/Discord for your own pipeline sessions
+  if (isPipeline) {
+    return NextResponse.json({
+      ok: true,
+      stored: Boolean(visitId),
+      visitId,
+      linkConfidence,
+      notified: false,
+      skippedNotify: "pipeline",
+    });
   }
 
   if (!discordWebhook && !ntfyTopic) {
