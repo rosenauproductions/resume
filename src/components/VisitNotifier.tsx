@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { getOrCreateDeviceId } from "@/lib/device-id";
 
 function sessionKeyForPath(pathname: string) {
   if (pathname === "/pipeline" || pathname.startsWith("/pipeline/")) {
@@ -20,12 +21,15 @@ export function VisitNotifier() {
 
     sessionStorage.setItem(sessionKey, "1");
 
+    const fingerprint = getOrCreateDeviceId();
+
     const body = {
       path,
       referrer: document.referrer || "",
       language: navigator.language || "",
       screen: `${window.screen.width}×${window.screen.height}`,
       timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "",
+      fingerprint,
     };
 
     void fetch("/api/visit", {

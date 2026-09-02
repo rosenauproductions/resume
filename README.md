@@ -50,8 +50,11 @@ JOB_TRACKER_SECRET=
 DATABASE_URL=
 VISIT_NOTIFY_NTFY_TOPIC=
 VISIT_NOTIFY_NTFY_TOKEN=
+VISIT_IGNORE_DEVICE_IDS=
 JOB_TRACKER_DRIVE_FILE_ID=
 ```
+
+`VISIT_IGNORE_DEVICE_IDS` is a comma-separated list of stable browser device IDs (not MACs — browsers cannot expose those). Matching visits skip ntfy/Discord but are still stored in Neon with reason `device ignore list`. Copy your ID from `/pipeline` → **Visits**.
 
 ## Deploy to Vercel
 
@@ -63,4 +66,4 @@ Or connect GitHub — pushes to `main` deploy automatically.
 
 ## Visit notifications
 
-ntfy/Discord pings still fire on resume opens. The same request also writes a detailed row to Neon for `/pipeline` → Visits (city matching can suggest a job; status never auto-changes).
+ntfy/Discord pings still fire on resume opens (unless the device ID is in `VISIT_IGNORE_DEVICE_IDS`, or the path is `/pipeline`). The same request also writes a detailed row to Neon for `/pipeline` → Visits (city matching can suggest a job; status never auto-changes).

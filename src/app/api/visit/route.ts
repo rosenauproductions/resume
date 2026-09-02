@@ -81,6 +81,17 @@ async function notifyNtfy(topic: string, title: string, message: string) {
   }
 }
 
+/** Comma-separated stable device ids from VISIT_IGNORE_DEVICE_IDS (browser localStorage, not MAC). */
+function parseIgnoreDeviceIds(): Set<string> {
+  const raw = process.env.VISIT_IGNORE_DEVICE_IDS || "";
+  return new Set(
+    raw
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean),
+  );
+}
+
 export async function POST(req: NextRequest) {
   const discordWebhook = process.env.VISIT_NOTIFY_DISCORD_WEBHOOK;
   const ntfyTopic = process.env.VISIT_NOTIFY_NTFY_TOPIC;
@@ -108,8 +119,11 @@ export async function POST(req: NextRequest) {
 
   const path = payload.path || "/";
   const device = summarizeUa(ua);
+  const fingerprint = (payload.fingerprint || "").trim();
   const isPipeline =
     path === "/pipeline" || path.startsWith("/pipeline/");
+  const ignoreIds = parseIgnoreDeviceIds();
+  const deviceIgnored = Boolean(fingerprint && ignoreIds.has(fingerprint));
 
   const lines = [
     `**When:** ${when} (Central)`,
@@ -141,7 +155,8 @@ export async function POST(req: NextRequest) {
         timezone: payload.timezone || "",
         language: payload.language || "",
         screen: payload.screen || "",
-        sessionFingerprint: payload.fingerprint || "",
+        sessionFingerprint: fingerprint,
+        deviceIgnored,
       });
       visitId = visit.id;
       linkConfidence = visit.linkConfidence;
@@ -151,6 +166,18 @@ export async function POST(req: NextRequest) {
     } catch (error) {
       console.error("visit db write failed", error);
     }
+  }
+
+  // Never ntfy/Discord for ignored home devices (still stored above as ignored)
+  if (deviceIgnored) {
+    return NextResponse.json({
+      ok: true,
+      stored: Boolean(visitId),
+      visitId,
+      linkConfidence,
+      notified: false,
+      skippedNotify: "device_ignore",
+    });
   }
 
   // Never ntfy/Discord for your own pipeline sessions

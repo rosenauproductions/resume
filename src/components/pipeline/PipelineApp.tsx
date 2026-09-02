@@ -13,6 +13,7 @@ import {
 } from "@/lib/jobs/types";
 import { computeInsights } from "@/lib/jobs/insights";
 import { loadSeedJobs, loadSeedMeta } from "@/lib/jobs/seed";
+import { getOrCreateDeviceId } from "@/lib/device-id";
 import { BarChart, DonutChart, StatCard, TimelineChart } from "./PipelineCharts";
 
 const LOCAL_KEY = "pipeline-jobs-v4";
@@ -137,6 +138,7 @@ export function PipelineApp() {
   const [visits, setVisits] = useState<VisitRow[]>([]);
   const [visitJobs, setVisitJobs] = useState<VisitJobOption[]>([]);
   const [visitsLoading, setVisitsLoading] = useState(false);
+  const [thisDeviceId, setThisDeviceId] = useState("");
 
   const insights = useMemo(() => computeInsights(jobs, meta), [jobs, meta]);
   const filtered = useMemo(() => {
@@ -272,6 +274,7 @@ export function PipelineApp() {
   }
 
   useEffect(() => {
+    setThisDeviceId(getOrCreateDeviceId());
     (async () => {
       try {
         const session = await fetch("/api/pipeline/session").then((r) => r.json());
@@ -771,6 +774,32 @@ export function PipelineApp() {
                   {visitsLoading ? "Refreshing…" : "Refresh"}
                 </button>
               </div>
+              {thisDeviceId ? (
+                <div className="rounded-xl border border-white/10 bg-black/20 px-4 py-3">
+                  <p className="text-xs text-[var(--muted)]">
+                    This browser&apos;s device ID (not a MAC — browsers can&apos;t expose those). Add to{" "}
+                    <code className="text-[var(--cream)]">VISIT_IGNORE_DEVICE_IDS</code> on Vercel to skip
+                    ntfy/Discord for this device.
+                  </p>
+                  <div className="mt-2 flex flex-wrap items-center gap-2">
+                    <code className="break-all rounded-md border border-white/10 bg-black/40 px-2 py-1.5 font-mono text-xs text-[var(--cream)]">
+                      {thisDeviceId}
+                    </code>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        void navigator.clipboard.writeText(thisDeviceId).then(() => {
+                          setNotice("Device ID copied");
+                          setTimeout(() => setNotice(""), 2000);
+                        });
+                      }}
+                      className="rounded-lg border border-white/15 px-3 py-1.5 text-xs hover:border-[var(--accent)]"
+                    >
+                      Copy
+                    </button>
+                  </div>
+                </div>
+              ) : null}
               {!visits.length ? (
                 <p className="rounded-xl border border-white/10 px-4 py-8 text-center text-sm text-[var(--muted)]">
                   No visits stored yet. They appear when someone opens the live resume.

@@ -99,6 +99,8 @@ export type NewVisitInput = {
   language: string;
   screen: string;
   sessionFingerprint: string;
+  /** When true: store visit as ignored (no job association). Caller skips ntfy. */
+  deviceIgnored?: boolean;
 };
 
 export async function suggestAssociation(input: {
@@ -171,7 +173,14 @@ function visitNoteLine(visit: VisitRecord) {
 }
 
 export async function recordVisit(input: NewVisitInput): Promise<VisitRecord> {
-  const suggestion = await suggestAssociation({ path: input.path, city: input.city });
+  const suggestion = input.deviceIgnored
+    ? {
+        applicationId: null as string | null,
+        reason: "device ignore list",
+        confidence: "ignored" as LinkConfidence,
+      }
+    : await suggestAssociation({ path: input.path, city: input.city });
+
   const db = getDb();
   const inserted = await db
     .insert(visits)
