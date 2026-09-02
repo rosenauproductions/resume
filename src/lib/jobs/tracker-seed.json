@@ -48,51 +48,62 @@
   "highest_priority_applications": [
     {
       "company": "LMI",
-      "reason": "Exceptional multimedia/eLearning match and salary up to $125K."
+      "reason": "Exceptional multimedia/eLearning match and salary up to $125K.",
+      "location": "Remote, US",
+      "employment_type": "Remote"
     },
     {
       "company": "Lawrence Livermore National Laboratory",
-      "reason": "Excellent instructional design + multimedia + technical/safety training match; $114.9K-$140.7K."
+      "reason": "Excellent instructional design + multimedia + technical/safety training match; $114.9K-$140.7K.",
+      "location": "Livermore, CA"
     },
     {
       "company": "Chewy",
-      "reason": "Excellent match to Rise, multimedia, eLearning, maintenance, QA, and SME experience; $78.5K-$118K."
+      "reason": "Excellent match to Rise, multimedia, eLearning, maintenance, QA, and SME experience; $78.5K-$118K.",
+      "location": "Richardson, TX"
     },
     {
       "company": "Capital Title of Texas & Affiliates",
-      "reason": "Excellent skills match and excellent geographic fit for Plano/DFW."
+      "reason": "Excellent skills match and excellent geographic fit for Plano/DFW.",
+      "location": "Plano, TX"
     },
     {
       "company": "SRS Distribution",
-      "reason": "Excellent tools match and excellent McKinney/DFW geographic fit."
+      "reason": "Excellent tools match and excellent McKinney/DFW geographic fit.",
+      "location": "McKinney, TX"
     },
     {
       "company": "ACU",
-      "reason": "Very strong higher-ed/Canvas/Articulate match and high personal interest."
+      "reason": "Very strong higher-ed/Canvas/Articulate match and high personal interest.",
+      "location": "Abilene, TX",
+      "employment_type": "Remote"
     },
     {
       "company": "Baylor College of Medicine",
-      "reason": "Exceptional multimedia/eLearning/healthcare/higher-ed/tool match, but application status needs confirmation."
+      "reason": "Exceptional multimedia/eLearning/healthcare/higher-ed/tool match, but application status needs confirmation.",
+      "location": "Houston, TX"
     },
     {
       "company": "JPMorgan Chase",
-      "reason": "Leadership learning + video/digital content aligned with multimedia background."
+      "reason": "Leadership learning + video/digital content aligned with multimedia background.",
+      "location": "Plano, TX"
     },
     {
       "company": "Equinix",
-      "reason": "Senior Instructional Designer — strong ID/multimedia fit; application submitted 2026-08-31 via Workday."
+      "reason": "Senior Instructional Designer \u2014 strong ID/multimedia fit; application submitted 2026-08-31 via Workday.",
+      "location": "Dallas, TX"
     }
   ],
   "applications": [
     {
       "company": "ACU",
       "role": "Instructional Design Specialist",
-      "location": "Remote, US",
+      "location": "Abilene, TX",
       "status": "Applied",
       "application_date": null,
       "date_precision": "unknown",
       "salary": null,
-      "employment_type": "Full-time",
+      "employment_type": "Full-time \u00b7 Remote",
       "fit": "Very Strong",
       "fit_score": 9,
       "key_match_reasons": [
@@ -158,7 +169,7 @@
         "currency": "USD",
         "period": "annual"
       },
-      "employment_type": "Full-time",
+      "employment_type": "Full-time \u00b7 Remote",
       "client": "Department of Veterans Affairs",
       "program": "VA enterprise contact center technology training initiative",
       "fit": "Excellent",
@@ -200,7 +211,7 @@
     {
       "company": "McKesson",
       "role": "Instructional Designer",
-      "location": null,
+      "location": "Fort Worth, TX",
       "status": "Applied",
       "application_date": "2026-07-24",
       "date_precision": "exact",
@@ -226,46 +237,50 @@
       "company": "Acentra Health",
       "role": "Instructional Design & Trainer, Associate",
       "job_id": "2026-5818",
-      "location": "Remote, US",
+      "location": "McLean, VA",
       "status": "Applied",
       "application_date": null,
       "date_precision": "unknown",
       "salary": null,
       "fit": "Strong",
-      "fit_score": 8
+      "fit_score": 8,
+      "employment_type": "Remote"
     },
     {
       "company": "Peyton Resource Group",
       "role": "Instructional Designer",
-      "location": "Remote, US",
+      "location": "Irving, TX",
       "status": "Applied",
       "application_date": null,
       "date_precision": "unknown",
       "salary": null,
       "fit": "Strong",
-      "fit_score": 8
+      "fit_score": 8,
+      "employment_type": "Remote"
     },
     {
       "company": "InStride Health",
       "role": "LMS Coordinator",
-      "location": "Remote, US",
+      "location": "Boston, MA",
       "status": "Applied",
       "application_date": null,
       "date_precision": "unknown",
       "salary": null,
       "fit": "Moderate",
-      "fit_score": 6
+      "fit_score": 6,
+      "employment_type": "Remote"
     },
     {
       "company": "Banner",
       "role": "LMS Coordinator",
-      "location": null,
+      "location": "Phoenix, AZ",
       "status": "Applied",
       "application_date": null,
       "date_precision": "unknown",
       "salary": null,
       "fit": "Moderate",
-      "fit_score": 6
+      "fit_score": 6,
+      "employment_type": "Remote"
     },
     {
       "company": "WM",
@@ -281,13 +296,14 @@
     {
       "company": "Ashby",
       "role": "Customer Education Program Manager",
-      "location": "Remote, US",
+      "location": "San Francisco, CA",
       "status": "Rejected",
       "application_date": null,
       "date_precision": "unknown",
       "salary": null,
       "fit": "Moderate",
-      "fit_score": 6
+      "fit_score": 6,
+      "employment_type": "Remote"
     },
     {
       "company": "Hallmark Health Care Solutions",
@@ -333,19 +349,20 @@
     {
       "company": "Gainwell",
       "role": "Professional Instructional Designer",
-      "location": "Remote, US",
+      "location": "Dallas, TX",
       "status": "Applied",
       "application_date": null,
       "date_precision": "unknown",
       "salary": null,
       "fit": "Strong",
       "fit_score": 8,
-      "notes": "User requested cover letter assistance."
+      "notes": "User requested cover letter assistance.",
+      "employment_type": "Remote"
     },
     {
       "company": "Harbor Freight Tools",
       "role": "Instructional Designer",
-      "location": "Remote, US",
+      "location": "Calabasas, CA",
       "status": "Applied / discussed",
       "application_date": null,
       "date_precision": "unknown",
@@ -355,12 +372,13 @@
         "period": "annual"
       },
       "fit": "Strong",
-      "fit_score": 8
+      "fit_score": 8,
+      "employment_type": "Remote"
     },
     {
       "company": "Creative Instructional Designer employer",
       "role": "Creative Instructional Designer",
-      "location": "Remote, US",
+      "location": "Middleton, WI",
       "status": "Applied / considered",
       "application_date": null,
       "date_precision": "unknown",
@@ -371,12 +389,13 @@
         "period": "hourly"
       },
       "fit": "Strong",
-      "fit_score": 8
+      "fit_score": 8,
+      "employment_type": "Remote"
     },
     {
       "company": "Internal Software Platform",
       "role": "Instructional Designer",
-      "location": null,
+      "location": "Middleton, WI",
       "status": "Applied",
       "application_date": null,
       "date_precision": "unknown",
@@ -392,7 +411,8 @@
         "Articulate Rise",
         "Platform rollout",
         "eLearning development"
-      ]
+      ],
+      "employment_type": "Remote"
     },
     {
       "company": "Capital Title of Texas & Affiliates",
@@ -455,7 +475,7 @@
     {
       "company": "CEC Companies",
       "role": "Instructional Designer",
-      "location": "Remote, US",
+      "location": "Moon Township, PA",
       "status": "Applied",
       "application_date": null,
       "date_precision": "unknown",
@@ -480,12 +500,13 @@
         "3+ years senior/lead ID requested",
         "Bachelor's degree requirement"
       ],
-      "notes": "User explicitly stated they applied. Single record only (duplicate posting removed)."
+      "notes": "User explicitly stated they applied. Single record only (duplicate posting removed).",
+      "employment_type": "Remote"
     },
     {
       "company": "Endurance Warranty Services",
       "role": "Learning & Development Facilitator",
-      "location": "Remote, US",
+      "location": "Northbrook, IL",
       "status": "Applied",
       "application_date": null,
       "date_precision": "unknown",
@@ -495,7 +516,7 @@
         "currency": "USD",
         "period": "annual"
       },
-      "employment_type": "Full-time",
+      "employment_type": "Full-time \u00b7 Remote",
       "fit": "Strong",
       "fit_score": 8,
       "key_match_reasons": [
@@ -519,7 +540,7 @@
     {
       "company": "ABC Legal",
       "role": "Unknown - hourly-rate application",
-      "location": "Remote, US",
+      "location": "Seattle, WA",
       "status": "Applied",
       "application_date": null,
       "date_precision": "unknown",
@@ -531,7 +552,8 @@
       },
       "fit": "Unknown",
       "fit_score": null,
-      "notes": "User corrected company name to ABC Legal. Application asked about $24-$29/hour comfort."
+      "notes": "User corrected company name to ABC Legal. Application asked about $24-$29/hour comfort.",
+      "employment_type": "Remote"
     },
     {
       "company": "Transfr",
@@ -573,7 +595,7 @@
       "role": "Instructional Technology Associate - eLearning Developer",
       "job_id": "7329895",
       "reference": "24813-en_US",
-      "location": "Houston, Texas",
+      "location": "Houston, TX",
       "status": "Unknown - application not confirmed",
       "application_date": null,
       "date_precision": "unknown",
@@ -702,7 +724,7 @@
       "application_date": null,
       "date_precision": "unknown",
       "salary": null,
-      "notes": "Application in progress / not confirmed — tracking as researching."
+      "notes": "Application in progress / not confirmed \u2014 tracking as researching."
     },
     {
       "company": "Cogstate",
@@ -713,22 +735,23 @@
       "date_precision": "unknown",
       "salary": null,
       "employment_type": "Remote",
-      "notes": "Rejected 2026-09-02."
+      "notes": "Rejected 2026-09-02.\nHQ Melbourne, Australia \u2014 US Albers map uses Remote, US cluster."
     },
     {
       "company": "Embry-Riddle",
       "role": "Instructional Design",
-      "location": "Remote, US",
+      "location": "Daytona Beach, FL",
       "status": "Applied",
       "application_date": null,
       "date_precision": "unknown",
       "salary": null,
-      "notes": ""
+      "notes": "",
+      "employment_type": "Remote"
     },
     {
       "company": "Instructure",
       "role": "Learning Consultant",
-      "location": "Remote, US",
+      "location": "Salt Lake City, UT",
       "status": "Applied",
       "application_date": null,
       "date_precision": "unknown",
@@ -750,12 +773,13 @@
     {
       "company": "Purple",
       "role": "Multimedia Designer",
-      "location": "",
+      "location": "Lehi, UT",
       "status": "Applied",
       "application_date": null,
       "date_precision": "unknown",
       "salary": null,
-      "notes": ""
+      "notes": "",
+      "employment_type": "Remote"
     },
     {
       "company": "Sacred Heart Schools, Atherton",
@@ -770,7 +794,7 @@
     {
       "company": "SAIC",
       "role": "Multimedia Specialist",
-      "location": "Remote, NC",
+      "location": "Raleigh, NC",
       "status": "Applied",
       "application_date": null,
       "date_precision": "unknown",
@@ -781,7 +805,7 @@
     {
       "company": "Vasculitis Foundation",
       "role": "Multimedia Content Manager",
-      "location": "",
+      "location": "Kansas City, MO",
       "status": "Applied",
       "application_date": null,
       "date_precision": "unknown",
@@ -791,7 +815,7 @@
     {
       "company": "Xyleme",
       "role": "Instructional Designer",
-      "location": "",
+      "location": "New Brunswick, NJ",
       "status": "Applied",
       "application_date": null,
       "date_precision": "unknown",

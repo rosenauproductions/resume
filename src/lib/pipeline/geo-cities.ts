@@ -139,8 +139,19 @@ const CITY_COORDS: Record<string, GeoPoint> = {
   richmond: { lat: 37.5407, lng: -77.436, label: "Richmond, VA" },
   alexandria: { lat: 38.8048, lng: -77.0469, label: "Alexandria, VA" },
   "arlington va": { lat: 38.8816, lng: -77.091, label: "Arlington, VA" },
+  mclean: { lat: 38.9343, lng: -77.1775, label: "McLean, VA" },
   washington: { lat: 38.9072, lng: -77.0369, label: "Washington, DC" },
   "washington dc": { lat: 38.9072, lng: -77.0369, label: "Washington, DC" },
+
+  // Added for HQ / remote pins (pipeline export)
+  abilene: { lat: 32.4487, lng: -99.7331, label: "Abilene, TX" },
+  "moon township": { lat: 40.5201, lng: -80.2103, label: "Moon Township, PA" },
+  middleton: { lat: 43.0972, lng: -89.5043, label: "Middleton, WI" },
+  "daytona beach": { lat: 29.2108, lng: -81.0228, label: "Daytona Beach, FL" },
+  northbrook: { lat: 42.1275, lng: -87.8289, label: "Northbrook, IL" },
+  calabasas: { lat: 34.1367, lng: -118.6615, label: "Calabasas, CA" },
+  lehi: { lat: 40.3916, lng: -111.8508, label: "Lehi, UT" },
+  "new brunswick": { lat: 40.4862, lng: -74.4518, label: "New Brunswick, NJ" },
 };
 
 /**
@@ -148,19 +159,36 @@ const CITY_COORDS: Record<string, GeoPoint> = {
  * Used to attribute unlinked visits as suggested hits on targets.
  */
 export const CITY_COMPANY_ALIASES: Record<string, string[]> = {
-  plano: ["capital title", "jpmorgan", "jp morgan", "equinix"],
+  plano: ["capital title", "jpmorgan", "jp morgan"],
   mckinney: ["srs", "srs distribution"],
   coppell: ["aaa", "american automobile"],
   livermore: ["lawrence livermore", "llnl"],
   atherton: ["sacred heart"],
   bedford: ["propricer"],
   houston: ["baylor"],
-  dallas: ["hallmark"],
+  dallas: ["hallmark", "equinix", "gainwell"],
   richardson: ["associa", "chewy"],
   austin: ["ryder"],
   "dallas-fort worth": ["american airlines"],
   dfw: ["american airlines"],
-  "fort worth": ["american airlines"],
+  "fort worth": ["american airlines", "mckesson"],
+  seattle: ["abc legal"],
+  mclean: ["acentra"],
+  abilene: ["acu", "abilene christian"],
+  "san francisco": ["ashby"],
+  phoenix: ["banner"],
+  "moon township": ["cec"],
+  middleton: ["creative instructional", "internal software"],
+  "daytona beach": ["embry riddle", "embry-riddle"],
+  northbrook: ["endurance"],
+  calabasas: ["harbor freight"],
+  boston: ["instride"],
+  "salt lake city": ["instructure"],
+  irving: ["peyton"],
+  lehi: ["purple"],
+  raleigh: ["saic"],
+  "kansas city": ["vasculitis"],
+  "new brunswick": ["xyleme"],
 };
 
 const REMOTE_HINT =

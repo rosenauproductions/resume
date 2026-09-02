@@ -92,18 +92,36 @@ HOME_CITIES.delete("plano");
 
 /** Curated city → company aliases for unique strong matches. */
 const CITY_COMPANY_ALIASES: Record<string, string[]> = {
-  plano: ["capital title", "jpmorgan", "jp morgan", "equinix"],
+  plano: ["capital title", "jpmorgan", "jp morgan"],
   mckinney: ["srs", "srs distribution"],
   coppell: ["aaa", "american automobile"],
   livermore: ["lawrence livermore", "llnl"],
   atherton: ["sacred heart"],
   bedford: ["propricer"],
   houston: ["baylor"],
-  dallas: ["hallmark"],
+  dallas: ["hallmark", "equinix", "gainwell"],
   richardson: ["associa", "chewy"],
   austin: ["ryder"],
   "dallas-fort worth": ["american airlines"],
   dfw: ["american airlines"],
+  "fort worth": ["american airlines", "mckesson"],
+  seattle: ["abc legal"],
+  mclean: ["acentra"],
+  abilene: ["acu", "abilene christian"],
+  "san francisco": ["ashby"],
+  phoenix: ["banner"],
+  "moon township": ["cec"],
+  middleton: ["creative instructional", "internal software"],
+  "daytona beach": ["embry riddle", "embry-riddle"],
+  northbrook: ["endurance"],
+  calabasas: ["harbor freight"],
+  boston: ["instride"],
+  "salt lake city": ["instructure"],
+  irving: ["peyton"],
+  lehi: ["purple"],
+  raleigh: ["saic"],
+  "kansas city": ["vasculitis"],
+  "new brunswick": ["xyleme"],
 };
 
 function normalizeCity(raw: string) {

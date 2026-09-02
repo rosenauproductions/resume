@@ -1,28 +1,81 @@
 /**
- * One-shot: update applications.location from a curated export.
+ * One-shot: update applications.location (+ remote employmentType / notes)
+ * from curated HQ vs job-location export.
  * Usage: npx dotenv -e .env.local -- npx tsx scripts/update-locations.ts
  */
 import { listApplications, updateApplication } from "../src/lib/db/applications";
 import { dbConfigured } from "../src/lib/db";
+import { normalizeWorkType } from "../src/lib/jobs/types";
 
-type LocExport = { company: string; role: string; location: string };
+type LocExport = {
+  company: string;
+  role: string;
+  /** Clean City, ST (or Remote, US) for geocode */
+  location: string;
+  /** Ensure employmentType parses as remote (green fill at HQ pin) */
+  remote?: boolean;
+  /** Append to notes if missing */
+  note?: string;
+};
 
+/**
+ * Policy:
+ * - Job location → City, ST (onsite/hybrid pin)
+ * - Company HQ + remote job → City, ST + remote employmentType (green at HQ)
+ * - Pure remote, no useful city → Remote, US (Mexico cluster)
+ */
 const EXPORT: LocExport[] = [
+  { company: "AAA", role: "Instructional Designer", location: "Coppell, TX" },
   {
-    company: "Lawrence Livermore National Laboratory",
-    role: "Instructional Designer / Web-Based Training Developer",
-    location: "Livermore, CA",
+    company: "ABC Legal",
+    role: "Instructional Design",
+    location: "Seattle, WA",
+    remote: true,
   },
-  { company: "LMI", role: "Multimedia Developer", location: "Remote, US" },
   {
-    company: "Chewy",
+    company: "Acentra Health",
+    role: "Instructional Design",
+    location: "McLean, VA",
+    remote: true,
+  },
+  {
+    company: "ACU",
+    role: "Instructional Design Specialist",
+    location: "Abilene, TX",
+    remote: true,
+  },
+  {
+    company: "American Airlines",
+    role: "Flight Service Training",
+    location: "Fort Worth, TX",
+  },
+  {
+    company: "Ashby",
+    role: "Customer Education Program Manager",
+    location: "San Francisco, CA",
+    remote: true,
+  },
+  {
+    company: "Associa",
     role: "Instructional Designer",
     location: "Richardson, TX",
   },
   {
-    company: "SRS Distribution",
-    role: "Learning & Development Instructional Designer",
-    location: "McKinney, TX",
+    company: "Banner",
+    role: "LMS Coordinator",
+    location: "Phoenix, AZ",
+    remote: true,
+  },
+  {
+    company: "Baylor College of Medicine",
+    role: "Instructional Technology Associate",
+    location: "Houston, TX",
+  },
+  {
+    company: "CEC Companies",
+    role: "Instructional Designer",
+    location: "Moon Township, PA",
+    remote: true,
   },
   {
     company: "Capital Title of Texas & Affiliates",
@@ -30,115 +83,142 @@ const EXPORT: LocExport[] = [
     location: "Plano, TX",
   },
   {
-    company: "Endurance Warranty Services",
-    role: "Learning & Development Facilitator",
-    location: "Remote, US",
-  },
-  {
-    company: "ABC Legal",
-    role: "Instructional Design / Learning Role",
-    location: "Remote, US",
-  },
-  {
-    company: "CEC Companies",
-    role: "Instructional Designer / Learning & Development",
-    location: "Remote, US",
-  },
-  { company: "KBS", role: "Instructional Designer", location: "Remote, US" },
-  {
-    company: "Sacred Heart Schools, Atherton",
-    role: "Multimedia Content Producer",
-    location: "Atherton, CA",
-  },
-  { company: "SAIC", role: "Multimedia Specialist", location: "Remote, NC" },
-  {
-    company: "JPMorgan Chase",
-    role: "Leadership Learning Designer – Video & Digital Content",
-    location: "Plano, TX",
-  },
-  { company: "Instructure", role: "Learning Consultant", location: "Remote, US" },
-  { company: "Equinix", role: "Instructional Designer", location: "Dallas, TX" },
-  { company: "AAA", role: "Instructional Designer", location: "Coppell, TX" },
-  {
-    company: "American Airlines",
-    role: "Flight Service Training / Program Development",
-    location: "Fort Worth, TX",
-  },
-  {
-    company: "Hallmark Health Care Solutions",
-    role: "Product Trainer – Physician Enterprise Implementation",
-    location: "Dallas, TX",
+    company: "Chewy",
+    role: "Instructional Designer",
+    location: "Richardson, TX",
   },
   {
     company: "Cogstate",
     role: "Associate, Instructional Design",
     location: "Remote, US",
-  },
-  { company: "ACU", role: "Instructional Design Specialist", location: "Remote, US" },
-  {
-    company: "Associa",
-    role: "Instructional Designer #26380",
-    location: "Richardson, TX",
-  },
-  {
-    company: "Internal Software Platform",
-    role: "Instructional Designer",
-    location: "",
-  },
-  {
-    company: "Peyton Resource Group",
-    role: "Instructional Designer",
-    location: "Remote, US",
-  },
-  { company: "InStride Health", role: "LMS Coordinator", location: "Remote, US" },
-  { company: "McKesson", role: "Instructional Designer", location: "Not specified" },
-  {
-    company: "Acentra Health",
-    role: "Instructional Design & Trainer, Associate",
-    location: "Remote, US",
-  },
-  { company: "Banner", role: "LMS Coordinator", location: "" },
-  {
-    company: "Ashby",
-    role: "Customer Education Program Manager",
-    location: "Remote, US",
-  },
-  {
-    company: "Harbor Freight Tools",
-    role: "Instructional Designer",
-    location: "Remote, US",
+    remote: true,
+    note: "HQ Melbourne, Australia — US Albers map uses Remote, US cluster.",
   },
   {
     company: "Creative Instructional Designer",
     role: "Instructional Designer",
-    location: "Remote, US",
+    location: "Middleton, WI",
+    remote: true,
+  },
+  {
+    company: "Embry-Riddle",
+    role: "Instructional Design",
+    location: "Daytona Beach, FL",
+    remote: true,
+  },
+  {
+    company: "Endurance Warranty Services",
+    role: "Learning & Development Facilitator",
+    location: "Northbrook, IL",
+    remote: true,
+  },
+  {
+    company: "Equinix",
+    role: "Instructional Designer",
+    location: "Dallas, TX",
   },
   {
     company: "Gainwell",
     role: "Professional Instructional Designer",
-    location: "Remote, US",
+    location: "Dallas, TX",
+    remote: true,
   },
   {
-    company: "Ryder",
-    role: "Instructional Designer I",
-    location: "Remote / Austin, TX",
+    company: "Hallmark Health Care Solutions",
+    role: "Product Trainer",
+    location: "Dallas, TX",
   },
-  { company: "Xyleme", role: "Instructional Designer", location: "Not specified" },
-  { company: "Embry-Riddle", role: "Instructional Design", location: "Remote, US" },
-  { company: "Purple", role: "Multimedia Designer", location: "Not specified" },
+  {
+    company: "Harbor Freight Tools",
+    role: "Instructional Designer",
+    location: "Calabasas, CA",
+    remote: true,
+  },
+  {
+    company: "InStride Health",
+    role: "LMS Coordinator",
+    location: "Boston, MA",
+    remote: true,
+  },
+  {
+    company: "Instructure",
+    role: "Learning Consultant",
+    location: "Salt Lake City, UT",
+    remote: true,
+  },
+  {
+    company: "Internal Software Platform",
+    role: "Instructional Designer",
+    location: "Middleton, WI",
+    remote: true,
+  },
+  {
+    company: "JPMorgan Chase",
+    role: "Leadership Learning Designer",
+    location: "Plano, TX",
+  },
+  {
+    company: "KBS",
+    role: "Instructional Designer",
+    location: "Remote, US",
+    remote: true,
+  },
+  {
+    company: "LMI",
+    role: "Multimedia Developer",
+    location: "Remote, US",
+    remote: true,
+  },
+  {
+    company: "Lawrence Livermore National Laboratory",
+    role: "Instructional Designer",
+    location: "Livermore, CA",
+  },
+  {
+    company: "McKesson",
+    role: "Instructional Designer",
+    location: "Fort Worth, TX",
+  },
+  {
+    company: "Peyton Resource Group",
+    role: "Instructional Designer",
+    location: "Irving, TX",
+    remote: true,
+  },
+  {
+    company: "Purple",
+    role: "Multimedia Designer",
+    location: "Lehi, UT",
+    remote: true,
+  },
+  {
+    company: "Sacred Heart Schools, Atherton",
+    role: "Multimedia Content Producer",
+    location: "Atherton, CA",
+  },
+  {
+    company: "SAIC",
+    role: "Multimedia Specialist",
+    location: "Raleigh, NC",
+    remote: true,
+  },
+  {
+    company: "SRS Distribution",
+    role: "Learning & Development Instructional Designer",
+    location: "McKinney, TX",
+  },
   {
     company: "Vasculitis Foundation",
     role: "Multimedia Content Manager",
-    location: "Not specified",
+    location: "Kansas City, MO",
   },
   {
-    company: "Transfr",
-    role: "Professional Learning Facilitator",
-    location: "Texas",
+    company: "Xyleme",
+    role: "Instructional Designer",
+    location: "New Brunswick, NJ",
   },
 ];
 
-/** Normalize company for fuzzy match. */
 function normCompany(raw: string): string {
   return raw
     .toLowerCase()
@@ -170,16 +250,10 @@ function companyTokens(raw: string): string[] {
     .filter((t) => t.length > 1 && !stop.has(t));
 }
 
-/** Explicit aliases: export key → substrings that identify the DB company. */
 const COMPANY_ALIASES: Record<string, string[]> = {
-  "lawrence livermore national laboratory": [
-    "lawrence livermore",
-    "llnl",
-  ],
+  "lawrence livermore national laboratory": ["lawrence livermore", "llnl"],
   aaa: ["aaa", "american automobile"],
-  "creative instructional designer": [
-    "creative instructional designer",
-  ],
+  "creative instructional designer": ["creative instructional designer"],
   "sacred heart schools atherton": ["sacred heart"],
   "embry riddle": ["embry riddle"],
   "jpmorgan chase": ["jpmorgan", "jp morgan"],
@@ -194,13 +268,23 @@ const COMPANY_ALIASES: Record<string, string[]> = {
   "vasculitis foundation": ["vasculitis"],
   "abc legal": ["abc legal"],
   "cec companies": ["cec"],
-  "acu": ["acu", "abilene christian"],
+  acu: ["acu", "abilene christian"],
   ashby: ["ashby"],
   associa: ["associa"],
   chewy: ["chewy"],
   "acentra health": ["acentra"],
   gainwell: ["gainwell"],
   "instride health": ["instride"],
+  "baylor college of medicine": ["baylor"],
+  banner: ["banner"],
+  purple: ["purple"],
+  saic: ["saic"],
+  xyleme: ["xyleme"],
+  mckesson: ["mckesson"],
+  cogstate: ["cogstate"],
+  instructure: ["instructure"],
+  kbs: ["kbs"],
+  lmi: ["lmi"],
 };
 
 function companiesMatch(exportCompany: string, dbCompany: string): boolean {
@@ -215,14 +299,12 @@ function companiesMatch(exportCompany: string, dbCompany: string): boolean {
     if (d.includes(a) || a.includes(d)) return true;
   }
 
-  // Short codes (LMI, AAA, KBS, SAIC, ACU) — token equality
   const eTokens = companyTokens(exportCompany);
   const dTokens = companyTokens(dbCompany);
   if (eTokens.length === 1 && eTokens[0].length <= 5) {
     return dTokens.includes(eTokens[0]) || d.startsWith(eTokens[0] + " ");
   }
 
-  // Overlap of significant tokens
   if (eTokens.length >= 2) {
     const overlap = eTokens.filter((t) => dTokens.includes(t) || d.includes(t));
     if (overlap.length >= Math.min(2, eTokens.length)) return true;
@@ -254,29 +336,19 @@ function roleScore(exportRole: string, dbTitle: string): number {
   return Math.round((hit / eWords.size) * 60);
 }
 
-function normalizeLocation(loc: string): string {
-  const t = (loc || "").trim();
-  if (
-    !t ||
-    /^not\s+specified$/i.test(t) ||
-    /^unknown$/i.test(t) ||
-    /^needs\s+verification$/i.test(t)
-  ) {
-    return "";
-  }
-  return t;
+function ensureRemoteEmployment(existing: string): string {
+  if (normalizeWorkType(existing) === "remote") return existing;
+  const t = (existing || "").trim();
+  if (!t) return "Remote";
+  if (/\bremote\b/i.test(t)) return t;
+  return `${t} · Remote`;
 }
 
-function employmentHint(location: string): string | undefined {
-  const n = location.toLowerCase();
-  if (!n) return undefined;
-  if (n.includes("remote") && (n.includes("austin") || n.includes("hybrid"))) {
-    return "Remote / Hybrid";
-  }
-  if (n.startsWith("remote") || n.includes("remote,") || n.includes("remote /")) {
-    return "Remote";
-  }
-  return undefined;
+function appendNote(existing: string, note: string): string {
+  const e = (existing || "").trim();
+  if (!note) return e;
+  if (e.toLowerCase().includes(note.toLowerCase().slice(0, 40))) return e;
+  return e ? `${e}\n${note}` : note;
 }
 
 async function main() {
@@ -293,19 +365,20 @@ async function main() {
     id: string;
     company: string;
     title: string;
-    from: string;
-    to: string;
+    fromLoc: string;
+    toLoc: string;
+    fromEmp: string;
+    toEmp: string | undefined;
+    toNotes: string | undefined;
     exportCompany: string;
   }[] = [];
   const unmatchedExport: LocExport[] = [];
 
-  // Prefer best company+role match; company is primary when roles differ
   for (let ei = 0; ei < EXPORT.length; ei++) {
     const exp = EXPORT[ei];
     const candidates = apps
-      .map((app, ai) => ({
+      .map((app) => ({
         app,
-        ai,
         cMatch: companiesMatch(exp.company, app.company),
         rScore: roleScore(exp.role, app.title),
       }))
@@ -321,11 +394,21 @@ async function main() {
     usedExport.add(ei);
     usedApp.add(best.app.id);
 
-    const to = normalizeLocation(exp.location);
-    const from = best.app.location || "";
-    if (from === to) {
+    const toLoc = exp.location.trim();
+    const toEmp = exp.remote
+      ? ensureRemoteEmployment(best.app.employmentType)
+      : undefined;
+    const toNotes = exp.note
+      ? appendNote(best.app.notes, exp.note)
+      : undefined;
+
+    const locSame = (best.app.location || "") === toLoc;
+    const empSame = !toEmp || best.app.employmentType === toEmp;
+    const notesSame = !toNotes || best.app.notes === toNotes;
+
+    if (locSame && empSame && notesSame) {
       console.log(
-        `SKIP (same) ${best.app.company} | ${best.app.title} → "${to || "(empty)"}"`,
+        `SKIP (same) ${best.app.company} | ${best.app.title} → "${toLoc}"`,
       );
       continue;
     }
@@ -334,37 +417,46 @@ async function main() {
       id: best.app.id,
       company: best.app.company,
       title: best.app.title,
-      from,
-      to,
+      fromLoc: best.app.location || "",
+      toLoc,
+      fromEmp: best.app.employmentType || "",
+      toEmp: empSame ? undefined : toEmp,
+      toNotes: notesSame ? undefined : toNotes,
       exportCompany: exp.company,
     });
   }
 
   let updated = 0;
   for (const u of updates) {
-    const partial: { location: string; employmentType?: string } = {
-      location: u.to,
-    };
-    const hint = employmentHint(u.to);
-    const app = apps.find((a) => a.id === u.id);
-    if (hint && app && !app.employmentType) {
-      partial.employmentType = hint;
-    }
+    const partial: {
+      location: string;
+      employmentType?: string;
+      notes?: string;
+    } = { location: u.toLoc };
+    if (u.toEmp !== undefined) partial.employmentType = u.toEmp;
+    if (u.toNotes !== undefined) partial.notes = u.toNotes;
+
     await updateApplication(u.id, partial);
     updated += 1;
+    const empBit =
+      u.toEmp !== undefined
+        ? ` | emp "${u.fromEmp || "(empty)"}" → "${u.toEmp}"`
+        : "";
+    const noteBit = u.toNotes !== undefined ? " | notes+" : "";
     console.log(
-      `UPDATED ${u.company} | ${u.title}\n  "${u.from || "(empty)"}" → "${u.to || "(empty)"}" (export: ${u.exportCompany})`,
+      `UPDATED ${u.company} | ${u.title}\n  loc "${u.fromLoc || "(empty)"}" → "${u.toLoc}"${empBit}${noteBit} (export: ${u.exportCompany})`,
     );
   }
 
-  // DB companies with no export match (informational)
   const unmatchedDb = apps
     .filter((a) => !usedApp.has(a.id))
     .map((a) => `${a.company} | ${a.title} | loc="${a.location || ""}"`);
 
   console.log("\n=== SUMMARY ===");
   console.log(`Rows updated: ${updated}`);
-  console.log(`Export entries matched (incl. same-location skips): ${usedExport.size}`);
+  console.log(
+    `Export entries matched (incl. same-location skips): ${usedExport.size}`,
+  );
   console.log(`Export unmatched: ${unmatchedExport.length}`);
   if (unmatchedExport.length) {
     for (const e of unmatchedExport) {
