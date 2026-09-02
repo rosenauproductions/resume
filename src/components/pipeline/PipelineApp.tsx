@@ -4,18 +4,23 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   BOARD_COLUMNS,
   STATUS_LABELS,
+  composeLocation,
   createEmptyJob,
   parseTrackerPayload,
   normalizeJob,
+  normalizeWorkType,
   type JobApplication,
   type JobStatus,
   type TrackerMeta,
 } from "@/lib/jobs/types";
 import {
   MISSING_PROMPTS,
+  computeAnnualMid,
+  formatRateLabel,
   missingRequiredFields,
   type IngestFields,
   type RequiredIngestKey,
+  type WorkType,
 } from "@/lib/jobs/ingest-shared";
 import { computeInsights } from "@/lib/jobs/insights";
 import { loadSeedJobs, loadSeedMeta } from "@/lib/jobs/seed";
@@ -406,10 +411,14 @@ export function PipelineApp() {
         return;
       }
       const fields = (data.fields ?? data.job ?? {}) as IngestFields;
+      const workType = (normalizeWorkType(fields.workType) ||
+        normalizeWorkType(fields.location) ||
+        "") as WorkType;
       setIngestDraft({
         company: fields.company || "",
         title: fields.title || "",
         location: fields.location || "",
+        workType,
         url: fields.url || "",
         description: fields.description || "",
         rate: fields.rate || "",
@@ -437,17 +446,33 @@ export function PipelineApp() {
       setIngestError(`Still needed: ${missing.map((k) => MISSING_PROMPTS[k]).join(" · ")}`);
       return;
     }
+    const workType =
+      ingestDraft.workType || normalizeWorkType(ingestDraft.location) || "";
+    const location =
+      composeLocation({
+        location: ingestDraft.location.trim(),
+        workType,
+      }) || ingestDraft.location.trim();
+    const salaryPeriod = ingestDraft.salaryPeriod;
+    const rate =
+      ingestDraft.rate.trim() ||
+      formatRateLabel(ingestDraft.salaryMin, ingestDraft.salaryMax, salaryPeriod);
     const nextJob = createEmptyJob({
       company: ingestDraft.company.trim(),
       title: ingestDraft.title.trim(),
       shortName: ingestDraft.company.trim().slice(0, 24),
-      location: ingestDraft.location.trim(),
+      location,
       url: ingestDraft.url.trim(),
       description: ingestDraft.description.trim(),
-      rate: ingestDraft.rate.trim(),
+      rate,
       salaryMin: ingestDraft.salaryMin,
       salaryMax: ingestDraft.salaryMax,
-      salaryPeriod: ingestDraft.salaryPeriod,
+      salaryPeriod,
+      annualMid: computeAnnualMid(
+        ingestDraft.salaryMin,
+        ingestDraft.salaryMax,
+        salaryPeriod,
+      ),
       employmentType: ingestDraft.employmentType.trim(),
       source: ingestDraft.source.trim(),
       status: ingestStatus,
@@ -1237,7 +1262,7 @@ export function PipelineApp() {
           {ingestStep === "paste" ? (
             <div className="space-y-4 text-sm">
               <p className="text-[var(--muted)]">
-                Paste a posting URL or the full job description. We extract company, title, location, pay hints, and keep the cleaned text as the description — then ask for anything still missing.
+                Paste a posting URL or the full job description. We extract description, pay range, work arrangement, hours, company, title, and location — then ask only for anything still missing. LinkedIn/Workday often block scraping; paste text there and keep the URL.
               </p>
               <textarea
                 value={ingestInput}
@@ -1598,18 +1623,33 @@ function IngestReviewForm({
         />
       </label>
 
-      <label className="block">
-        <span className={`text-[10px] uppercase tracking-[0.2em] ${missingSet.has("location") ? "text-[var(--warm)]" : "text-[var(--muted)]"}`}>
-          {labelFor("location", "Location")}
-        </span>
-        <input
-          required
-          value={draft.location}
-          onChange={(e) => onField("location", e.target.value)}
-          placeholder="City, ST · Remote · Hybrid"
-          className={missingSet.has("location") ? needed : field}
-        />
-      </label>
+      <div className="grid grid-cols-2 gap-3">
+        <label className="block">
+          <span className={`text-[10px] uppercase tracking-[0.2em] ${missingSet.has("location") ? "text-[var(--warm)]" : "text-[var(--muted)]"}`}>
+            {labelFor("location", "Location (city / state)")}
+          </span>
+          <input
+            required={!draft.workType}
+            value={draft.location}
+            onChange={(e) => onField("location", e.target.value)}
+            placeholder="Austin, TX"
+            className={missingSet.has("location") ? needed : field}
+          />
+        </label>
+        <label className="block">
+          <span className="text-[10px] uppercase tracking-[0.2em] text-[var(--muted)]">Work arrangement</span>
+          <select
+            value={draft.workType}
+            onChange={(e) => onField("workType", e.target.value as WorkType)}
+            className={field}
+          >
+            <option value="">Unknown</option>
+            <option value="remote">Remote</option>
+            <option value="hybrid">Hybrid</option>
+            <option value="onsite">Onsite</option>
+          </select>
+        </label>
+      </div>
 
       <label className="block">
         <span className={`text-[10px] uppercase tracking-[0.2em] ${missingSet.has("url") ? "text-[var(--warm)]" : "text-[var(--muted)]"}`}>
@@ -1627,11 +1667,76 @@ function IngestReviewForm({
 
       <div className="grid grid-cols-2 gap-3">
         <label className="block">
-          <span className="text-[10px] uppercase tracking-[0.2em] text-[var(--muted)]">Rate / salary (optional)</span>
+          <span className="text-[10px] uppercase tracking-[0.2em] text-[var(--muted)]">Rate label (optional)</span>
           <input
             value={draft.rate}
             onChange={(e) => onField("rate", e.target.value)}
-            placeholder="$120k–$140k"
+            placeholder="$120k–$140k or $45–$55/hr"
+            className={field}
+          />
+        </label>
+        <label className="block">
+          <span className="text-[10px] uppercase tracking-[0.2em] text-[var(--muted)]">Pay period</span>
+          <select
+            value={draft.salaryPeriod}
+            onChange={(e) =>
+              onField(
+                "salaryPeriod",
+                e.target.value as IngestFields["salaryPeriod"],
+              )
+            }
+            className={field}
+          >
+            <option value="">Unknown</option>
+            <option value="annual">Annual</option>
+            <option value="hourly">Hourly</option>
+            <option value="daily">Daily</option>
+          </select>
+        </label>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        <label className="block">
+          <span className="text-[10px] uppercase tracking-[0.2em] text-[var(--muted)]">Salary / rate min</span>
+          <input
+            type="number"
+            inputMode="decimal"
+            value={draft.salaryMin ?? ""}
+            onChange={(e) =>
+              onField(
+                "salaryMin",
+                e.target.value === "" ? null : Number(e.target.value),
+              )
+            }
+            placeholder="e.g. 120000 or 45"
+            className={field}
+          />
+        </label>
+        <label className="block">
+          <span className="text-[10px] uppercase tracking-[0.2em] text-[var(--muted)]">Salary / rate max</span>
+          <input
+            type="number"
+            inputMode="decimal"
+            value={draft.salaryMax ?? ""}
+            onChange={(e) =>
+              onField(
+                "salaryMax",
+                e.target.value === "" ? null : Number(e.target.value),
+              )
+            }
+            placeholder="e.g. 140000 or 55"
+            className={field}
+          />
+        </label>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        <label className="block">
+          <span className="text-[10px] uppercase tracking-[0.2em] text-[var(--muted)]">Employment / hours</span>
+          <input
+            value={draft.employmentType}
+            onChange={(e) => onField("employmentType", e.target.value)}
+            placeholder="Full-time · 20 hrs/week · Contract"
             className={field}
           />
         </label>
@@ -1646,16 +1751,6 @@ function IngestReviewForm({
           </select>
         </label>
       </div>
-
-      <label className="block">
-        <span className="text-[10px] uppercase tracking-[0.2em] text-[var(--muted)]">Employment type (optional)</span>
-        <input
-          value={draft.employmentType}
-          onChange={(e) => onField("employmentType", e.target.value)}
-          placeholder="Full-time · Remote"
-          className={field}
-        />
-      </label>
 
       <label className="block">
         <span className="text-[10px] uppercase tracking-[0.2em] text-[var(--muted)]">Description</span>

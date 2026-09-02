@@ -7,12 +7,31 @@ import {
   fieldsToPartialJob,
   heuristicExtract,
   looksLikeUrl,
+  mergeIngestFields,
   missingRequiredFields,
+  scrapeBlockHint,
   trimDescription,
   type IngestFields,
 } from "@/lib/jobs/ingest";
 
 export const maxDuration = 60;
+
+function emptyIngest(url = ""): IngestFields {
+  return {
+    company: "",
+    title: "",
+    location: "",
+    workType: "",
+    url,
+    description: "",
+    rate: "",
+    salaryMin: null,
+    salaryMax: null,
+    salaryPeriod: "",
+    employmentType: "",
+    source: "",
+  };
+}
 
 export async function POST(request: Request) {
   const auth = await requirePipelineAuth();
@@ -36,51 +55,28 @@ export async function POST(request: Request) {
 
   if (looksLikeUrl(input)) {
     knownUrl = input;
+    const earlyHint = scrapeBlockHint(input);
     const fetched = await fetchUrlAsText(input);
     if (fetched.text) {
       text = fetched.text;
+      fetchWarning = fetched.warning;
     } else {
       text = "";
-      fetchWarning = fetched.warning || "Could not fetch URL.";
+      fetchWarning =
+        fetched.warning ||
+        earlyHint ||
+        "Could not fetch URL. Paste the posting text instead.";
     }
   }
 
   if (!text.trim()) {
+    const fields = emptyIngest(knownUrl);
     return NextResponse.json({
-      job: fieldsToPartialJob({
-        company: "",
-        title: "",
-        location: "",
-        url: knownUrl,
-        description: "",
-        rate: "",
-        salaryMin: null,
-        salaryMax: null,
-        salaryPeriod: "",
-        employmentType: "",
-        source: "",
-      }),
-      fields: {
-        company: "",
-        title: "",
-        location: "",
-        url: knownUrl,
-        description: "",
-        rate: "",
-        salaryMin: null,
-        salaryMax: null,
-        salaryPeriod: "",
-        employmentType: "",
-        source: "",
-      } satisfies IngestFields,
+      job: fieldsToPartialJob(fields),
+      fields,
       mode: "heuristic" as const,
       aiAvailable: aiConfigured(),
-      missing: missingRequiredFields({
-        company: "",
-        title: "",
-        location: "",
-        url: knownUrl,
-      }),
+      missing: missingRequiredFields(fields),
       fetchWarning: fetchWarning || "No posting text to parse.",
     });
   }
@@ -94,20 +90,7 @@ export async function POST(request: Request) {
     const ai = await aiExtract(text, knownUrl);
     if (ai) {
       mode = "ai";
-      // Prefer AI fields when present; keep heuristic fallbacks for empties
-      fields = {
-        company: ai.company || fields.company,
-        title: ai.title || fields.title,
-        location: ai.location || fields.location,
-        url: ai.url || fields.url || knownUrl,
-        description: ai.description || fields.description,
-        rate: ai.rate || fields.rate,
-        salaryMin: ai.salaryMin ?? fields.salaryMin,
-        salaryMax: ai.salaryMax ?? fields.salaryMax,
-        salaryPeriod: ai.salaryPeriod || fields.salaryPeriod,
-        employmentType: ai.employmentType || fields.employmentType,
-        source: ai.source || fields.source,
-      };
+      fields = mergeIngestFields(ai, fields);
     }
   }
 
