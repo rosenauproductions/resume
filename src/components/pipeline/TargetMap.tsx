@@ -1,7 +1,12 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import type { JobApplication } from "@/lib/jobs/types";
+import {
+  STATUS_LABELS,
+  normalizeWorkType,
+  type JobApplication,
+  type JobStatus,
+} from "@/lib/jobs/types";
 import {
   CITY_COMPANY_ALIASES,
   REMOTE_CLUSTER,
@@ -26,6 +31,12 @@ export type MapVisit = {
   linkedApplicationId: string | null;
 };
 
+type WorkArrangement = "onsite" | "hybrid" | "remote" | "unknown";
+
+type StatusStrokeKind = "rejected" | "applied" | "progress";
+
+type MapStatusFilter = "all" | "researching" | "applied" | "progress" | "rejected";
+
 type TargetNode = {
   job: JobApplication;
   cityKey: string | null;
@@ -36,6 +47,8 @@ type TargetNode = {
   linkedHits: number;
   suggestedHits: number;
   remote: boolean;
+  workType: WorkArrangement;
+  strokeKind: StatusStrokeKind;
 };
 
 type UnlinkedPin = {
@@ -46,16 +59,80 @@ type UnlinkedPin = {
   count: number;
 };
 
+const FILL = {
+  onsite: "#4a8fd4",
+  hybrid: "var(--accent)",
+  remote: "#3d9a6a",
+  unknown: "color-mix(in oklab, var(--cream) 62%, var(--muted))",
+} as const;
+
+const STROKE = {
+  rejected: "#ef6b6b",
+  applied: "#e8b84a",
+  progress: "#7CFFB2",
+} as const;
+
+const FILTERS: { id: MapStatusFilter; label: string }[] = [
+  { id: "all", label: "All" },
+  { id: "researching", label: "Researching" },
+  { id: "applied", label: "Applied" },
+  { id: "progress", label: "In progress" },
+  { id: "rejected", label: "Rejected" },
+];
+
+function inferWorkType(job: JobApplication, inRemoteCluster: boolean): WorkArrangement {
+  const fromEmployment = normalizeWorkType(job.employmentType);
+  const fromLocation = normalizeWorkType(job.location);
+  const wt = fromEmployment || fromLocation;
+  if (wt === "onsite" || wt === "hybrid" || wt === "remote") return wt;
+  if (inRemoteCluster || isRemoteLocation(job.location)) return "remote";
+  return "unknown";
+}
+
+function strokeKindFor(status: JobStatus, hits: number): StatusStrokeKind {
+  if (status === "rejected" || status === "withdrawn" || status === "avoid") {
+    return "rejected";
+  }
+  if (
+    hits >= 2 ||
+    status === "researching" ||
+    status === "screen" ||
+    status === "interview" ||
+    status === "offer"
+  ) {
+    return "progress";
+  }
+  return "applied";
+}
+
+function matchesFilter(job: JobApplication, filter: MapStatusFilter): boolean {
+  if (filter === "all") return true;
+  if (filter === "researching") return job.status === "researching";
+  if (filter === "applied") return job.status === "applied";
+  if (filter === "progress") {
+    return job.status === "screen" || job.status === "interview" || job.status === "offer";
+  }
+  return job.status === "rejected" || job.status === "withdrawn" || job.status === "avoid";
+}
+
+function workTypeLabel(wt: WorkArrangement): string {
+  if (wt === "onsite") return "Onsite";
+  if (wt === "hybrid") return "Hybrid";
+  if (wt === "remote") return "Remote";
+  return "Unknown";
+}
+
+/** ~20% larger than prior map radii; hit hierarchy preserved. */
 function hitRadius(hits: number, maxHits: number) {
-  if (hits <= 0) return 5;
+  if (hits <= 0) return 6;
   const t = Math.min(1, hits / Math.max(1, maxHits));
-  return 6 + t * 14;
+  return 7.2 + t * 16.8;
 }
 
 function hitOpacity(hits: number, maxHits: number) {
-  if (hits <= 0) return 0.45;
+  if (hits <= 0) return 0.55;
   const t = Math.min(1, hits / Math.max(1, maxHits));
-  return 0.55 + t * 0.45;
+  return 0.65 + t * 0.35;
 }
 
 function edgeStroke(hits: number, maxHits: number) {
@@ -65,9 +142,21 @@ function edgeStroke(hits: number, maxHits: number) {
 }
 
 function remoteDotRadius(hits: number, maxHits: number) {
-  if (hits <= 0) return 4;
+  if (hits <= 0) return 4.8;
   const t = Math.min(1, hits / Math.max(1, maxHits));
-  return 4.5 + t * 8;
+  return 5.4 + t * 9.6;
+}
+
+function targetStrokeWidth(hits: number, active: boolean) {
+  if (active) return 2.8;
+  if (hits >= 2) return 2.5;
+  return 2.15;
+}
+
+function shortTitle(title: string, max = 42) {
+  const t = title.trim();
+  if (t.length <= max) return t;
+  return `${t.slice(0, max - 1)}…`;
 }
 
 export function TargetMap({
@@ -87,6 +176,7 @@ export function TargetMap({
   const [showZero, setShowZero] = useState(true);
   const [showUnlinked, setShowUnlinked] = useState(true);
   const [showEdges, setShowEdges] = useState(true);
+  const [statusFilter, setStatusFilter] = useState<MapStatusFilter>("all");
 
   const hub = useMemo(() => {
     const p = projectUS(RESUME_HUB.lng, RESUME_HUB.lat);
@@ -158,6 +248,7 @@ export function TargetMap({
             const idx = byCityIndex.get(geo.label) ?? 0;
             byCityIndex.set(geo.label, idx + 1);
             const jitter = jitterOffset(job.id || job.company, idx);
+            const workType = inferWorkType(job, false);
             nodes.push({
               job,
               cityKey,
@@ -168,6 +259,8 @@ export function TargetMap({
               linkedHits,
               suggestedHits,
               remote: false,
+              workType,
+              strokeKind: strokeKindFor(job.status, hits),
             });
             continue;
           }
@@ -186,6 +279,8 @@ export function TargetMap({
           linkedHits,
           suggestedHits,
           remote: true,
+          workType: inferWorkType(job, true),
+          strokeKind: strokeKindFor(job.status, hits),
         });
       }
 
@@ -224,13 +319,90 @@ export function TargetMap({
       return { targets: nodes, unlinked, maxHits, geoTargets, remoteTargets, remoteCount, totalHits };
     }, [jobs, visits]);
 
-  const visibleGeo = showZero ? geoTargets : geoTargets.filter((t) => t.hits > 0);
-  const visibleRemote = showZero ? remoteTargets : remoteTargets.filter((t) => t.hits > 0);
-  const visibleTargets = [...visibleGeo, ...visibleRemote];
+  const filterPass = (t: TargetNode) => matchesFilter(t.job, statusFilter);
+  const dimNonMatch = statusFilter !== "all";
+
+  const visibleGeo = (showZero ? geoTargets : geoTargets.filter((t) => t.hits > 0)).filter(
+    (t) => !dimNonMatch || filterPass(t),
+  );
+  const visibleRemote = (showZero ? remoteTargets : remoteTargets.filter((t) => t.hits > 0)).filter(
+    (t) => !dimNonMatch || filterPass(t),
+  );
+  // When filtering, keep non-matches on map but dimmed; edges only for visible matches
+  const allGeoDraw = showZero ? geoTargets : geoTargets.filter((t) => t.hits > 0);
+  const allRemoteDraw = showZero ? remoteTargets : remoteTargets.filter((t) => t.hits > 0);
+  const drawGeo = dimNonMatch ? allGeoDraw : visibleGeo;
+  const drawRemote = dimNonMatch ? allRemoteDraw : visibleRemote;
+  const edgeTargets = [...visibleGeo, ...visibleRemote];
+
   const hovered = hoverId ? targets.find((t) => t.job.id === hoverId) : null;
-  const ranked = [...targets].sort((a, b) => b.hits - a.hits || a.job.company.localeCompare(b.job.company));
+  const ranked = [...targets]
+    .filter((t) => filterPass(t))
+    .sort((a, b) => b.hits - a.hits || a.job.company.localeCompare(b.job.company));
 
   const { boxX, boxY, boxW, boxH, label: remoteLabel } = REMOTE_CLUSTER;
+
+  function renderTargetDot(t: TargetNode, kind: "geo" | "remote") {
+    const r = kind === "geo" ? hitRadius(t.hits, maxHits) : remoteDotRadius(t.hits, maxHits);
+    const op = hitOpacity(t.hits, maxHits);
+    const active = hoverId === t.job.id;
+    const matched = filterPass(t);
+    const faded = dimNonMatch && !matched;
+    const fill = FILL[t.workType];
+    const stroke = STROKE[t.strokeKind];
+    const sw = targetStrokeWidth(t.hits, active);
+
+    return (
+      <g
+        key={t.job.id}
+        className="cursor-pointer"
+        onMouseEnter={() => setHoverId(t.job.id)}
+        onMouseLeave={() => setHoverId(null)}
+        onClick={() => onSelectJob(t.job)}
+        opacity={faded ? 0.18 : hoverId && !active ? 0.38 : 1}
+        style={faded ? { pointerEvents: "none" } : undefined}
+      >
+        {t.hits >= 2 && !faded ? (
+          <circle
+            className="pulse-ring"
+            cx={t.x}
+            cy={t.y}
+            r={kind === "geo" ? 12 : 8}
+            style={{
+              animationDelay: `${(t.hits % 5) * 0.2}s`,
+              fill: stroke,
+            }}
+          />
+        ) : null}
+        <circle
+          cx={t.x}
+          cy={t.y}
+          r={r}
+          fill={fill}
+          fillOpacity={op}
+          stroke={active ? "var(--cream)" : stroke}
+          strokeWidth={active ? sw + 0.4 : sw}
+          filter={t.hits > 0 && !faded ? "url(#hit-glow)" : undefined}
+        />
+        {kind === "geo" && (active || t.hits > 0) && !faded ? (
+          <text
+            x={t.x}
+            y={t.y + r + 12}
+            textAnchor="middle"
+            fill="var(--cream)"
+            fontSize={10}
+            opacity={0.9}
+          >
+            {t.job.shortName || t.job.company}
+            {t.hits > 0 ? ` · ${t.hits}` : ""}
+          </text>
+        ) : null}
+        <title>
+          {`${t.job.company} — ${t.job.title}\n${t.geoLabel}\n${workTypeLabel(t.workType)} · ${STATUS_LABELS[t.job.status]}\n${t.hits} hit${t.hits === 1 ? "" : "s"} (${t.linkedHits} linked · ${t.suggestedHits} suggested)`}
+        </title>
+      </g>
+    );
+  }
 
   return (
     <div className="space-y-4">
@@ -240,8 +412,8 @@ export function TargetMap({
             Target map
           </h2>
           <p className="mt-1 max-w-2xl text-sm text-[var(--muted)]">
-            Applications as targets · resume visits as hits. Stronger glow and thicker links mean more
-            linked or city-suggested views. Remote and unplaced roles sit in the Mexico-side cluster.
+            Fill = work arrangement · outline = pipeline status (green also for ≥2 resume hits).
+            Remote and unplaced roles sit in the Mexico-side cluster.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -271,6 +443,30 @@ export function TargetMap({
             </button>
           ) : null}
         </div>
+      </div>
+
+      <div
+        className="flex flex-wrap gap-1.5"
+        role="group"
+        aria-label="Filter targets by status"
+      >
+        {FILTERS.map((f) => {
+          const active = statusFilter === f.id;
+          return (
+            <button
+              key={f.id}
+              type="button"
+              onClick={() => setStatusFilter(f.id)}
+              className={`rounded-lg border px-3 py-1.5 text-xs transition-colors ${
+                active
+                  ? "border-[var(--accent)] bg-[color-mix(in_oklab,var(--accent)_18%,transparent)] text-[var(--cream)]"
+                  : "border-white/12 text-[var(--muted)] hover:border-white/25 hover:text-[var(--cream)]"
+              }`}
+            >
+              {f.label}
+            </button>
+          );
+        })}
       </div>
 
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_16rem]">
@@ -303,7 +499,6 @@ export function TargetMap({
                 }
                 .pulse-ring {
                   animation: target-pulse 2.4s ease-in-out infinite;
-                  fill: var(--accent);
                   transform-box: fill-box;
                   transform-origin: center;
                 }
@@ -323,7 +518,7 @@ export function TargetMap({
             </g>
 
             {showEdges
-              ? visibleTargets.map((t) => {
+              ? edgeTargets.map((t) => {
                   const edge = edgeStroke(t.hits, maxHits);
                   return (
                     <line
@@ -363,10 +558,10 @@ export function TargetMap({
                     <circle
                       cx={u.x}
                       cy={u.y}
-                      r={4 + Math.min(8, u.count * 1.5)}
+                      r={5 + Math.min(9.5, u.count * 1.8)}
                       fill="color-mix(in oklab, var(--muted) 55%, transparent)"
                       stroke="color-mix(in oklab, var(--muted) 80%, white)"
-                      strokeWidth={1}
+                      strokeWidth={1.2}
                     />
                     <title>{`${u.label}: ${u.count} unlinked visit${u.count === 1 ? "" : "s"}`}</title>
                   </g>
@@ -412,105 +607,85 @@ export function TargetMap({
               </g>
             ) : null}
 
-            {visibleGeo.map((t) => {
-              const r = hitRadius(t.hits, maxHits);
-              const op = hitOpacity(t.hits, maxHits);
-              const active = hoverId === t.job.id;
-              const color = t.hits > 0 ? "var(--accent)" : "color-mix(in oklab, var(--warm) 70%, var(--muted))";
-              return (
-                <g
-                  key={t.job.id}
-                  className="cursor-pointer"
-                  onMouseEnter={() => setHoverId(t.job.id)}
-                  onMouseLeave={() => setHoverId(null)}
-                  onClick={() => onSelectJob(t.job)}
-                  opacity={hoverId && !active ? 0.35 : 1}
-                >
-                  {t.hits >= 2 ? (
-                    <circle className="pulse-ring" cx={t.x} cy={t.y} r={12} style={{ animationDelay: `${(t.hits % 5) * 0.2}s` }} />
-                  ) : null}
-                  <circle
-                    cx={t.x}
-                    cy={t.y}
-                    r={r}
-                    fill={color}
-                    fillOpacity={op}
-                    stroke={active ? "var(--cream)" : "color-mix(in oklab, var(--ink) 40%, transparent)"}
-                    strokeWidth={active ? 2 : 1}
-                    filter={t.hits > 0 ? "url(#hit-glow)" : undefined}
-                  />
-                  {(active || t.hits > 0) && (
-                    <text
-                      x={t.x}
-                      y={t.y + r + 12}
-                      textAnchor="middle"
-                      fill="var(--cream)"
-                      fontSize={10}
-                      opacity={0.9}
-                    >
-                      {t.job.shortName || t.job.company}
-                      {t.hits > 0 ? ` · ${t.hits}` : ""}
-                    </text>
-                  )}
-                  <title>
-                    {`${t.job.company} — ${t.job.title}\n${t.geoLabel}\n${t.hits} hit${t.hits === 1 ? "" : "s"} (${t.linkedHits} linked · ${t.suggestedHits} suggested)`}
-                  </title>
-                </g>
-              );
-            })}
-
-            {visibleRemote.map((t) => {
-              const r = remoteDotRadius(t.hits, maxHits);
-              const op = hitOpacity(t.hits, maxHits);
-              const active = hoverId === t.job.id;
-              const color = t.hits > 0 ? "var(--accent)" : "color-mix(in oklab, var(--warm) 75%, var(--muted))";
-              return (
-                <g
-                  key={t.job.id}
-                  className="cursor-pointer"
-                  onMouseEnter={() => setHoverId(t.job.id)}
-                  onMouseLeave={() => setHoverId(null)}
-                  onClick={() => onSelectJob(t.job)}
-                  opacity={hoverId && !active ? 0.4 : 1}
-                >
-                  {t.hits >= 2 ? (
-                    <circle
-                      className="pulse-ring"
-                      cx={t.x}
-                      cy={t.y}
-                      r={8}
-                      style={{ animationDelay: `${(t.hits % 5) * 0.2}s` }}
-                    />
-                  ) : null}
-                  <circle
-                    cx={t.x}
-                    cy={t.y}
-                    r={r}
-                    fill={color}
-                    fillOpacity={op}
-                    stroke={active ? "var(--cream)" : "color-mix(in oklab, var(--ink) 35%, transparent)"}
-                    strokeWidth={active ? 1.8 : 0.9}
-                    filter={t.hits > 0 ? "url(#hit-glow)" : undefined}
-                  />
-                  <title>
-                    {`${t.job.company} — ${t.job.title}\n${t.geoLabel}\n${t.hits} hit${t.hits === 1 ? "" : "s"} (${t.linkedHits} linked · ${t.suggestedHits} suggested)`}
-                  </title>
-                </g>
-              );
-            })}
+            {drawGeo.map((t) => renderTargetDot(t, "geo"))}
+            {drawRemote.map((t) => renderTargetDot(t, "remote"))}
           </svg>
 
+          {/* On-map color key */}
+          <div className="pointer-events-none absolute left-3 top-3 z-[2] max-w-[14rem] rounded-xl border border-white/10 bg-[var(--ink)]/85 px-2.5 py-2 text-[10px] backdrop-blur">
+            <p className="mb-1.5 font-medium uppercase tracking-[0.16em] text-[var(--muted)]">Fill</p>
+            <ul className="mb-2 flex flex-wrap gap-x-3 gap-y-1 text-[var(--cream)]/90">
+              <li className="flex items-center gap-1.5">
+                <span className="inline-block h-2 w-2 rounded-full" style={{ background: FILL.onsite }} />
+                Onsite
+              </li>
+              <li className="flex items-center gap-1.5">
+                <span className="inline-block h-2 w-2 rounded-full bg-[var(--accent)]" />
+                Hybrid
+              </li>
+              <li className="flex items-center gap-1.5">
+                <span className="inline-block h-2 w-2 rounded-full" style={{ background: FILL.remote }} />
+                Remote
+              </li>
+            </ul>
+            <p className="mb-1.5 font-medium uppercase tracking-[0.16em] text-[var(--muted)]">Stroke</p>
+            <ul className="flex flex-wrap gap-x-3 gap-y-1 text-[var(--cream)]/90">
+              <li className="flex items-center gap-1.5">
+                <span
+                  className="inline-block h-2.5 w-2.5 rounded-full bg-transparent"
+                  style={{ border: `2px solid ${STROKE.rejected}` }}
+                />
+                Rejected
+              </li>
+              <li className="flex items-center gap-1.5">
+                <span
+                  className="inline-block h-2.5 w-2.5 rounded-full bg-transparent"
+                  style={{ border: `2px solid ${STROKE.applied}` }}
+                />
+                Applied
+              </li>
+              <li className="flex items-center gap-1.5">
+                <span
+                  className="inline-block h-2.5 w-2.5 rounded-full bg-transparent"
+                  style={{ border: `2px solid ${STROKE.progress}` }}
+                />
+                In progress / hits
+              </li>
+            </ul>
+          </div>
+
           {hovered ? (
-            <div className="pointer-events-none absolute bottom-3 left-3 right-3 rounded-xl border border-white/10 bg-[var(--ink)]/90 px-3 py-2 text-sm backdrop-blur sm:right-auto sm:max-w-sm">
+            <div className="pointer-events-none absolute bottom-3 left-3 right-3 z-[2] rounded-xl border border-white/10 bg-[var(--ink)]/92 px-3 py-2.5 text-sm backdrop-blur sm:right-auto sm:max-w-sm">
               <p className="font-medium text-[var(--cream)]">{hovered.job.company}</p>
-              <p className="text-xs text-[var(--muted)]">{hovered.job.title}</p>
-              <p className="mt-1 text-xs text-[var(--accent)]">
-                {hovered.hits} hit{hovered.hits === 1 ? "" : "s"} · {hovered.geoLabel}
+              <p className="text-xs text-[var(--muted)]">{shortTitle(hovered.job.title)}</p>
+              <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px]">
+                <span className="inline-flex items-center gap-1 text-[var(--cream)]/90">
+                  <span
+                    className="inline-block h-2 w-2 rounded-full"
+                    style={{ background: FILL[hovered.workType] }}
+                  />
+                  {workTypeLabel(hovered.workType)}
+                </span>
+                <span className="text-[var(--muted)]">·</span>
+                <span className="inline-flex items-center gap-1 text-[var(--cream)]/90">
+                  <span
+                    className="inline-block h-2 w-2 rounded-full bg-transparent"
+                    style={{ border: `2px solid ${STROKE[hovered.strokeKind]}` }}
+                  />
+                  {STATUS_LABELS[hovered.job.status]}
+                </span>
+                <span className="text-[var(--muted)]">·</span>
+                <span className="text-[var(--accent)]">
+                  {hovered.hits} hit{hovered.hits === 1 ? "" : "s"}
+                </span>
+              </div>
+              <p className="mt-1 text-[10px] text-[var(--muted)]">
+                {hovered.geoLabel}
                 {hovered.linkedHits || hovered.suggestedHits
                   ? ` · ${hovered.linkedHits} linked / ${hovered.suggestedHits} suggested`
                   : " · no visits yet"}
+                {" · click for detail"}
               </p>
-              <p className="mt-0.5 text-[10px] text-[var(--muted)]">Click to open job detail</p>
             </div>
           ) : null}
         </section>
@@ -524,26 +699,41 @@ export function TargetMap({
                 Resume hub (DFW)
               </li>
               <li className="flex items-center gap-2">
-                <span className="inline-block h-3 w-3 rounded-full bg-[var(--accent)] shadow-[0_0_8px_var(--accent)]" />
-                Target with hits (size ∝ views)
+                <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ background: FILL.onsite }} />
+                Onsite fill
               </li>
               <li className="flex items-center gap-2">
-                <span className="inline-block h-2.5 w-2.5 rounded-full bg-[var(--warm)] opacity-70" />
-                Target, 0 hits
+                <span className="inline-block h-2.5 w-2.5 rounded-full bg-[var(--accent)]" />
+                Hybrid fill
               </li>
               <li className="flex items-center gap-2">
-                <span className="inline-flex h-4 w-7 items-center justify-center rounded border border-[color-mix(in_oklab,var(--warm)_45%,var(--cream))] bg-[color-mix(in_oklab,var(--ink)_40%,transparent)]">
-                  <span className="h-1.5 w-1.5 rounded-full bg-[var(--warm)]" />
-                </span>
-                Remote / no location
+                <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ background: FILL.remote }} />
+                Remote fill
+              </li>
+              <li className="flex items-center gap-2">
+                <span
+                  className="inline-block h-2.5 w-2.5 rounded-full bg-transparent"
+                  style={{ border: `2px solid ${STROKE.rejected}` }}
+                />
+                Rejected / withdrawn stroke
+              </li>
+              <li className="flex items-center gap-2">
+                <span
+                  className="inline-block h-2.5 w-2.5 rounded-full bg-transparent"
+                  style={{ border: `2px solid ${STROKE.applied}` }}
+                />
+                Applied / awaiting stroke
+              </li>
+              <li className="flex items-center gap-2">
+                <span
+                  className="inline-block h-2.5 w-2.5 rounded-full bg-transparent"
+                  style={{ border: `2px solid ${STROKE.progress}` }}
+                />
+                In progress or ≥2 hits
               </li>
               <li className="flex items-center gap-2">
                 <span className="inline-block h-2.5 w-2.5 rounded-full bg-[var(--muted)] opacity-60" />
                 Unlinked visit city
-              </li>
-              <li className="flex items-center gap-2">
-                <span className="h-0.5 w-6 bg-[var(--accent)] opacity-70" />
-                Link weight ∝ hit count
               </li>
             </ul>
             <p className="mt-3 text-[11px] leading-relaxed text-[var(--muted)]">
@@ -567,9 +757,20 @@ export function TargetMap({
                     }`}
                   >
                     <span className="min-w-0 truncate">
-                      <span className="text-[var(--cream)]">{t.job.shortName || t.job.company}</span>
+                      <span className="inline-flex items-center gap-1.5 text-[var(--cream)]">
+                        <span
+                          className="inline-block h-1.5 w-1.5 shrink-0 rounded-full"
+                          style={{
+                            background: FILL[t.workType],
+                            boxShadow: `0 0 0 1.5px ${STROKE[t.strokeKind]}`,
+                          }}
+                        />
+                        {t.job.shortName || t.job.company}
+                      </span>
                       <span className="block truncate text-[10px] text-[var(--muted)]">
                         {t.remote ? `Remote · ${t.geoLabel}` : t.geoLabel}
+                        {" · "}
+                        {STATUS_LABELS[t.job.status]}
                       </span>
                     </span>
                     <span
