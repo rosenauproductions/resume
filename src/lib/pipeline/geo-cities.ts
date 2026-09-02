@@ -31,8 +31,8 @@ const CITY_COORDS: Record<string, GeoPoint> = {
   dallas: { lat: 32.7767, lng: -96.797, label: "Dallas, TX" },
   plano: { lat: 33.0198, lng: -96.6989, label: "Plano, TX" },
   mckinney: { lat: 33.1972, lng: -96.6397, label: "McKinney, TX" },
-  coppell: { lat: 32.9546, lng: -96.9903, label: "Coppell, TX" },
-  bedford: { lat: 32.844, lng: -97.1431, label: "Bedford, TX" },
+  coppell: { lat: 32.9546, lng: -97.015, label: "Coppell, TX" },
+  bedford: { lat: 32.8442, lng: -97.1431, label: "Bedford, TX" },
   wylie: { lat: 33.0151, lng: -96.5389, label: "Wylie, TX" },
   sachse: { lat: 32.9762, lng: -96.5956, label: "Sachse, TX" },
   garland: { lat: 32.9126, lng: -96.6389, label: "Garland, TX" },
@@ -52,7 +52,7 @@ const CITY_COORDS: Record<string, GeoPoint> = {
 
   // California
   livermore: { lat: 37.6819, lng: -121.768, label: "Livermore, CA" },
-  atherton: { lat: 37.4636, lng: -122.1977, label: "Atherton, CA" },
+  atherton: { lat: 37.4613, lng: -122.1977, label: "Atherton, CA" },
   "san francisco": { lat: 37.7749, lng: -122.4194, label: "San Francisco, CA" },
   "san jose": { lat: 37.3382, lng: -121.8863, label: "San Jose, CA" },
   "los angeles": { lat: 34.0522, lng: -118.2437, label: "Los Angeles, CA" },
@@ -66,7 +66,7 @@ const CITY_COORDS: Record<string, GeoPoint> = {
   boston: { lat: 42.3601, lng: -71.0589, label: "Boston, MA" },
   phoenix: { lat: 33.4484, lng: -112.074, label: "Phoenix, AZ" },
   miami: { lat: 25.7617, lng: -80.1918, label: "Miami, FL" },
-  "washington": { lat: 38.9072, lng: -77.0369, label: "Washington, DC" },
+  washington: { lat: 38.9072, lng: -77.0369, label: "Washington, DC" },
   "washington dc": { lat: 38.9072, lng: -77.0369, label: "Washington, DC" },
 };
 
@@ -142,30 +142,39 @@ export function isRemoteLocation(text: string): boolean {
 }
 
 /**
- * Project lon/lat into SVG coords using d3.geoAlbersUsa lower-48 defaults
- * (matches us-atlas `*-albers-10m` topologies).
+ * Project lon/lat into SVG coords matching us-atlas `*-albers-10m` topologies:
+ * `d3.geoAlbersUsa().scale(1300).translate([487.5, 305])` (lower-48 branch).
+ * Uses d3.geoAlbers defaults: rotate [96,0], center [-0.6, 38.7], parallels [29.5, 45.5].
  */
 export function projectUS(lng: number, lat: number): { x: number; y: number } | null {
   // Contiguous US only — AK/HI omitted from this map layer
   if (lng < -130 || lng > -66 || lat < 24 || lat > 50) return null;
 
-  const parallels = [29.5, 45.5];
-  const rotate = 98;
-  const centerLat = 38;
-  const scale = 1070;
-  const translate = [480, 250] as const;
+  const parallels = [29.5, 45.5] as const;
+  const rotate = 96;
+  const center = [-0.6, 38.7] as const;
+  const scale = 1300;
+  const translate = [487.5, 305] as const;
 
   const φ0 = (parallels[0] * Math.PI) / 180;
   const φ1 = (parallels[1] * Math.PI) / 180;
   const n = (Math.sin(φ0) + Math.sin(φ1)) / 2;
   const C = Math.cos(φ0) ** 2 + 2 * n * Math.sin(φ0);
-  const ρ0 = Math.sqrt(C - 2 * n * Math.sin((centerLat * Math.PI) / 180)) / n;
-  const λ = ((lng + rotate) * Math.PI) / 180;
-  const φ = (lat * Math.PI) / 180;
-  const ρ = Math.sqrt(C - 2 * n * Math.sin(φ)) / n;
-  const x = translate[0] + scale * ρ * Math.sin(n * λ);
-  const y = translate[1] - scale * (ρ0 - ρ * Math.cos(n * λ));
-  return { x, y };
+  const ρ0 = Math.sqrt(C) / n;
+
+  const projectRaw = (λDeg: number, φDeg: number): [number, number] => {
+    const λ = (λDeg * Math.PI) / 180;
+    const φ = (φDeg * Math.PI) / 180;
+    const ρ = Math.sqrt(C - 2 * n * Math.sin(φ)) / n;
+    return [ρ * Math.sin(n * λ), ρ0 - ρ * Math.cos(n * λ)];
+  };
+
+  const [x0, y0] = projectRaw(center[0], center[1]);
+  const [x1, y1] = projectRaw(lng + rotate, lat);
+  return {
+    x: translate[0] + scale * (x1 - x0),
+    y: translate[1] - scale * (y1 - y0),
+  };
 }
 
 /** Stable small offset so co-located targets don't fully stack. */
