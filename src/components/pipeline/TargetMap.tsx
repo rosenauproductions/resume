@@ -18,7 +18,6 @@ import {
 import {
   CITY_COMPANY_ALIASES,
   MAP_SIZE,
-  REMOTE_CLUSTER,
   RESUME_HUB,
   companyMatchesAliases,
   extractCityKey,
@@ -28,6 +27,7 @@ import {
   lookupCity,
   packRemoteClusterPoint,
   projectUS,
+  scaledRemoteCluster,
 } from "@/lib/pipeline/geo-cities";
 import {
   EU_LAND_PATHS,
@@ -113,10 +113,16 @@ const FILTERS: { id: MapStatusFilter; label: string }[] = [
 ];
 
 const MIN_ZOOM = 1;
-const MAX_ZOOM = 3.25;
-const ZOOM_STEP = 0.4;
+/** High enough to separate DFW / North Texas pins (hub vs nearby cities). */
+const MAX_ZOOM = 12;
+const ZOOM_STEP = 0.85;
 const MAP_CX = MAP_SIZE.width / 2;
 const MAP_CY = MAP_SIZE.height / 2;
+/** Tailwind `lg` — desktop map column; overlays stay full-size from here up. */
+const MAP_WIDE_MQ = "(min-width: 1024px)";
+/** Typical desktop map-stage width (max-w-7xl minus padding and 16rem list). */
+const OVERLAY_REF_WIDTH_PX = 720;
+const EU_INSET_DESKTOP_REM = 11.5;
 
 /** Missile flight: all launch together; duration scales with path length. */
 const LINK_MIN_MS = 1100;
@@ -350,6 +356,7 @@ export function TargetMap({
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [linksDrawn, setLinksDrawn] = useState(false);
   const [mapInView, setMapInView] = useState(false);
+  const [overlayScale, setOverlayScale] = useState(1);
   const dragRef = useRef<{
     pointerId: number;
     startX: number;
@@ -363,6 +370,8 @@ export function TargetMap({
   const zoomRef = useRef(zoom);
   zoomRef.current = zoom;
   const reducedMotion = usePrefersReducedMotion();
+  const remoteCluster = useMemo(() => scaledRemoteCluster(overlayScale), [overlayScale]);
+  const euInsetWidthRem = EU_INSET_DESKTOP_REM * overlayScale;
 
   const hub = useMemo(() => {
     const p = projectUS(RESUME_HUB.lng, RESUME_HUB.lat);
@@ -506,7 +515,12 @@ export function TargetMap({
 
     const remoteCount = pendingRemote.length;
     pendingRemote.forEach((node, index) => {
-      const pt = packRemoteClusterPoint(index, remoteCount, node.job.id || node.job.company);
+      const pt = packRemoteClusterPoint(
+        index,
+        remoteCount,
+        node.job.id || node.job.company,
+        remoteCluster,
+      );
       nodes.push({ ...node, x: pt.x, y: pt.y });
     });
 
@@ -612,7 +626,7 @@ export function TargetMap({
       radarGlows,
       euRadarGlows,
     };
-  }, [jobs, visits]);
+  }, [jobs, visits, remoteCluster]);
 
   const filterPass = (t: TargetNode) => matchesFilter(t.job, statusFilter);
   const dimNonMatch = statusFilter !== "all";
@@ -663,6 +677,31 @@ export function TargetMap({
   }, []);
 
   useEffect(() => {
+    const el = mapStageRef.current;
+    if (!el) return;
+
+    const applyOverlayScale = () => {
+      if (window.matchMedia(MAP_WIDE_MQ).matches) {
+        setOverlayScale(1);
+        return;
+      }
+      setOverlayScale(
+        Math.min(1, Math.max(0.42, el.clientWidth / OVERLAY_REF_WIDTH_PX)),
+      );
+    };
+
+    applyOverlayScale();
+    const ro = new ResizeObserver(applyOverlayScale);
+    ro.observe(el);
+    const mq = window.matchMedia(MAP_WIDE_MQ);
+    mq.addEventListener("change", applyOverlayScale);
+    return () => {
+      ro.disconnect();
+      mq.removeEventListener("change", applyOverlayScale);
+    };
+  }, []);
+
+  useEffect(() => {
     if (reducedMotion || !showEdges) {
       setLinksDrawn(true);
       return;
@@ -688,7 +727,7 @@ export function TargetMap({
     .filter((t) => filterPass(t))
     .sort((a, b) => b.hits - a.hits || a.job.company.localeCompare(b.job.company));
 
-  const { boxX, boxY, boxW, boxH, label: remoteLabel } = REMOTE_CLUSTER;
+  const { boxX, boxY, boxW, boxH, label: remoteLabel } = remoteCluster;
   const awaitingView = !reducedMotion && showEdges && !mapInView;
   const animatingLinks = showEdges && !reducedMotion && mapInView && !linksDrawn;
   const deferSites = awaitingView || animatingLinks;
@@ -1310,29 +1349,29 @@ export function TargetMap({
                     y={boxY}
                     width={boxW}
                     height={boxH}
-                    rx={14}
-                    ry={14}
+                    rx={Math.max(6, 14 * overlayScale)}
+                    ry={Math.max(6, 14 * overlayScale)}
                     fill="color-mix(in oklab, var(--ink) 55%, transparent)"
                     stroke="color-mix(in oklab, var(--warm) 45%, var(--cream))"
-                    strokeWidth={1.2}
+                    strokeWidth={overlayScale < 1 ? 1 : 1.2}
                     strokeOpacity={0.55}
                   />
                   <rect
-                    x={boxX + 1.5}
-                    y={boxY + 1.5}
-                    width={boxW - 3}
-                    height={boxH - 3}
-                    rx={12}
-                    ry={12}
+                    x={boxX + Math.max(0.8, 1.5 * overlayScale)}
+                    y={boxY + Math.max(0.8, 1.5 * overlayScale)}
+                    width={boxW - Math.max(1.6, 3 * overlayScale)}
+                    height={boxH - Math.max(1.6, 3 * overlayScale)}
+                    rx={Math.max(5, 12 * overlayScale)}
+                    ry={Math.max(5, 12 * overlayScale)}
                     fill="color-mix(in oklab, var(--accent) 6%, transparent)"
                     stroke="none"
                   />
                   <text
                     x={boxX + boxW / 2}
-                    y={boxY + 16}
+                    y={boxY + Math.max(9, 16 * overlayScale)}
                     textAnchor="middle"
                     fill="var(--cream)"
-                    fontSize={10}
+                    fontSize={overlayScale < 1 ? Math.max(8, 10 * overlayScale * 1.35) : 10}
                     fontFamily="var(--font-display), Georgia, serif"
                     opacity={0.92}
                   >
@@ -1346,19 +1385,22 @@ export function TargetMap({
             </g>
           </svg>
 
-          {/* EU mini-map — lower left, outside US zoom transform */}
-          <div className="pointer-events-auto absolute bottom-3 left-3 z-[3] w-[min(42%,11.5rem)] overflow-hidden rounded-xl border border-white/12 bg-[var(--ink)]/88 shadow-[0_8px_28px_rgba(0,0,0,0.35)] backdrop-blur">
-            <div className="flex items-center justify-between px-2 pt-1.5">
-              <span className="text-[10px] font-medium uppercase tracking-[0.2em] text-[var(--muted)]">
+          {/* EU mini-map — lower left; width tracks map shrink below `lg`. */}
+          <div
+            className="pointer-events-auto absolute bottom-3 left-3 z-[3] w-[11.5rem] overflow-hidden rounded-xl border border-white/12 bg-[var(--ink)]/88 shadow-[0_8px_28px_rgba(0,0,0,0.35)] backdrop-blur max-lg:bottom-2 max-lg:left-2 max-lg:w-[min(11.5rem,26%)] max-lg:rounded-lg"
+            style={overlayScale < 1 ? { width: `${euInsetWidthRem}rem` } : undefined}
+          >
+            <div className="flex items-center justify-between px-2 pt-1.5 max-lg:px-1 max-lg:pt-0.5">
+              <span className="text-[10px] font-medium uppercase tracking-[0.2em] text-[var(--muted)] max-lg:text-[8px] max-lg:tracking-[0.14em]">
                 EU
               </span>
-              <span className="text-[9px] tabular-nums text-[var(--muted)]/80">
+              <span className="text-[9px] tabular-nums text-[var(--muted)]/80 max-lg:text-[8px]">
                 {euTargets.length + euUnlinked.length}
               </span>
             </div>
             <svg
               viewBox={EU_MAP_VIEWBOX}
-              className="h-auto w-full px-1 pb-1"
+              className="h-auto w-full px-1 pb-1 max-lg:px-0.5 max-lg:pb-0.5"
               role="img"
               aria-label="Europe inset of job targets and resume visits"
             >
@@ -1457,7 +1499,8 @@ export function TargetMap({
               type="button"
               aria-label="Zoom in"
               onClick={() => zoomBy(ZOOM_STEP)}
-              className="flex h-8 w-8 items-center justify-center rounded-lg border border-white/15 bg-[var(--ink)]/85 text-lg text-[var(--cream)] backdrop-blur hover:border-[var(--accent)]"
+              disabled={zoom >= MAX_ZOOM - 0.01}
+              className="flex h-8 w-8 items-center justify-center rounded-lg border border-white/15 bg-[var(--ink)]/85 text-lg text-[var(--cream)] backdrop-blur hover:border-[var(--accent)] disabled:opacity-35"
             >
               +
             </button>
@@ -1525,7 +1568,10 @@ export function TargetMap({
           </div>
 
           {hovered ? (
-            <div className="pointer-events-none absolute bottom-3 left-[calc(min(42%,11.5rem)+0.85rem)] right-24 z-[2] max-w-sm rounded-xl border border-white/10 bg-[var(--ink)]/92 px-3 py-2.5 text-sm backdrop-blur sm:right-auto">
+            <div
+              className="pointer-events-none absolute bottom-3 right-24 z-[2] max-w-sm rounded-xl border border-white/10 bg-[var(--ink)]/92 px-3 py-2.5 text-sm backdrop-blur sm:right-auto max-lg:bottom-2"
+              style={{ left: `calc(${euInsetWidthRem}rem + 0.85rem)` }}
+            >
               <p className="font-medium text-[var(--cream)]">{hovered.job.company}</p>
               <p className="text-xs text-[var(--muted)]">{shortTitle(hovered.job.title)}</p>
               <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px]">

@@ -30,6 +30,39 @@ export const REMOTE_CLUSTER = {
   label: "Remote / No Location",
 } as const;
 
+export type RemoteClusterBox = {
+  boxX: number;
+  boxY: number;
+  boxW: number;
+  boxH: number;
+  padX: number;
+  padY: number;
+  label: string;
+};
+
+/**
+ * Shrink the Gulf cluster toward its bottom-center so it stays in the water
+ * (and off the US) when the map is shown at a smaller width.
+ */
+export function scaledRemoteCluster(scale: number): RemoteClusterBox {
+  const s = Math.min(1, Math.max(0.42, scale));
+  if (s >= 0.995) return { ...REMOTE_CLUSTER };
+  const { boxX, boxY, boxW, boxH, padX, padY } = REMOTE_CLUSTER;
+  const cx = boxX + boxW / 2;
+  const bottom = boxY + boxH;
+  const w = boxW * s;
+  const h = boxH * s;
+  return {
+    boxX: cx - w / 2,
+    boxY: bottom - h,
+    boxW: w,
+    boxH: h,
+    padX: Math.max(5, padX * s),
+    padY: Math.max(10, padY * s),
+    label: s < 0.8 ? "Remote" : REMOTE_CLUSTER.label,
+  };
+}
+
 /** Resume / candidate hub (Wylie–DFW area). */
 export const RESUME_HUB: GeoPoint = {
   lat: 32.9762,
@@ -366,10 +399,11 @@ export function packRemoteClusterPoint(
   index: number,
   total: number,
   seed: string,
+  cluster: RemoteClusterBox = REMOTE_CLUSTER,
 ): { x: number; y: number } {
-  const { boxX, boxY, boxW, boxH, padX, padY } = REMOTE_CLUSTER;
-  const innerW = Math.max(24, boxW - padX * 2);
-  const innerH = Math.max(24, boxH - padY - 14);
+  const { boxX, boxY, boxW, boxH, padX, padY } = cluster;
+  const innerW = Math.max(16, boxW - padX * 2);
+  const innerH = Math.max(16, boxH - padY - Math.min(14, padY * 0.5));
   const count = Math.max(1, total);
   const aspect = innerW / innerH;
   const cols = Math.max(1, Math.ceil(Math.sqrt(count * aspect)));
