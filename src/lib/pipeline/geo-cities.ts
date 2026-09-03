@@ -188,6 +188,12 @@ const CITY_COORDS: Record<string, GeoPoint> = {
   rome: { lat: 41.9028, lng: 12.4964, label: "Rome, IT" },
   milan: { lat: 45.4642, lng: 9.19, label: "Milan, IT" },
   stockholm: { lat: 59.3293, lng: 18.0686, label: "Stockholm, SE" },
+  /** Norrbotten — visit strings like "Luleå, BD, SE" */
+  lulea: { lat: 65.5848, lng: 22.1547, label: "Luleå, SE" },
+  gothenburg: { lat: 57.7089, lng: 11.9746, label: "Gothenburg, SE" },
+  goteborg: { lat: 57.7089, lng: 11.9746, label: "Gothenburg, SE" },
+  malmo: { lat: 55.605, lng: 13.0038, label: "Malmö, SE" },
+  uppsala: { lat: 59.8586, lng: 17.6389, label: "Uppsala, SE" },
   copenhagen: { lat: 55.6761, lng: 12.5683, label: "Copenhagen, DK" },
   oslo: { lat: 59.9139, lng: 10.7522, label: "Oslo, NO" },
   helsinki: { lat: 60.1699, lng: 24.9384, label: "Helsinki, FI" },
@@ -242,12 +248,18 @@ export function normalizeCityKey(raw: string): string {
     return decodeURIComponent(raw || "")
       .trim()
       .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
       .replace(/\+/g, " ")
       .replace(/[.,]/g, " ")
       .replace(/\s+/g, " ")
       .trim();
   } catch {
-    return (raw || "").trim().toLowerCase();
+    return (raw || "")
+      .trim()
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "");
   }
 }
 

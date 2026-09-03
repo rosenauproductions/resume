@@ -7,7 +7,6 @@ import {
   useRef,
   useState,
   type PointerEvent as ReactPointerEvent,
-  type WheelEvent as ReactWheelEvent,
 } from "react";
 import {
   STATUS_LABELS,
@@ -322,7 +321,10 @@ export function TargetMap({
     originX: number;
     originY: number;
   } | null>(null);
+  const pinchRef = useRef<{ dist: number; zoom: number } | null>(null);
   const svgRef = useRef<SVGSVGElement | null>(null);
+  const zoomRef = useRef(zoom);
+  zoomRef.current = zoom;
   const reducedMotion = usePrefersReducedMotion();
 
   const hub = useMemo(() => {
@@ -629,16 +631,9 @@ export function TargetMap({
     });
   }, []);
 
-  const handleWheel = (e: ReactWheelEvent<SVGSVGElement>) => {
-    e.preventDefault();
-    const svg = svgRef.current;
-    if (!svg) return;
-    const rect = svg.getBoundingClientRect();
-    const sx = ((e.clientX - rect.left) / rect.width) * MAP_SIZE.width;
-    const sy = ((e.clientY - rect.top) / rect.height) * MAP_SIZE.height;
-    const delta = e.deltaY > 0 ? -ZOOM_STEP * 0.5 : ZOOM_STEP * 0.5;
+  const zoomAtPoint = useCallback((sx: number, sy: number, nextZoom: number) => {
+    const next = clampZoom(nextZoom);
     setZoom((prev) => {
-      const next = clampZoom(prev + delta);
       setPan((p) => {
         if (next <= 1.01) return { x: 0, y: 0 };
         const worldX = (sx - MAP_CX - p.x) / prev + MAP_CX;
@@ -650,10 +645,83 @@ export function TargetMap({
       });
       return next;
     });
-  };
+  }, []);
+
+  /** Trackpad pinch arrives as ctrl+wheel; plain scroll must not zoom the map. */
+  useEffect(() => {
+    const svg = svgRef.current;
+    if (!svg) return;
+
+    const onWheel = (e: WheelEvent) => {
+      if (!e.ctrlKey) return;
+      e.preventDefault();
+      const rect = svg.getBoundingClientRect();
+      const sx = ((e.clientX - rect.left) / rect.width) * MAP_SIZE.width;
+      const sy = ((e.clientY - rect.top) / rect.height) * MAP_SIZE.height;
+      const factor = Math.exp(-e.deltaY * 0.01);
+      setZoom((prev) => {
+        const next = clampZoom(prev * factor);
+        setPan((p) => {
+          if (next <= 1.01) return { x: 0, y: 0 };
+          const worldX = (sx - MAP_CX - p.x) / prev + MAP_CX;
+          const worldY = (sy - MAP_CY - p.y) / prev + MAP_CY;
+          return {
+            x: sx - MAP_CX - (worldX - MAP_CX) * next,
+            y: sy - MAP_CY - (worldY - MAP_CY) * next,
+          };
+        });
+        return next;
+      });
+    };
+
+    const touchDistance = (touches: TouchList) => {
+      const dx = touches[0].clientX - touches[1].clientX;
+      const dy = touches[0].clientY - touches[1].clientY;
+      return Math.hypot(dx, dy) || 1;
+    };
+
+    const onTouchStart = (e: TouchEvent) => {
+      if (e.touches.length !== 2) {
+        pinchRef.current = null;
+        return;
+      }
+      dragRef.current = null;
+      pinchRef.current = { dist: touchDistance(e.touches), zoom: zoomRef.current };
+    };
+
+    const onTouchMove = (e: TouchEvent) => {
+      const pinch = pinchRef.current;
+      if (!pinch || e.touches.length !== 2) return;
+      e.preventDefault();
+      const dist = touchDistance(e.touches);
+      const rect = svg.getBoundingClientRect();
+      const midX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+      const midY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+      const sx = ((midX - rect.left) / rect.width) * MAP_SIZE.width;
+      const sy = ((midY - rect.top) / rect.height) * MAP_SIZE.height;
+      zoomAtPoint(sx, sy, pinch.zoom * (dist / pinch.dist));
+    };
+
+    const onTouchEnd = (e: TouchEvent) => {
+      if (e.touches.length < 2) pinchRef.current = null;
+    };
+
+    svg.addEventListener("wheel", onWheel, { passive: false });
+    svg.addEventListener("touchstart", onTouchStart, { passive: true });
+    svg.addEventListener("touchmove", onTouchMove, { passive: false });
+    svg.addEventListener("touchend", onTouchEnd);
+    svg.addEventListener("touchcancel", onTouchEnd);
+    return () => {
+      svg.removeEventListener("wheel", onWheel);
+      svg.removeEventListener("touchstart", onTouchStart);
+      svg.removeEventListener("touchmove", onTouchMove);
+      svg.removeEventListener("touchend", onTouchEnd);
+      svg.removeEventListener("touchcancel", onTouchEnd);
+    };
+  }, [zoomAtPoint]);
 
   const onPointerDown = (e: ReactPointerEvent<SVGSVGElement>) => {
-    if (!canPan || e.button !== 0) return;
+    if (pinchRef.current || !canPan || e.button !== 0) return;
     (e.currentTarget as Element).setPointerCapture(e.pointerId);
     dragRef.current = {
       pointerId: e.pointerId,
@@ -834,7 +902,6 @@ export function TargetMap({
             className={`relative z-[1] h-auto w-full ${canPan ? "cursor-grab active:cursor-grabbing" : ""}`}
             role="img"
             aria-label="US map of job targets and resume visit hits"
-            onWheel={handleWheel}
             onPointerDown={onPointerDown}
             onPointerMove={onPointerMove}
             onPointerUp={endDrag}
