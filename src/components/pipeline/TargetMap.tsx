@@ -226,18 +226,6 @@ function isPipelineSelfVisit(v: MapVisit): boolean {
   return reason.includes("pipeline self-visit");
 }
 
-function nukeArcPath(x1: number, y1: number, x2: number, y2: number): string {
-  const mx = (x1 + x2) / 2;
-  const my = (y1 + y2) / 2;
-  const dx = x2 - x1;
-  const dy = y2 - y1;
-  const len = Math.hypot(dx, dy) || 1;
-  const bulge = Math.min(92, Math.max(18, len * 0.2));
-  const cx = mx - (dy / len) * bulge;
-  const cy = my + (dx / len) * bulge;
-  return `M${x1},${y1} Q${cx},${cy} ${x2},${y2}`;
-}
-
 function clampZoom(z: number) {
   return Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, z));
 }
@@ -326,7 +314,7 @@ export function TargetMap({
   const [statusFilter, setStatusFilter] = useState<MapStatusFilter>("all");
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
-  const [trailsDone, setTrailsDone] = useState(false);
+  const [linksDrawn, setLinksDrawn] = useState(false);
   const dragRef = useRef<{
     pointerId: number;
     startX: number;
@@ -587,18 +575,6 @@ export function TargetMap({
     };
   }, [jobs, visits]);
 
-  useEffect(() => {
-    if (reducedMotion) {
-      setTrailsDone(true);
-      return;
-    }
-    setTrailsDone(false);
-    const usCount = geoTargets.length + remoteTargets.length + (showUnlinked ? unlinked.length : 0);
-    const delay = Math.min(2200, 700 + Math.min(usCount, 28) * 45);
-    const t = window.setTimeout(() => setTrailsDone(true), delay);
-    return () => window.clearTimeout(t);
-  }, [reducedMotion, geoTargets.length, remoteTargets.length, unlinked.length, showUnlinked, jobs.length]);
-
   const filterPass = (t: TargetNode) => matchesFilter(t.job, statusFilter);
   const dimNonMatch = statusFilter !== "all";
 
@@ -619,18 +595,17 @@ export function TargetMap({
   const drawEu = dimNonMatch ? allEuDraw : visibleEu;
   const edgeTargets = [...visibleGeo, ...visibleRemote];
 
-  const trailEnds = useMemo(() => {
-    const ends: { id: string; x: number; y: number; hot: boolean }[] = [];
-    for (const t of edgeTargets) {
-      ends.push({ id: `t-${t.job.id}`, x: t.x, y: t.y, hot: t.hits > 0 });
+  useEffect(() => {
+    if (reducedMotion) {
+      setLinksDrawn(true);
+      return;
     }
-    if (showUnlinked) {
-      for (const u of unlinked) {
-        ends.push({ id: `u-${u.cityKey}`, x: u.x, y: u.y, hot: true });
-      }
-    }
-    return ends.slice(0, 36);
-  }, [edgeTargets, showUnlinked, unlinked]);
+    setLinksDrawn(false);
+    const count = Math.min(edgeTargets.length, 36);
+    const delay = Math.min(2200, 700 + count * 45);
+    const t = window.setTimeout(() => setLinksDrawn(true), delay);
+    return () => window.clearTimeout(t);
+  }, [reducedMotion, edgeTargets.length, jobs.length]);
 
   const hovered = hoverId ? targets.find((t) => t.job.id === hoverId) : null;
   const ranked = [...targets]
@@ -638,7 +613,7 @@ export function TargetMap({
     .sort((a, b) => b.hits - a.hits || a.job.company.localeCompare(b.job.company));
 
   const { boxX, boxY, boxW, boxH, label: remoteLabel } = REMOTE_CLUSTER;
-  const showStaticEdges = showEdges && (trailsDone || reducedMotion);
+  const animatingLinks = showEdges && !reducedMotion && !linksDrawn;
   const canPan = zoom > 1.02;
 
   const resetView = useCallback(() => {
@@ -879,11 +854,6 @@ export function TargetMap({
                   <feMergeNode in="blur" />
                 </feMerge>
               </filter>
-              <linearGradient id="nuke-grad" x1="0%" y1="0%" x2="100%" y2="0%">
-                <stop offset="0%" stopColor="var(--accent)" stopOpacity="0.15" />
-                <stop offset="55%" stopColor="var(--accent)" stopOpacity="0.95" />
-                <stop offset="100%" stopColor="var(--warm)" stopOpacity="0.85" />
-              </linearGradient>
               <style>{`
                 @keyframes radar-pulse {
                   0% { transform: scale(0.72); opacity: 0.85; }
@@ -895,31 +865,23 @@ export function TargetMap({
                   transform-box: fill-box;
                   transform-origin: center;
                 }
-                @keyframes nuke-draw {
-                  from { stroke-dashoffset: 1; opacity: 0.2; }
-                  70% { opacity: 1; }
-                  to { stroke-dashoffset: 0; opacity: 0.55; }
+                @keyframes link-draw {
+                  from { stroke-dashoffset: 1; }
+                  to { stroke-dashoffset: 0; }
                 }
-                @keyframes nuke-fade {
-                  from { opacity: 0.55; }
-                  to { opacity: 0; }
-                }
-                .nuke-trail {
+                .link-draw {
                   stroke-dasharray: 1;
                   stroke-dashoffset: 1;
-                  animation: nuke-draw 0.95s ease-out forwards;
-                }
-                .nuke-trail.settling {
-                  animation: nuke-fade 0.55s ease-in forwards;
+                  animation: link-draw 0.95s ease-out forwards;
                 }
                 @media (prefers-reduced-motion: reduce) {
                   .radar-ring {
                     animation: none !important;
                     opacity: 0.55;
                   }
-                  .nuke-trail {
+                  .link-draw {
                     animation: none !important;
-                    opacity: 0;
+                    stroke-dashoffset: 0;
                   }
                 }
               `}</style>
@@ -938,29 +900,13 @@ export function TargetMap({
                 ))}
               </g>
 
-              {!reducedMotion && !trailsDone
-                ? trailEnds.map((end, i) => (
-                    <path
-                      key={`nuke-${end.id}`}
-                      className="nuke-trail"
-                      d={nukeArcPath(hub.x, hub.y, end.x, end.y)}
-                      fill="none"
-                      stroke={end.hot ? "url(#nuke-grad)" : "color-mix(in oklab, var(--muted) 55%, transparent)"}
-                      strokeWidth={end.hot ? 2.1 : 1.15}
-                      strokeLinecap="round"
-                      pathLength={1}
-                      style={{ animationDelay: `${i * 42}ms` }}
-                      pointerEvents="none"
-                    />
-                  ))
-                : null}
-
-              {showStaticEdges
-                ? edgeTargets.map((t) => {
+              {showEdges
+                ? edgeTargets.map((t, i) => {
                     const edge = edgeStroke(t.hits, maxHits);
                     return (
                       <line
                         key={`edge-${t.job.id}`}
+                        className={animatingLinks ? "link-draw" : undefined}
                         x1={hub.x}
                         y1={hub.y}
                         x2={t.x}
@@ -969,6 +915,9 @@ export function TargetMap({
                         strokeWidth={edge.width}
                         strokeOpacity={hoverId && hoverId !== t.job.id ? edge.opacity * 0.25 : edge.opacity}
                         strokeLinecap="round"
+                        pathLength={animatingLinks ? 1 : undefined}
+                        style={animatingLinks ? { animationDelay: `${Math.min(i, 35) * 42}ms` } : undefined}
+                        pointerEvents="none"
                       />
                     );
                   })
