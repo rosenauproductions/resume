@@ -36,6 +36,13 @@ import {
   EU_MAP_VIEWBOX,
   projectEU,
 } from "@/lib/pipeline/eu-map-paths";
+import {
+  DFW_CITY_PATHS,
+  DFW_MAP_SIZE,
+  DFW_MAP_VIEWBOX,
+  isInDFW,
+  projectDFW,
+} from "@/lib/pipeline/dfw-map-paths";
 import { US_MAP_VIEWBOX, US_STATE_PATHS } from "@/lib/pipeline/us-map-paths";
 
 export type MapVisit = {
@@ -53,6 +60,7 @@ export type MapVisit = {
 
 type RadarTone = "job" | "city";
 type MapLayer = "us" | "eu";
+type MapFocus = "us" | "dfw";
 
 type RadarGlow = {
   id: string;
@@ -62,6 +70,34 @@ type RadarGlow = {
   tone: RadarTone;
   layer: MapLayer;
 };
+
+/** City names always labeled on the DFW metro view. */
+const DFW_ALWAYS_LABEL = new Set([
+  "Dallas",
+  "Fort Worth",
+  "Plano",
+  "Arlington",
+  "Irving",
+  "Frisco",
+  "McKinney",
+  "Garland",
+  "Richardson",
+  "Denton",
+  "Carrollton",
+  "Grand Prairie",
+  "Mesquite",
+  "Lewisville",
+  "Allen",
+  "Flower Mound",
+  "Wylie",
+  "Rockwall",
+  "Grapevine",
+  "Southlake",
+  "Coppell",
+  "The Colony",
+  "Prosper",
+  "Rowlett",
+]);
 
 type WorkArrangement = "onsite" | "hybrid" | "remote" | "unknown";
 
@@ -75,6 +111,9 @@ type TargetNode = {
   geoLabel: string;
   x: number;
   y: number;
+  /** Present for US geo pins — used to reproject into the DFW metro view. */
+  lng?: number;
+  lat?: number;
   hits: number;
   linkedHits: number;
   suggestedHits: number;
@@ -89,6 +128,8 @@ type UnlinkedPin = {
   label: string;
   x: number;
   y: number;
+  lng?: number;
+  lat?: number;
   count: number;
   layer: MapLayer;
 };
@@ -118,8 +159,6 @@ const MIN_ZOOM = 1;
 /** High enough to separate DFW / North Texas pins (hub vs nearby cities). */
 const MAX_ZOOM = 12;
 const ZOOM_STEP = 0.85;
-const MAP_CX = MAP_SIZE.width / 2;
-const MAP_CY = MAP_SIZE.height / 2;
 /** Tailwind `lg` — desktop map column; overlays stay full-size from here up. */
 const MAP_WIDE_MQ = "(min-width: 1024px)";
 /** Typical desktop map-stage width (max-w-7xl minus padding and 16rem list). */
@@ -617,6 +656,7 @@ export function TargetMap({
   const [showUnlinked, setShowUnlinked] = useState(true);
   const [showEdges, setShowEdges] = useState(true);
   const [statusFilter, setStatusFilter] = useState<MapStatusFilter>("all");
+  const [mapFocus, setMapFocus] = useState<MapFocus>("us");
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [linksDrawn, setLinksDrawn] = useState(false);
@@ -634,6 +674,8 @@ export function TargetMap({
   const mapStageRef = useRef<Element | null>(null);
   const zoomRef = useRef(zoom);
   zoomRef.current = zoom;
+  const mapFocusRef = useRef(mapFocus);
+  mapFocusRef.current = mapFocus;
   const reducedMotion = usePrefersReducedMotion();
   const remoteCluster = useMemo(() => {
     const scaled = scaledRemoteCluster(overlayScale);
@@ -641,10 +683,24 @@ export function TargetMap({
   }, [overlayScale]);
   const euInsetWidthRem = EU_INSET_DESKTOP_REM * overlayScale;
 
-  const hub = useMemo(() => {
+  const mapSize = mapFocus === "dfw" ? DFW_MAP_SIZE : MAP_SIZE;
+  const mapCx = mapSize.width / 2;
+  const mapCy = mapSize.height / 2;
+  const mapViewBox = mapFocus === "dfw" ? DFW_MAP_VIEWBOX : US_MAP_VIEWBOX;
+  const mapSizeRef = useRef(mapSize);
+  mapSizeRef.current = mapSize;
+
+  const hubUS = useMemo(() => {
     const p = projectUS(RESUME_HUB.lng, RESUME_HUB.lat);
     return p ? { ...RESUME_HUB, ...p } : { ...RESUME_HUB, x: 500, y: 350 };
   }, []);
+
+  const hubDFW = useMemo(() => {
+    const p = projectDFW(RESUME_HUB.lng, RESUME_HUB.lat);
+    return p ? { ...RESUME_HUB, ...p } : { ...RESUME_HUB, x: mapCx, y: mapCy };
+  }, [mapCx, mapCy]);
+
+  const hub = mapFocus === "dfw" ? hubDFW : hubUS;
 
   const {
     targets,
@@ -727,6 +783,8 @@ export function TargetMap({
             geoLabel: geo.label,
             x: us.x + jitter.dx,
             y: us.y + jitter.dy,
+            lng: geo.lng,
+            lat: geo.lat,
             hits,
             linkedHits,
             suggestedHits,
@@ -806,6 +864,8 @@ export function TargetMap({
           label: geo.label,
           x: us.x,
           y: us.y,
+          lng: geo.lng,
+          lat: geo.lat,
           count: remaining.length,
           layer: "us",
         });
@@ -899,22 +959,98 @@ export function TargetMap({
   const filterPass = (t: TargetNode) => matchesFilter(t.job, statusFilter);
   const dimNonMatch = statusFilter !== "all";
 
-  const visibleGeo = (showZero ? geoTargets : geoTargets.filter((t) => t.hits > 0)).filter(
-    (t) => !dimNonMatch || filterPass(t),
-  );
+  const { focusGeoTargets, focusUnlinked, focusRadarGlows } = useMemo(() => {
+    if (mapFocus !== "dfw") {
+      return {
+        focusGeoTargets: geoTargets,
+        focusUnlinked: unlinked,
+        focusRadarGlows: radarGlows,
+      };
+    }
+
+    const byCityIndex = new Map<string, number>();
+    const focusGeoTargets: TargetNode[] = [];
+    for (const t of geoTargets) {
+      if (t.lng == null || t.lat == null || !isInDFW(t.lng, t.lat)) continue;
+      const p = projectDFW(t.lng, t.lat);
+      if (!p) continue;
+      const idx = byCityIndex.get(t.geoLabel) ?? 0;
+      byCityIndex.set(t.geoLabel, idx + 1);
+      const jitter = jitterOffset(t.job.id || t.job.company, idx);
+      focusGeoTargets.push({
+        ...t,
+        x: p.x + jitter.dx * 0.45,
+        y: p.y + jitter.dy * 0.45,
+      });
+    }
+
+    const focusUnlinked: UnlinkedPin[] = [];
+    for (const u of unlinked) {
+      if (u.lng == null || u.lat == null || !isInDFW(u.lng, u.lat)) continue;
+      const p = projectDFW(u.lng, u.lat);
+      if (!p) continue;
+      focusUnlinked.push({ ...u, x: p.x, y: p.y });
+    }
+
+    const focusRadarGlows: RadarGlow[] = [
+      ...focusGeoTargets
+        .filter((n) => n.hits > 0)
+        .map((n) => ({
+          id: `glow-job-${n.job.id}`,
+          x: n.x,
+          y: n.y,
+          count: n.hits,
+          tone: "job" as const,
+          layer: "us" as const,
+        })),
+      ...focusUnlinked.map((u) => ({
+        id: `glow-city-${u.cityKey}`,
+        x: u.x,
+        y: u.y,
+        count: u.count,
+        tone: "city" as const,
+        layer: "us" as const,
+      })),
+    ];
+
+    return { focusGeoTargets, focusUnlinked, focusRadarGlows };
+  }, [mapFocus, geoTargets, unlinked, radarGlows]);
+
+  const labeledDfwCityIds = useMemo(() => {
+    const ids = new Set<string>();
+    for (const city of DFW_CITY_PATHS) {
+      if (DFW_ALWAYS_LABEL.has(city.name)) ids.add(city.id);
+    }
+    const mark = (label: string) => {
+      const key = label.toLowerCase().replace(/,.*$/, "").trim();
+      for (const city of DFW_CITY_PATHS) {
+        if (city.name.toLowerCase() === key || city.id === key.replace(/\s+/g, "-")) {
+          ids.add(city.id);
+        }
+      }
+    };
+    for (const t of focusGeoTargets) mark(t.geoLabel);
+    for (const u of focusUnlinked) mark(u.label);
+    return ids;
+  }, [focusGeoTargets, focusUnlinked]);
+
+  const visibleGeo = (
+    showZero ? focusGeoTargets : focusGeoTargets.filter((t) => t.hits > 0)
+  ).filter((t) => !dimNonMatch || filterPass(t));
   const visibleRemote = (showZero ? remoteTargets : remoteTargets.filter((t) => t.hits > 0)).filter(
     (t) => !dimNonMatch || filterPass(t),
   );
   const visibleEu = (showZero ? euTargets : euTargets.filter((t) => t.hits > 0)).filter(
     (t) => !dimNonMatch || filterPass(t),
   );
-  const allGeoDraw = showZero ? geoTargets : geoTargets.filter((t) => t.hits > 0);
+  const allGeoDraw = showZero ? focusGeoTargets : focusGeoTargets.filter((t) => t.hits > 0);
   const allRemoteDraw = showZero ? remoteTargets : remoteTargets.filter((t) => t.hits > 0);
   const allEuDraw = showZero ? euTargets : euTargets.filter((t) => t.hits > 0);
   const drawGeo = dimNonMatch ? allGeoDraw : visibleGeo;
   const drawRemote = dimNonMatch ? allRemoteDraw : visibleRemote;
   const drawEu = dimNonMatch ? allEuDraw : visibleEu;
   const edgeTargets = visibleGeo;
+  const stageRadarGlows = focusRadarGlows;
   const remoteRadarGlows: RadarGlow[] = remoteTargets
     .filter((n) => n.hits > 0)
     .map((n) => ({
@@ -925,6 +1061,15 @@ export function TargetMap({
       tone: "job" as const,
       layer: "us" as const,
     }));
+
+  const switchMapFocus = useCallback((next: MapFocus) => {
+    if (next === mapFocusRef.current) return;
+    setMapFocus(next);
+    setZoom(1);
+    setPan({ x: 0, y: 0 });
+    setLinksDrawn(false);
+    setHoverId(null);
+  }, []);
 
   useEffect(() => {
     const el = mapStageRef.current;
@@ -998,7 +1143,7 @@ export function TargetMap({
       maxFlight + SITE_REVEAL_MS + 120,
     );
     return () => window.clearTimeout(t);
-  }, [reducedMotion, showEdges, mapInView, edgeTargets.length, jobs.length, hub.x, hub.y]);
+  }, [reducedMotion, showEdges, mapInView, edgeTargets.length, jobs.length, hub.x, hub.y, mapFocus]);
 
   const hovered = hoverId ? targets.find((t) => t.job.id === hoverId) : null;
   const ranked = [...targets]
@@ -1071,14 +1216,16 @@ export function TargetMap({
 
   const zoomAtPoint = useCallback((sx: number, sy: number, nextZoom: number) => {
     const next = clampZoom(nextZoom);
+    const cx = mapSizeRef.current.width / 2;
+    const cy = mapSizeRef.current.height / 2;
     setZoom((prev) => {
       setPan((p) => {
         if (next <= 1.01) return { x: 0, y: 0 };
-        const worldX = (sx - MAP_CX - p.x) / prev + MAP_CX;
-        const worldY = (sy - MAP_CY - p.y) / prev + MAP_CY;
+        const worldX = (sx - cx - p.x) / prev + cx;
+        const worldY = (sy - cy - p.y) / prev + cy;
         return {
-          x: sx - MAP_CX - (worldX - MAP_CX) * next,
-          y: sy - MAP_CY - (worldY - MAP_CY) * next,
+          x: sx - cx - (worldX - cx) * next,
+          y: sy - cy - (worldY - cy) * next,
         };
       });
       return next;
@@ -1093,19 +1240,22 @@ export function TargetMap({
     const onWheel = (e: WheelEvent) => {
       if (!e.ctrlKey) return;
       e.preventDefault();
+      const size = mapSizeRef.current;
       const rect = svg.getBoundingClientRect();
-      const sx = ((e.clientX - rect.left) / rect.width) * MAP_SIZE.width;
-      const sy = ((e.clientY - rect.top) / rect.height) * MAP_SIZE.height;
+      const sx = ((e.clientX - rect.left) / rect.width) * size.width;
+      const sy = ((e.clientY - rect.top) / rect.height) * size.height;
       const factor = Math.exp(-e.deltaY * 0.01);
+      const cx = size.width / 2;
+      const cy = size.height / 2;
       setZoom((prev) => {
         const next = clampZoom(prev * factor);
         setPan((p) => {
           if (next <= 1.01) return { x: 0, y: 0 };
-          const worldX = (sx - MAP_CX - p.x) / prev + MAP_CX;
-          const worldY = (sy - MAP_CY - p.y) / prev + MAP_CY;
+          const worldX = (sx - cx - p.x) / prev + cx;
+          const worldY = (sy - cy - p.y) / prev + cy;
           return {
-            x: sx - MAP_CX - (worldX - MAP_CX) * next,
-            y: sy - MAP_CY - (worldY - MAP_CY) * next,
+            x: sx - cx - (worldX - cx) * next,
+            y: sy - cy - (worldY - cy) * next,
           };
         });
         return next;
@@ -1132,11 +1282,12 @@ export function TargetMap({
       if (!pinch || e.touches.length !== 2) return;
       e.preventDefault();
       const dist = touchDistance(e.touches);
+      const size = mapSizeRef.current;
       const rect = svg.getBoundingClientRect();
       const midX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
       const midY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
-      const sx = ((midX - rect.left) / rect.width) * MAP_SIZE.width;
-      const sy = ((midY - rect.top) / rect.height) * MAP_SIZE.height;
+      const sx = ((midX - rect.left) / rect.width) * size.width;
+      const sy = ((midY - rect.top) / rect.height) * size.height;
       zoomAtPoint(sx, sy, pinch.zoom * (dist / pinch.dist));
     };
 
@@ -1176,8 +1327,9 @@ export function TargetMap({
     const svg = svgRef.current;
     if (!svg) return;
     const rect = svg.getBoundingClientRect();
-    const scaleX = MAP_SIZE.width / rect.width;
-    const scaleY = MAP_SIZE.height / rect.height;
+    const size = mapSizeRef.current;
+    const scaleX = size.width / rect.width;
+    const scaleY = size.height / rect.height;
     setPan({
       x: drag.originX + (e.clientX - drag.startX) * scaleX,
       y: drag.originY + (e.clientY - drag.startY) * scaleY,
@@ -1267,7 +1419,7 @@ export function TargetMap({
     );
   }
 
-  const layerTransform = `translate(${MAP_CX + pan.x} ${MAP_CY + pan.y}) scale(${zoom}) translate(${-MAP_CX} ${-MAP_CY})`;
+  const layerTransform = `translate(${mapCx + pan.x} ${mapCy + pan.y}) scale(${zoom}) translate(${-mapCx} ${-mapCy})`;
 
   return (
     <div className="space-y-4">
@@ -1279,10 +1431,39 @@ export function TargetMap({
           <p className="mt-1 max-w-2xl text-sm text-[var(--muted)]">
             Fill = work arrangement · outline = pipeline status (green also for ≥2 resume hits).
             Soft radar rings mark visit intensity on job targets or unlinked cities.
-            Remote/unplaced roles and Europe pins live in draggable overlays (minimizable).
+            Switch to the DFW metro view for city outlines and labels. On the US view,
+            remote/unplaced roles and Europe pins live in draggable overlays (minimizable).
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          <div
+            className="flex rounded-lg border border-white/12 p-0.5"
+            role="group"
+            aria-label="Map region"
+          >
+            {(
+              [
+                { id: "us", label: "US" },
+                { id: "dfw", label: "DFW" },
+              ] as const
+            ).map((opt) => {
+              const active = mapFocus === opt.id;
+              return (
+                <button
+                  key={opt.id}
+                  type="button"
+                  onClick={() => switchMapFocus(opt.id)}
+                  className={`rounded-md px-2.5 py-1 text-xs transition-colors ${
+                    active
+                      ? "bg-[color-mix(in_oklab,var(--accent)_22%,transparent)] text-[var(--cream)]"
+                      : "text-[var(--muted)] hover:text-[var(--cream)]"
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              );
+            })}
+          </div>
           <label className="flex items-center gap-1.5 text-xs text-[var(--muted)]">
             <input type="checkbox" checked={showEdges} onChange={(e) => setShowEdges(e.target.checked)} />
             Links
@@ -1354,11 +1535,15 @@ export function TargetMap({
           />
           <svg
             ref={svgRef}
-            viewBox={US_MAP_VIEWBOX}
+            viewBox={mapViewBox}
             preserveAspectRatio="xMidYMid meet"
             className={`relative z-[1] h-auto max-h-[min(68vh,34rem)] w-full lg:max-h-[min(58vh,30rem)] ${canPan ? "cursor-grab active:cursor-grabbing" : ""}`}
             role="img"
-            aria-label="US map of job targets and resume visit hits"
+            aria-label={
+              mapFocus === "dfw"
+                ? "DFW metro map of job targets and resume visit hits"
+                : "US map of job targets and resume visit hits"
+            }
             onPointerDown={onPointerDown}
             onPointerMove={onPointerMove}
             onPointerUp={endDrag}
@@ -1465,17 +1650,49 @@ export function TargetMap({
             </defs>
 
             <g className="us-zoom-layer" transform={layerTransform}>
-              <g className="states">
-                {US_STATE_PATHS.map((s) => (
-                  <path
-                    key={s.id}
-                    d={s.d}
-                    fill="color-mix(in oklab, var(--cream) 6%, var(--panel))"
-                    stroke="color-mix(in oklab, var(--cream) 14%, transparent)"
-                    strokeWidth={0.6}
-                  />
-                ))}
-              </g>
+              {mapFocus === "dfw" ? (
+                <g className="dfw-cities">
+                  {DFW_CITY_PATHS.map((city) => (
+                    <path
+                      key={city.id}
+                      d={city.d}
+                      fill="color-mix(in oklab, var(--cream) 7%, var(--panel))"
+                      stroke="color-mix(in oklab, var(--cream) 22%, transparent)"
+                      strokeWidth={0.7}
+                    />
+                  ))}
+                  {DFW_CITY_PATHS.filter((city) => labeledDfwCityIds.has(city.id)).map(
+                    (city) => (
+                      <text
+                        key={`label-${city.id}`}
+                        x={city.labelX}
+                        y={city.labelY}
+                        textAnchor="middle"
+                        dominantBaseline="middle"
+                        className="pointer-events-none select-none"
+                        fill="color-mix(in oklab, var(--cream) 72%, transparent)"
+                        fontSize={DFW_ALWAYS_LABEL.has(city.name) ? 9.5 : 7.5}
+                        fontWeight={DFW_ALWAYS_LABEL.has(city.name) ? 600 : 500}
+                        opacity={DFW_ALWAYS_LABEL.has(city.name) ? 0.9 : 0.72}
+                      >
+                        {city.name}
+                      </text>
+                    ),
+                  )}
+                </g>
+              ) : (
+                <g className="states">
+                  {US_STATE_PATHS.map((s) => (
+                    <path
+                      key={s.id}
+                      d={s.d}
+                      fill="color-mix(in oklab, var(--cream) 6%, var(--panel))"
+                      stroke="color-mix(in oklab, var(--cream) 14%, transparent)"
+                      strokeWidth={0.6}
+                    />
+                  ))}
+                </g>
+              )}
 
               {showEdges && (animatingLinks || linksDrawn)
                 ? edgeTargets.map((t) => {
@@ -1585,7 +1802,7 @@ export function TargetMap({
               </g>
 
               <g className="radar-layer" aria-hidden>
-                {radarGlows
+                {stageRadarGlows
                   .filter((g) => {
                     if (g.tone === "city" && !showUnlinked) return false;
                     if (dimNonMatch && g.tone === "job") {
@@ -1605,7 +1822,7 @@ export function TargetMap({
               </g>
 
               {showUnlinked
-                ? unlinked.map((u) => {
+                ? focusUnlinked.map((u) => {
                     const reveal = waveRevealProps(lastImpactMs);
                     return (
                       <g
@@ -1632,110 +1849,112 @@ export function TargetMap({
             </g>
           </svg>
 
-          <MapStageOverlay
-            storageKey={OVERLAY_STORE.eu}
-            stageRef={mapStageRef}
-            anchor="sw"
-            label="EU"
-            count={euTargets.length + euUnlinked.length}
-            widthStyle={overlayScale < 1 ? { width: `${euInsetWidthRem}rem` } : undefined}
-          >
-            <svg
-              viewBox={EU_MAP_VIEWBOX}
-              className="h-auto w-full px-1 pb-1 max-lg:px-0.5 max-lg:pb-0.5"
-              role="img"
-              aria-label="Europe inset of job targets and resume visits"
+          {mapFocus === "us" ? (
+            <MapStageOverlay
+              storageKey={OVERLAY_STORE.eu}
+              stageRef={mapStageRef}
+              anchor="sw"
+              label="EU"
+              count={euTargets.length + euUnlinked.length}
+              widthStyle={overlayScale < 1 ? { width: `${euInsetWidthRem}rem` } : undefined}
             >
-              <defs>
-                <filter id="eu-hit-glow" x="-80%" y="-80%" width="260%" height="260%">
-                  <feGaussianBlur stdDeviation="2.2" result="blur" />
-                  <feMerge>
-                    <feMergeNode in="blur" />
-                    <feMergeNode in="SourceGraphic" />
-                  </feMerge>
-                </filter>
-                <filter id="eu-radar-soft" x="-120%" y="-120%" width="340%" height="340%">
-                  <feGaussianBlur stdDeviation="3.5" result="blur" />
-                  <feMerge>
-                    <feMergeNode in="blur" />
-                  </feMerge>
-                </filter>
-              </defs>
-              <rect
-                x={0}
-                y={0}
-                width={280}
-                height={220}
-                fill="color-mix(in oklab, var(--panel) 70%, var(--ink))"
-              />
-              {EU_LAND_PATHS.map((p) => (
-                <path
-                  key={p.id}
-                  d={p.d}
-                  fill="color-mix(in oklab, var(--cream) 8%, var(--panel))"
-                  stroke="color-mix(in oklab, var(--cream) 16%, transparent)"
-                  strokeWidth={0.8}
+              <svg
+                viewBox={EU_MAP_VIEWBOX}
+                className="h-auto w-full px-1 pb-1 max-lg:px-0.5 max-lg:pb-0.5"
+                role="img"
+                aria-label="Europe inset of job targets and resume visits"
+              >
+                <defs>
+                  <filter id="eu-hit-glow" x="-80%" y="-80%" width="260%" height="260%">
+                    <feGaussianBlur stdDeviation="2.2" result="blur" />
+                    <feMerge>
+                      <feMergeNode in="blur" />
+                      <feMergeNode in="SourceGraphic" />
+                    </feMerge>
+                  </filter>
+                  <filter id="eu-radar-soft" x="-120%" y="-120%" width="340%" height="340%">
+                    <feGaussianBlur stdDeviation="3.5" result="blur" />
+                    <feMerge>
+                      <feMergeNode in="blur" />
+                    </feMerge>
+                  </filter>
+                </defs>
+                <rect
+                  x={0}
+                  y={0}
+                  width={280}
+                  height={220}
+                  fill="color-mix(in oklab, var(--panel) 70%, var(--ink))"
                 />
-              ))}
-              <g aria-hidden>
-                {euRadarGlows
-                  .filter((g) => {
-                    if (g.tone === "city" && !showUnlinked) return false;
-                    if (dimNonMatch && g.tone === "job") {
-                      const t = euTargets.find((n) => `glow-eu-job-${n.job.id}` === g.id);
-                      if (t && !filterPass(t)) return false;
-                    }
-                    return true;
-                  })
-                  .map((g) => {
-                    const jobId =
-                      g.tone === "job" ? g.id.replace(/^glow-eu-job-/, "") : null;
-                    const reveal = jobId
-                      ? siteRevealProps(jobId)
-                      : waveRevealProps(lastImpactMs);
-                    return renderRadarGlow(g, 0.55, "eu-radar-soft", reveal);
-                  })}
-              </g>
-              {showUnlinked
-                ? euUnlinked.map((u) => {
-                    const reveal = waveRevealProps(lastImpactMs);
-                    return (
-                      <g
-                        key={`eu-u-${u.cityKey}`}
-                        className={reveal.className}
-                        style={reveal.style}
-                        opacity={deferSites ? undefined : 0.85}
-                      >
-                        <circle
-                          cx={u.x}
-                          cy={u.y}
-                          r={3.5 + Math.min(5, u.count * 1.1)}
-                          fill="color-mix(in oklab, var(--muted) 55%, transparent)"
-                          stroke="color-mix(in oklab, var(--muted) 80%, white)"
-                          strokeWidth={0.9}
-                        />
-                        <title>{`${u.label}: ${u.count} unlinked visit${u.count === 1 ? "" : "s"}`}</title>
-                      </g>
-                    );
-                  })
-                : null}
-              {drawEu.map((t) => renderTargetDot(t, "eu"))}
-              {!euTargets.length && !euUnlinked.length ? (
-                <text
-                  x={140}
-                  y={118}
-                  textAnchor="middle"
-                  fill="var(--muted)"
-                  fontSize={11}
-                  opacity={0.65}
-                >
-                  No EU pins yet
-                </text>
-              ) : null}
-            </svg>
-          </MapStageOverlay>
+                {EU_LAND_PATHS.map((p) => (
+                  <path
+                    key={p.id}
+                    d={p.d}
+                    fill="color-mix(in oklab, var(--cream) 8%, var(--panel))"
+                    stroke="color-mix(in oklab, var(--cream) 16%, transparent)"
+                    strokeWidth={0.8}
+                  />
+                ))}
+                <g aria-hidden>
+                  {euRadarGlows
+                    .filter((g) => {
+                      if (g.tone === "city" && !showUnlinked) return false;
+                      if (dimNonMatch && g.tone === "job") {
+                        const t = euTargets.find((n) => `glow-eu-job-${n.job.id}` === g.id);
+                        if (t && !filterPass(t)) return false;
+                      }
+                      return true;
+                    })
+                    .map((g) => {
+                      const jobId =
+                        g.tone === "job" ? g.id.replace(/^glow-eu-job-/, "") : null;
+                      const reveal = jobId
+                        ? siteRevealProps(jobId)
+                        : waveRevealProps(lastImpactMs);
+                      return renderRadarGlow(g, 0.55, "eu-radar-soft", reveal);
+                    })}
+                </g>
+                {showUnlinked
+                  ? euUnlinked.map((u) => {
+                      const reveal = waveRevealProps(lastImpactMs);
+                      return (
+                        <g
+                          key={`eu-u-${u.cityKey}`}
+                          className={reveal.className}
+                          style={reveal.style}
+                          opacity={deferSites ? undefined : 0.85}
+                        >
+                          <circle
+                            cx={u.x}
+                            cy={u.y}
+                            r={3.5 + Math.min(5, u.count * 1.1)}
+                            fill="color-mix(in oklab, var(--muted) 55%, transparent)"
+                            stroke="color-mix(in oklab, var(--muted) 80%, white)"
+                            strokeWidth={0.9}
+                          />
+                          <title>{`${u.label}: ${u.count} unlinked visit${u.count === 1 ? "" : "s"}`}</title>
+                        </g>
+                      );
+                    })
+                  : null}
+                {drawEu.map((t) => renderTargetDot(t, "eu"))}
+                {!euTargets.length && !euUnlinked.length ? (
+                  <text
+                    x={140}
+                    y={118}
+                    textAnchor="middle"
+                    fill="var(--muted)"
+                    fontSize={11}
+                    opacity={0.65}
+                  >
+                    No EU pins yet
+                  </text>
+                ) : null}
+              </svg>
+            </MapStageOverlay>
+          ) : null}
 
-          {remoteTargets.length > 0 ? (
+          {mapFocus === "us" && remoteTargets.length > 0 ? (
             <MapStageOverlay
               storageKey={OVERLAY_STORE.remote}
               stageRef={mapStageRef}
@@ -1939,13 +2158,16 @@ export function TargetMap({
               </li>
               <li className="flex items-center gap-2">
                 <span className="inline-block h-2.5 w-3.5 rounded-sm border border-white/20 bg-[var(--ink)]" />
-                EU / Remote overlays (drag · minimize)
+                {mapFocus === "dfw"
+                  ? "DFW city outlines + labels"
+                  : "EU / Remote overlays (drag · minimize)"}
               </li>
             </ul>
             <p className="mt-3 text-[11px] leading-relaxed text-[var(--muted)]">
-              {geoTargets.length} US · {euTargets.length} EU · {remoteCount} remote/unplaced · {totalHits}{" "}
-              attributed hits
-              {unlinked.length || euUnlinked.length
+              {mapFocus === "dfw"
+                ? `${focusGeoTargets.length} DFW targets · ${focusUnlinked.reduce((s, u) => s + u.count, 0)} unlinked metro visits`
+                : `${geoTargets.length} US · ${euTargets.length} EU · ${remoteCount} remote/unplaced · ${totalHits} attributed hits`}
+              {mapFocus === "us" && (unlinked.length || euUnlinked.length)
                 ? ` · ${[...unlinked, ...euUnlinked].reduce((s, u) => s + u.count, 0)} unlinked`
                 : ""}
             </p>
