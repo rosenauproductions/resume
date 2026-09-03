@@ -163,6 +163,38 @@ const CITY_COORDS: Record<string, GeoPoint> = {
   calabasas: { lat: 34.1367, lng: -118.6615, label: "Calabasas, CA" },
   lehi: { lat: 40.3916, lng: -111.8508, label: "Lehi, UT" },
   "new brunswick": { lat: 40.4862, lng: -74.4518, label: "New Brunswick, NJ" },
+
+  // Europe (Target map EU inset — Melbourne/AU intentionally omitted)
+  london: { lat: 51.5074, lng: -0.1278, label: "London, UK" },
+  edinburgh: { lat: 55.9533, lng: -3.1883, label: "Edinburgh, UK" },
+  manchester: { lat: 53.4808, lng: -2.2426, label: "Manchester, UK" },
+  dublin: { lat: 53.3498, lng: -6.2603, label: "Dublin, IE" },
+  cork: { lat: 51.8985, lng: -8.4756, label: "Cork, IE" },
+  paris: { lat: 48.8566, lng: 2.3522, label: "Paris, FR" },
+  lyon: { lat: 45.764, lng: 4.8357, label: "Lyon, FR" },
+  berlin: { lat: 52.52, lng: 13.405, label: "Berlin, DE" },
+  munich: { lat: 48.1351, lng: 11.582, label: "Munich, DE" },
+  frankfurt: { lat: 50.1109, lng: 8.6821, label: "Frankfurt, DE" },
+  hamburg: { lat: 53.5511, lng: 9.9937, label: "Hamburg, DE" },
+  amsterdam: { lat: 52.3676, lng: 4.9041, label: "Amsterdam, NL" },
+  rotterdam: { lat: 51.9244, lng: 4.4777, label: "Rotterdam, NL" },
+  brussels: { lat: 50.8503, lng: 4.3517, label: "Brussels, BE" },
+  zurich: { lat: 47.3769, lng: 8.5417, label: "Zurich, CH" },
+  geneva: { lat: 46.2044, lng: 6.1432, label: "Geneva, CH" },
+  vienna: { lat: 48.2082, lng: 16.3738, label: "Vienna, AT" },
+  madrid: { lat: 40.4168, lng: -3.7038, label: "Madrid, ES" },
+  barcelona: { lat: 41.3874, lng: 2.1686, label: "Barcelona, ES" },
+  lisbon: { lat: 38.7223, lng: -9.1393, label: "Lisbon, PT" },
+  rome: { lat: 41.9028, lng: 12.4964, label: "Rome, IT" },
+  milan: { lat: 45.4642, lng: 9.19, label: "Milan, IT" },
+  stockholm: { lat: 59.3293, lng: 18.0686, label: "Stockholm, SE" },
+  copenhagen: { lat: 55.6761, lng: 12.5683, label: "Copenhagen, DK" },
+  oslo: { lat: 59.9139, lng: 10.7522, label: "Oslo, NO" },
+  helsinki: { lat: 60.1699, lng: 24.9384, label: "Helsinki, FI" },
+  warsaw: { lat: 52.2297, lng: 21.0122, label: "Warsaw, PL" },
+  prague: { lat: 50.0755, lng: 14.4378, label: "Prague, CZ" },
+  budapest: { lat: 47.4979, lng: 19.0402, label: "Budapest, HU" },
+  athens: { lat: 37.9838, lng: 23.7275, label: "Athens, GR" },
 };
 
 /**
@@ -261,9 +293,22 @@ export function isRemoteLocation(text: string): boolean {
  * `d3.geoAlbersUsa().scale(1300).translate([487.5, 305])` (lower-48 branch).
  * Uses d3.geoAlbers defaults: rotate [96,0], center [-0.6, 38.7], parallels [29.5, 45.5].
  */
+/** Contiguous-US Albers bounds (AK/HI omitted). Europe/AU/etc. return false. */
+export function isContiguousUS(lng: number, lat: number): boolean {
+  return lng >= -130 && lng <= -66 && lat >= 24 && lat <= 50;
+}
+
+/**
+ * Geographic Europe window matching the Target map EU inset
+ * (`eu-map-paths` EU_BOUNDS). Excludes Australia (e.g. Melbourne).
+ */
+export function isInEurope(lng: number, lat: number): boolean {
+  return lng >= -12 && lng <= 42 && lat >= 34 && lat <= 72;
+}
+
 export function projectUS(lng: number, lat: number): { x: number; y: number } | null {
   // Contiguous US only — AK/HI omitted from this map layer
-  if (lng < -130 || lng > -66 || lat < 24 || lat > 50) return null;
+  if (!isContiguousUS(lng, lat)) return null;
 
   const parallels = [29.5, 45.5] as const;
   const rotate = 96;
