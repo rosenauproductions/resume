@@ -3,11 +3,13 @@
 import {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
   type CSSProperties,
   type PointerEvent as ReactPointerEvent,
+  type ReactNode,
 } from "react";
 import {
   STATUS_LABELS,
@@ -259,6 +261,269 @@ function clampZoom(z: number) {
   return Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, z));
 }
 
+const OVERLAY_PAD = 8;
+const OVERLAY_DRAG_SLOP = 6;
+const OVERLAY_STORE = {
+  eu: "pipeline-map-overlay-eu",
+  remote: "pipeline-map-overlay-remote",
+} as const;
+
+type OverlayPos = { x: number; y: number; minimized: boolean };
+
+function readOverlayStore(key: string): OverlayPos | null {
+  try {
+    const raw = sessionStorage.getItem(key);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as OverlayPos;
+    if (!Number.isFinite(parsed.x) || !Number.isFinite(parsed.y)) return null;
+    return { x: parsed.x, y: parsed.y, minimized: Boolean(parsed.minimized) };
+  } catch {
+    return null;
+  }
+}
+
+function writeOverlayStore(key: string, pos: OverlayPos) {
+  try {
+    sessionStorage.setItem(key, JSON.stringify(pos));
+  } catch {
+    /* ignore quota / private mode */
+  }
+}
+
+function clampOverlayPos(
+  x: number,
+  y: number,
+  panelW: number,
+  panelH: number,
+  stageW: number,
+  stageH: number,
+) {
+  const maxX = Math.max(OVERLAY_PAD, stageW - panelW - OVERLAY_PAD);
+  const maxY = Math.max(OVERLAY_PAD, stageH - panelH - OVERLAY_PAD);
+  return {
+    x: Math.min(maxX, Math.max(OVERLAY_PAD, x)),
+    y: Math.min(maxY, Math.max(OVERLAY_PAD, y)),
+  };
+}
+
+function MapStageOverlay({
+  storageKey,
+  stageRef,
+  anchor,
+  label,
+  count,
+  widthStyle,
+  children,
+}: {
+  storageKey: string;
+  stageRef: { current: Element | null };
+  anchor: "sw" | "s";
+  label: string;
+  count?: number;
+  widthStyle?: CSSProperties;
+  children: ReactNode;
+}) {
+  const panelRef = useRef<HTMLDivElement | null>(null);
+  const seededRef = useRef(false);
+  const posRef = useRef<OverlayPos>({ x: OVERLAY_PAD, y: OVERLAY_PAD, minimized: false });
+  const dragRef = useRef<{
+    pointerId: number;
+    startX: number;
+    startY: number;
+    originX: number;
+    originY: number;
+    moved: boolean;
+  } | null>(null);
+  const [pos, setPos] = useState<OverlayPos>({ x: OVERLAY_PAD, y: OVERLAY_PAD, minimized: false });
+  const [placed, setPlaced] = useState(false);
+  const [front, setFront] = useState(false);
+  posRef.current = pos;
+
+  const persist = useCallback(
+    (next: OverlayPos) => {
+      posRef.current = next;
+      setPos(next);
+      writeOverlayStore(storageKey, next);
+    },
+    [storageKey],
+  );
+
+  const applyLayout = useCallback(
+    (mode: "default" | "clamp") => {
+      const stage = stageRef.current;
+      const el = panelRef.current;
+      if (!stage || !el) return;
+      const current = posRef.current;
+      const stageW = stage.clientWidth;
+      const stageH = stage.clientHeight;
+      const w = el.offsetWidth;
+      const h = el.offsetHeight;
+      let x = current.x;
+      let y = current.y;
+      if (mode === "default") {
+        if (anchor === "sw") {
+          x = OVERLAY_PAD;
+          y = stageH - h - OVERLAY_PAD;
+        } else {
+          x = Math.max(OVERLAY_PAD, (stageW - w) / 2);
+          y = stageH - h - OVERLAY_PAD;
+        }
+      }
+      const clamped = clampOverlayPos(x, y, w, h, stageW, stageH);
+      if (clamped.x !== current.x || clamped.y !== current.y || mode === "default") {
+        persist({ ...clamped, minimized: current.minimized });
+      }
+      setPlaced(true);
+    },
+    [anchor, persist, stageRef],
+  );
+
+  useLayoutEffect(() => {
+    if (seededRef.current) return;
+    seededRef.current = true;
+    const stored = readOverlayStore(storageKey);
+    if (stored) {
+      posRef.current = stored;
+      setPos(stored);
+    }
+    applyLayout(stored ? "clamp" : "default");
+  }, [applyLayout, storageKey]);
+
+  useLayoutEffect(() => {
+    if (!seededRef.current) return;
+    applyLayout("clamp");
+  }, [applyLayout, pos.minimized, widthStyle?.width]);
+
+  useEffect(() => {
+    const stage = stageRef.current;
+    const el = panelRef.current;
+    if (!stage || !el) return;
+    const ro = new ResizeObserver(() => applyLayout("clamp"));
+    ro.observe(stage);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [applyLayout, pos.minimized]);
+
+  const onHandlePointerDown = (e: ReactPointerEvent<HTMLElement>) => {
+    if (e.button !== 0) return;
+    e.stopPropagation();
+    e.preventDefault();
+    setFront(true);
+    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    dragRef.current = {
+      pointerId: e.pointerId,
+      startX: e.clientX,
+      startY: e.clientY,
+      originX: pos.x,
+      originY: pos.y,
+      moved: false,
+    };
+  };
+
+  const onHandlePointerMove = (e: ReactPointerEvent<HTMLElement>) => {
+    const drag = dragRef.current;
+    const stage = stageRef.current;
+    const el = panelRef.current;
+    if (!drag || drag.pointerId !== e.pointerId || !stage || !el) return;
+    e.stopPropagation();
+    const dx = e.clientX - drag.startX;
+    const dy = e.clientY - drag.startY;
+    if (Math.hypot(dx, dy) > OVERLAY_DRAG_SLOP) drag.moved = true;
+    persist({
+      ...clampOverlayPos(
+        drag.originX + dx,
+        drag.originY + dy,
+        el.offsetWidth,
+        el.offsetHeight,
+        stage.clientWidth,
+        stage.clientHeight,
+      ),
+      minimized: pos.minimized,
+    });
+  };
+
+  const onHandlePointerUp = (e: ReactPointerEvent<HTMLElement>) => {
+    const drag = dragRef.current;
+    if (!drag || drag.pointerId !== e.pointerId) return;
+    dragRef.current = null;
+    e.stopPropagation();
+    if (!drag.moved && pos.minimized) {
+      persist({ ...pos, minimized: false });
+    }
+  };
+
+  return (
+    <div
+      ref={panelRef}
+      className={`absolute touch-none rounded-xl border border-white/12 bg-[var(--ink)]/88 shadow-[0_8px_28px_rgba(0,0,0,0.35)] backdrop-blur max-lg:rounded-lg ${
+        pos.minimized
+          ? "cursor-grab active:cursor-grabbing"
+          : "w-[11.5rem] overflow-hidden max-lg:w-[min(11.5rem,26%)]"
+      }`}
+      style={{
+        left: pos.x,
+        top: pos.y,
+        zIndex: front ? 5 : 3,
+        opacity: placed ? 1 : 0,
+        ...(pos.minimized ? undefined : widthStyle),
+      }}
+      onPointerDown={(e) => e.stopPropagation()}
+    >
+      {pos.minimized ? (
+        <button
+          type="button"
+          aria-label={`Expand ${label} overlay`}
+          aria-expanded={false}
+          className="flex items-center gap-1.5 px-2 py-1 text-[10px] font-medium uppercase tracking-[0.18em] text-[var(--cream)] max-lg:text-[8px]"
+          onPointerDown={onHandlePointerDown}
+          onPointerMove={onHandlePointerMove}
+          onPointerUp={onHandlePointerUp}
+          onPointerCancel={onHandlePointerUp}
+        >
+          {label}
+          {typeof count === "number" ? (
+            <span className="tabular-nums text-[var(--muted)]/85">{count}</span>
+          ) : null}
+        </button>
+      ) : (
+        <>
+          <div
+            className="flex cursor-grab items-center justify-between gap-2 px-2 pt-1.5 active:cursor-grabbing max-lg:px-1 max-lg:pt-0.5"
+            onPointerDown={onHandlePointerDown}
+            onPointerMove={onHandlePointerMove}
+            onPointerUp={onHandlePointerUp}
+            onPointerCancel={onHandlePointerUp}
+          >
+            <span className="text-[10px] font-medium uppercase tracking-[0.2em] text-[var(--muted)] max-lg:text-[8px] max-lg:tracking-[0.14em]">
+              {label}
+            </span>
+            <span className="flex items-center gap-1.5">
+              {typeof count === "number" ? (
+                <span className="text-[9px] tabular-nums text-[var(--muted)]/80 max-lg:text-[8px]">
+                  {count}
+                </span>
+              ) : null}
+              <button
+                type="button"
+                aria-label={`Minimize ${label} overlay`}
+                className="flex h-5 w-5 items-center justify-center rounded-md text-[11px] text-[var(--muted)] hover:bg-white/10 hover:text-[var(--cream)]"
+                onPointerDown={(e) => e.stopPropagation()}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  persist({ ...pos, minimized: true });
+                }}
+              >
+                –
+              </button>
+            </span>
+          </div>
+          {children}
+        </>
+      )}
+    </div>
+  );
+}
+
 function usePrefersReducedMotion() {
   const [reduced, setReduced] = useState(false);
   useEffect(() => {
@@ -370,7 +635,10 @@ export function TargetMap({
   const zoomRef = useRef(zoom);
   zoomRef.current = zoom;
   const reducedMotion = usePrefersReducedMotion();
-  const remoteCluster = useMemo(() => scaledRemoteCluster(overlayScale), [overlayScale]);
+  const remoteCluster = useMemo(() => {
+    const scaled = scaledRemoteCluster(overlayScale);
+    return { ...scaled, boxX: 0, boxY: 0 };
+  }, [overlayScale]);
   const euInsetWidthRem = EU_INSET_DESKTOP_REM * overlayScale;
 
   const hub = useMemo(() => {
@@ -573,7 +841,7 @@ export function TargetMap({
 
     const radarGlows: RadarGlow[] = [
       ...nodes
-        .filter((n) => n.hits > 0 && n.layer === "us")
+        .filter((n) => n.hits > 0 && n.layer === "us" && !n.remote)
         .map((n) => ({
           id: `glow-job-${n.job.id}`,
           x: n.x,
@@ -646,7 +914,17 @@ export function TargetMap({
   const drawGeo = dimNonMatch ? allGeoDraw : visibleGeo;
   const drawRemote = dimNonMatch ? allRemoteDraw : visibleRemote;
   const drawEu = dimNonMatch ? allEuDraw : visibleEu;
-  const edgeTargets = [...visibleGeo, ...visibleRemote];
+  const edgeTargets = visibleGeo;
+  const remoteRadarGlows: RadarGlow[] = remoteTargets
+    .filter((n) => n.hits > 0)
+    .map((n) => ({
+      id: `glow-remote-job-${n.job.id}`,
+      x: n.x,
+      y: n.y,
+      count: n.hits,
+      tone: "job" as const,
+      layer: "us" as const,
+    }));
 
   useEffect(() => {
     const el = mapStageRef.current;
@@ -727,7 +1005,7 @@ export function TargetMap({
     .filter((t) => filterPass(t))
     .sort((a, b) => b.hits - a.hits || a.job.company.localeCompare(b.job.company));
 
-  const { boxX, boxY, boxW, boxH, label: remoteLabel } = remoteCluster;
+  const { boxW, boxH, label: remoteLabel } = remoteCluster;
   const awaitingView = !reducedMotion && showEdges && !mapInView;
   const animatingLinks = showEdges && !reducedMotion && mapInView && !linksDrawn;
   const deferSites = awaitingView || animatingLinks;
@@ -942,7 +1220,13 @@ export function TargetMap({
             r={Math.max(r + 3 * scale, 6 * scale)}
             fill={stroke}
             fillOpacity={0.08 + Math.min(0.14, t.hits * 0.03)}
-            filter={kind === "eu" ? "url(#eu-radar-soft)" : "url(#radar-soft)"}
+            filter={
+              kind === "eu"
+                ? "url(#eu-radar-soft)"
+                : kind === "remote"
+                  ? "url(#remote-radar-soft)"
+                  : "url(#radar-soft)"
+            }
           />
         ) : null}
         <circle
@@ -957,7 +1241,9 @@ export function TargetMap({
             t.hits > 0 && !faded
               ? kind === "eu"
                 ? "url(#eu-hit-glow)"
-                : "url(#hit-glow)"
+                : kind === "remote"
+                  ? "url(#remote-hit-glow)"
+                  : "url(#hit-glow)"
               : undefined
           }
         />
@@ -993,7 +1279,7 @@ export function TargetMap({
           <p className="mt-1 max-w-2xl text-sm text-[var(--muted)]">
             Fill = work arrangement · outline = pipeline status (green also for ≥2 resume hits).
             Soft radar rings mark visit intensity on job targets or unlinked cities.
-            Remote and unplaced roles sit in the Gulf cluster; Europe pins live in the lower-left EU inset.
+            Remote/unplaced roles and Europe pins live in draggable overlays (minimizable).
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -1342,62 +1628,18 @@ export function TargetMap({
                   })
                 : null}
 
-              {remoteTargets.length > 0 ? (
-                <g aria-label={remoteLabel}>
-                  <rect
-                    x={boxX}
-                    y={boxY}
-                    width={boxW}
-                    height={boxH}
-                    rx={Math.max(6, 14 * overlayScale)}
-                    ry={Math.max(6, 14 * overlayScale)}
-                    fill="color-mix(in oklab, var(--ink) 55%, transparent)"
-                    stroke="color-mix(in oklab, var(--warm) 45%, var(--cream))"
-                    strokeWidth={overlayScale < 1 ? 1 : 1.2}
-                    strokeOpacity={0.55}
-                  />
-                  <rect
-                    x={boxX + Math.max(0.8, 1.5 * overlayScale)}
-                    y={boxY + Math.max(0.8, 1.5 * overlayScale)}
-                    width={boxW - Math.max(1.6, 3 * overlayScale)}
-                    height={boxH - Math.max(1.6, 3 * overlayScale)}
-                    rx={Math.max(5, 12 * overlayScale)}
-                    ry={Math.max(5, 12 * overlayScale)}
-                    fill="color-mix(in oklab, var(--accent) 6%, transparent)"
-                    stroke="none"
-                  />
-                  <text
-                    x={boxX + boxW / 2}
-                    y={boxY + Math.max(9, 16 * overlayScale)}
-                    textAnchor="middle"
-                    fill="var(--cream)"
-                    fontSize={overlayScale < 1 ? Math.max(8, 10 * overlayScale * 1.35) : 10}
-                    fontFamily="var(--font-display), Georgia, serif"
-                    opacity={0.92}
-                  >
-                    {remoteLabel}
-                  </text>
-                </g>
-              ) : null}
-
               {drawGeo.map((t) => renderTargetDot(t, "geo"))}
-              {drawRemote.map((t) => renderTargetDot(t, "remote"))}
             </g>
           </svg>
 
-          {/* EU mini-map — lower left; width tracks map shrink below `lg`. */}
-          <div
-            className="pointer-events-auto absolute bottom-3 left-3 z-[3] w-[11.5rem] overflow-hidden rounded-xl border border-white/12 bg-[var(--ink)]/88 shadow-[0_8px_28px_rgba(0,0,0,0.35)] backdrop-blur max-lg:bottom-2 max-lg:left-2 max-lg:w-[min(11.5rem,26%)] max-lg:rounded-lg"
-            style={overlayScale < 1 ? { width: `${euInsetWidthRem}rem` } : undefined}
+          <MapStageOverlay
+            storageKey={OVERLAY_STORE.eu}
+            stageRef={mapStageRef}
+            anchor="sw"
+            label="EU"
+            count={euTargets.length + euUnlinked.length}
+            widthStyle={overlayScale < 1 ? { width: `${euInsetWidthRem}rem` } : undefined}
           >
-            <div className="flex items-center justify-between px-2 pt-1.5 max-lg:px-1 max-lg:pt-0.5">
-              <span className="text-[10px] font-medium uppercase tracking-[0.2em] text-[var(--muted)] max-lg:text-[8px] max-lg:tracking-[0.14em]">
-                EU
-              </span>
-              <span className="text-[9px] tabular-nums text-[var(--muted)]/80 max-lg:text-[8px]">
-                {euTargets.length + euUnlinked.length}
-              </span>
-            </div>
             <svg
               viewBox={EU_MAP_VIEWBOX}
               className="h-auto w-full px-1 pb-1 max-lg:px-0.5 max-lg:pb-0.5"
@@ -1491,10 +1733,77 @@ export function TargetMap({
                 </text>
               ) : null}
             </svg>
-          </div>
+          </MapStageOverlay>
+
+          {remoteTargets.length > 0 ? (
+            <MapStageOverlay
+              storageKey={OVERLAY_STORE.remote}
+              stageRef={mapStageRef}
+              anchor="s"
+              label="Remote"
+              count={remoteCount}
+              widthStyle={
+                overlayScale < 1
+                  ? { width: `${Math.max(euInsetWidthRem, 9.5)}rem` }
+                  : { width: "13rem" }
+              }
+            >
+              <svg
+                viewBox={`0 0 ${boxW} ${boxH}`}
+                className="h-auto w-full px-1 pb-1 max-lg:px-0.5 max-lg:pb-0.5"
+                role="img"
+                aria-label={remoteLabel}
+              >
+                <defs>
+                  <filter id="remote-hit-glow" x="-80%" y="-80%" width="260%" height="260%">
+                    <feGaussianBlur stdDeviation="2.2" result="blur" />
+                    <feMerge>
+                      <feMergeNode in="blur" />
+                      <feMergeNode in="SourceGraphic" />
+                    </feMerge>
+                  </filter>
+                  <filter id="remote-radar-soft" x="-120%" y="-120%" width="340%" height="340%">
+                    <feGaussianBlur stdDeviation="3.5" result="blur" />
+                    <feMerge>
+                      <feMergeNode in="blur" />
+                    </feMerge>
+                  </filter>
+                </defs>
+                <rect
+                  x={0}
+                  y={0}
+                  width={boxW}
+                  height={boxH}
+                  fill="color-mix(in oklab, var(--panel) 70%, var(--ink))"
+                />
+                <g aria-hidden>
+                  {remoteRadarGlows
+                    .filter((g) => {
+                      if (dimNonMatch) {
+                        const t = remoteTargets.find(
+                          (n) => `glow-remote-job-${n.job.id}` === g.id,
+                        );
+                        if (t && !filterPass(t)) return false;
+                      }
+                      return true;
+                    })
+                    .map((g) => {
+                      const jobId = g.id.replace(/^glow-remote-job-/, "");
+                      return renderRadarGlow(
+                        g,
+                        0.7,
+                        "remote-radar-soft",
+                        siteRevealProps(jobId),
+                      );
+                    })}
+                </g>
+                {drawRemote.map((t) => renderTargetDot(t, "remote"))}
+              </svg>
+            </MapStageOverlay>
+          ) : null}
 
           {/* Zoom controls */}
-          <div className="absolute bottom-3 right-3 z-[3] flex flex-col gap-1">
+          <div className="absolute bottom-3 right-3 z-[4] flex flex-col gap-1">
             <button
               type="button"
               aria-label="Zoom in"
@@ -1525,53 +1834,8 @@ export function TargetMap({
             ) : null}
           </div>
 
-          <div className="pointer-events-none absolute left-3 top-3 z-[2] max-w-[14rem] rounded-xl border border-white/10 bg-[var(--ink)]/85 px-2.5 py-2 text-[10px] backdrop-blur">
-            <p className="mb-1.5 font-medium uppercase tracking-[0.16em] text-[var(--muted)]">Fill</p>
-            <ul className="mb-2 flex flex-wrap gap-x-3 gap-y-1 text-[var(--cream)]/90">
-              <li className="flex items-center gap-1.5">
-                <span className="inline-block h-2 w-2 rounded-full" style={{ background: FILL.onsite }} />
-                Onsite
-              </li>
-              <li className="flex items-center gap-1.5">
-                <span className="inline-block h-2 w-2 rounded-full bg-[var(--accent)]" />
-                Hybrid
-              </li>
-              <li className="flex items-center gap-1.5">
-                <span className="inline-block h-2 w-2 rounded-full" style={{ background: FILL.remote }} />
-                Remote
-              </li>
-            </ul>
-            <p className="mb-1.5 font-medium uppercase tracking-[0.16em] text-[var(--muted)]">Stroke</p>
-            <ul className="flex flex-wrap gap-x-3 gap-y-1 text-[var(--cream)]/90">
-              <li className="flex items-center gap-1.5">
-                <span
-                  className="inline-block h-2.5 w-2.5 rounded-full bg-transparent"
-                  style={{ border: `2px solid ${STROKE.rejected}` }}
-                />
-                Rejected
-              </li>
-              <li className="flex items-center gap-1.5">
-                <span
-                  className="inline-block h-2.5 w-2.5 rounded-full bg-transparent"
-                  style={{ border: `2px solid ${STROKE.applied}` }}
-                />
-                Applied
-              </li>
-              <li className="flex items-center gap-1.5">
-                <span
-                  className="inline-block h-2.5 w-2.5 rounded-full bg-transparent"
-                  style={{ border: `2px solid ${STROKE.progress}` }}
-                />
-                In progress / hits
-              </li>
-            </ul>
-          </div>
-
           {hovered ? (
-            <div
-              className="pointer-events-none absolute bottom-3 right-24 z-[2] max-w-sm rounded-xl border border-white/10 bg-[var(--ink)]/92 px-3 py-2.5 text-sm backdrop-blur sm:right-auto max-lg:bottom-2"
-              style={{ left: `calc(${euInsetWidthRem}rem + 0.85rem)` }}
-            >
+            <div className="pointer-events-none absolute left-3 top-3 z-[2] max-w-sm rounded-xl border border-white/10 bg-[var(--ink)]/92 px-3 py-2.5 text-sm backdrop-blur">
               <p className="font-medium text-[var(--cream)]">{hovered.job.company}</p>
               <p className="text-xs text-[var(--muted)]">{shortTitle(hovered.job.title)}</p>
               <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px]">
@@ -1598,6 +1862,11 @@ export function TargetMap({
                   <>
                     <span className="text-[var(--muted)]">·</span>
                     <span className="text-[var(--muted)]">EU</span>
+                  </>
+                ) : hovered.remote ? (
+                  <>
+                    <span className="text-[var(--muted)]">·</span>
+                    <span className="text-[var(--muted)]">Remote</span>
                   </>
                 ) : null}
               </div>
@@ -1670,7 +1939,7 @@ export function TargetMap({
               </li>
               <li className="flex items-center gap-2">
                 <span className="inline-block h-2.5 w-3.5 rounded-sm border border-white/20 bg-[var(--ink)]" />
-                EU inset (SW)
+                EU / Remote overlays (drag · minimize)
               </li>
             </ul>
             <p className="mt-3 text-[11px] leading-relaxed text-[var(--muted)]">
