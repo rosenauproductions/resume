@@ -17,7 +17,7 @@ export async function GET() {
     return NextResponse.json({ error: "DATABASE_URL not configured", visits: [] }, { status: 501 });
   }
 
-  const [visits, jobs] = await Promise.all([listVisits(150), listApplications()]);
+  const [visits, jobs] = await Promise.all([listVisits(300), listApplications()]);
   const byId = new Map(jobs.map((j) => [j.id, j]));
 
   return NextResponse.json({

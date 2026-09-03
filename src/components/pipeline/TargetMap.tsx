@@ -289,7 +289,8 @@ export function TargetMap({
 
       const cityBuckets = new Map<string, MapVisit[]>();
       for (const v of activeVisits) {
-        const key = extractCityKey(v.city) || extractCityKey(v.locationLabel);
+        // Prefer locationLabel (includes region) so "Washington, VA" ≠ DC
+        const key = extractCityKey(v.locationLabel) || extractCityKey(v.city);
         if (!key) continue;
         const list = cityBuckets.get(key) ?? [];
         list.push(v);
@@ -324,7 +325,7 @@ export function TargetMap({
             continue;
           }
           if (v.linkedApplicationId) continue;
-          const vKey = extractCityKey(v.city) || extractCityKey(v.locationLabel);
+          const vKey = extractCityKey(v.locationLabel) || extractCityKey(v.city);
           if (!vKey) continue;
           // Only attribute when city alias uniquely points at this job
           if (aliasOwner.get(vKey) === job.id) {
