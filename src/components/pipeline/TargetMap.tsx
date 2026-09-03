@@ -29,6 +29,19 @@ export type MapVisit = {
   locationLabel: string;
   linkConfidence: string;
   linkedApplicationId: string | null;
+  /** Optional; used to skip pipeline self-visits when present. */
+  path?: string;
+  linkReason?: string;
+};
+
+type RadarTone = "job" | "city";
+
+type RadarGlow = {
+  id: string;
+  x: number;
+  y: number;
+  count: number;
+  tone: RadarTone;
 };
 
 type WorkArrangement = "onsite" | "hybrid" | "remote" | "unknown";
@@ -159,6 +172,91 @@ function shortTitle(title: string, max = 42) {
   return `${t.slice(0, max - 1)}…`;
 }
 
+/** Visit-count tiers for radar glow intensity. */
+function radarTier(count: number): 1 | 2 | 3 | 4 {
+  if (count <= 1) return 1;
+  if (count === 2) return 2;
+  if (count <= 4) return 3;
+  return 4;
+}
+
+function radarParams(count: number) {
+  const tier = radarTier(count);
+  switch (tier) {
+    case 1:
+      // Barely visible
+      return { tier, baseR: 14, fillOp: 0.07, strokeOp: 0.18, rings: 1, duration: 3.4, pulse: false };
+    case 2:
+      // Noticeable
+      return { tier, baseR: 20, fillOp: 0.12, strokeOp: 0.32, rings: 2, duration: 2.9, pulse: true };
+    case 3:
+      // Strong
+      return { tier, baseR: 28, fillOp: 0.18, strokeOp: 0.45, rings: 2, duration: 2.4, pulse: true };
+    case 4:
+      // Strongest
+      return { tier, baseR: 38, fillOp: 0.26, strokeOp: 0.58, rings: 3, duration: 2.0, pulse: true };
+  }
+}
+
+function isPipelineSelfVisit(v: MapVisit): boolean {
+  const path = (v.path || "").trim();
+  if (path === "/pipeline" || path.startsWith("/pipeline/")) return true;
+  const reason = (v.linkReason || "").toLowerCase();
+  return reason.includes("pipeline self-visit");
+}
+
+function renderRadarGlow(g: RadarGlow) {
+  const p = radarParams(g.count);
+  const stroke =
+    g.tone === "job"
+      ? "var(--accent)"
+      : "color-mix(in oklab, var(--warm) 55%, var(--muted))";
+  const fill =
+    g.tone === "job"
+      ? "color-mix(in oklab, var(--accent) 70%, transparent)"
+      : "color-mix(in oklab, var(--warm) 45%, var(--muted))";
+
+  const rings = Array.from({ length: p.rings }, (_, i) => {
+    const r = p.baseR * (0.55 + i * 0.35);
+    const delay = i * 0.45;
+    return (
+      <circle
+        key={`ring-${i}`}
+        className={p.pulse ? "radar-ring" : undefined}
+        cx={g.x}
+        cy={g.y}
+        r={r}
+        fill="none"
+        stroke={stroke}
+        strokeWidth={1.1 + i * 0.25}
+        strokeOpacity={p.strokeOp * (1 - i * 0.22)}
+        style={
+          p.pulse
+            ? {
+                animationDuration: `${p.duration}s`,
+                animationDelay: `${delay}s`,
+              }
+            : undefined
+        }
+      />
+    );
+  });
+
+  return (
+    <g key={g.id} className="radar-glow" pointerEvents="none" aria-hidden>
+      <circle
+        cx={g.x}
+        cy={g.y}
+        r={p.baseR * 0.72}
+        fill={fill}
+        fillOpacity={p.fillOp}
+        filter="url(#radar-soft)"
+      />
+      {rings}
+    </g>
+  );
+}
+
 export function TargetMap({
   jobs,
   visits,
@@ -183,9 +281,11 @@ export function TargetMap({
     return p ? { ...RESUME_HUB, ...p } : { ...RESUME_HUB, x: 500, y: 350 };
   }, []);
 
-  const { targets, unlinked, maxHits, geoTargets, remoteTargets, remoteCount, totalHits } =
+  const { targets, unlinked, maxHits, geoTargets, remoteTargets, remoteCount, totalHits, radarGlows } =
     useMemo(() => {
-      const activeVisits = visits.filter((v) => v.linkConfidence !== "ignored");
+      const activeVisits = visits.filter(
+        (v) => v.linkConfidence !== "ignored" && !isPipelineSelfVisit(v),
+      );
 
       const cityBuckets = new Map<string, MapVisit[]>();
       for (const v of activeVisits) {
@@ -316,7 +416,36 @@ export function TargetMap({
       );
       const totalHits = nodes.reduce((s, n) => s + n.hits, 0);
 
-      return { targets: nodes, unlinked, maxHits, geoTargets, remoteTargets, remoteCount, totalHits };
+      // Radar glows: job targets with hits, else unlinked city pins
+      const radarGlows: RadarGlow[] = [
+        ...nodes
+          .filter((n) => n.hits > 0)
+          .map((n) => ({
+            id: `glow-job-${n.job.id}`,
+            x: n.x,
+            y: n.y,
+            count: n.hits,
+            tone: "job" as const,
+          })),
+        ...unlinked.map((u) => ({
+          id: `glow-city-${u.cityKey}`,
+          x: u.x,
+          y: u.y,
+          count: u.count,
+          tone: "city" as const,
+        })),
+      ];
+
+      return {
+        targets: nodes,
+        unlinked,
+        maxHits,
+        geoTargets,
+        remoteTargets,
+        remoteCount,
+        totalHits,
+        radarGlows,
+      };
     }, [jobs, visits]);
 
   const filterPass = (t: TargetNode) => matchesFilter(t.job, statusFilter);
@@ -362,16 +491,14 @@ export function TargetMap({
         opacity={faded ? 0.18 : hoverId && !active ? 0.38 : 1}
         style={faded ? { pointerEvents: "none" } : undefined}
       >
-        {t.hits >= 2 && !faded ? (
+        {t.hits > 0 && !faded ? (
           <circle
-            className="pulse-ring"
             cx={t.x}
             cy={t.y}
-            r={kind === "geo" ? 12 : 8}
-            style={{
-              animationDelay: `${(t.hits % 5) * 0.2}s`,
-              fill: stroke,
-            }}
+            r={kind === "geo" ? Math.max(r + 4, 10) : Math.max(r + 3, 8)}
+            fill={stroke}
+            fillOpacity={0.08 + Math.min(0.14, t.hits * 0.03)}
+            filter="url(#radar-soft)"
           />
         ) : null}
         <circle
@@ -413,6 +540,7 @@ export function TargetMap({
           </h2>
           <p className="mt-1 max-w-2xl text-sm text-[var(--muted)]">
             Fill = work arrangement · outline = pipeline status (green also for ≥2 resume hits).
+            Soft radar rings mark visit intensity on job targets or unlinked cities.
             Remote and unplaced roles sit in the Mexico-side cluster.
           </p>
         </div>
@@ -492,15 +620,28 @@ export function TargetMap({
                   <feMergeNode in="SourceGraphic" />
                 </feMerge>
               </filter>
+              <filter id="radar-soft" x="-120%" y="-120%" width="340%" height="340%">
+                <feGaussianBlur stdDeviation="5.5" result="blur" />
+                <feMerge>
+                  <feMergeNode in="blur" />
+                </feMerge>
+              </filter>
               <style>{`
-                @keyframes target-pulse {
-                  0%, 100% { transform: scale(1); opacity: 0.4; }
-                  50% { transform: scale(2.2); opacity: 0.05; }
+                @keyframes radar-pulse {
+                  0% { transform: scale(0.72); opacity: 0.85; }
+                  70% { transform: scale(1.55); opacity: 0.12; }
+                  100% { transform: scale(1.75); opacity: 0; }
                 }
-                .pulse-ring {
-                  animation: target-pulse 2.4s ease-in-out infinite;
+                .radar-ring {
+                  animation: radar-pulse 2.6s ease-out infinite;
                   transform-box: fill-box;
                   transform-origin: center;
+                }
+                @media (prefers-reduced-motion: reduce) {
+                  .radar-ring {
+                    animation: none !important;
+                    opacity: 0.55;
+                  }
                 }
               `}</style>
             </defs>
@@ -550,6 +691,20 @@ export function TargetMap({
               >
                 Resume
               </text>
+            </g>
+
+            {/* Visit radar glows — under pins so targets stay readable */}
+            <g className="radar-layer" aria-hidden>
+              {radarGlows
+                .filter((g) => {
+                  if (g.tone === "city" && !showUnlinked) return false;
+                  if (dimNonMatch && g.tone === "job") {
+                    const t = targets.find((n) => `glow-job-${n.job.id}` === g.id);
+                    if (t && !filterPass(t)) return false;
+                  }
+                  return true;
+                })
+                .map((g) => renderRadarGlow(g))}
             </g>
 
             {showUnlinked
@@ -734,6 +889,17 @@ export function TargetMap({
               <li className="flex items-center gap-2">
                 <span className="inline-block h-2.5 w-2.5 rounded-full bg-[var(--muted)] opacity-60" />
                 Unlinked visit city
+              </li>
+              <li className="flex items-center gap-2">
+                <span
+                  className="inline-block h-2.5 w-2.5 rounded-full"
+                  style={{
+                    background:
+                      "radial-gradient(circle, color-mix(in oklab, var(--accent) 55%, transparent), transparent 70%)",
+                    boxShadow: "0 0 0 1px color-mix(in oklab, var(--accent) 35%, transparent)",
+                  }}
+                />
+                Visit radar (1 → 5+)
               </li>
             </ul>
             <p className="mt-3 text-[11px] leading-relaxed text-[var(--muted)]">
