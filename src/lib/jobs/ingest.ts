@@ -171,6 +171,8 @@ function emptyFields(partial: Partial<IngestFields> = {}): IngestFields {
     salaryPeriod: "",
     employmentType: "",
     source: "",
+    dateApplied: "",
+    dateDiscussed: "",
     ...partial,
   };
 }
@@ -498,8 +500,8 @@ export function fieldsToPartialJob(fields: IngestFields): Partial<JobApplication
     employmentType: fields.employmentType,
     source: fields.source,
     status: "researching",
-    dateApplied: "",
-    dateDiscussed: "",
-    datePrecision: "unknown",
+    dateApplied: fields.dateApplied || "",
+    dateDiscussed: fields.dateDiscussed || "",
+    datePrecision: fields.dateApplied ? "exact" : "unknown",
   };
 }

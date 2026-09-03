@@ -308,6 +308,16 @@ export function normalizeWorkType(raw: unknown): "" | "remote" | "hybrid" | "ons
   return "";
 }
 
+/** Strip remote/hybrid/onsite tags so composeLocation can re-apply work arrangement. */
+export function stripWorkArrangement(location: string): string {
+  return location
+    .replace(/^\s*Hybrid\s*[·|,/\-]\s*/i, "")
+    .replace(/\s*\/\s*Remote\s*$/i, "")
+    .replace(/\s*[·|,/]\s*(remote|hybrid|on[-\s]?site)\s*$/i, "")
+    .replace(/^(Remote|Hybrid|Onsite|On-site|On site)$/i, "")
+    .trim();
+}
+
 /**
  * Build a geocode-friendly location string for Target map.
  * Prefers structured city/state/country; falls back to free-text `location`.

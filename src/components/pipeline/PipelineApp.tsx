@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   BOARD_COLUMNS,
   STATUS_LABELS,
@@ -9,6 +9,7 @@ import {
   parseTrackerPayload,
   normalizeJob,
   normalizeWorkType,
+  stripWorkArrangement,
   type JobApplication,
   type JobStatus,
   type TrackerMeta,
@@ -146,6 +147,7 @@ export function PipelineApp() {
   const [jobs, setJobs] = useState<JobApplication[]>([]);
   const [meta, setMeta] = useState<TrackerMeta | null>(null);
   const [view, setView] = useState<ViewMode>("insights");
+  const mapScrollPending = useRef(false);
   const [storageMode, setStorageMode] = useState<StorageMode>("local");
   const [importOpen, setImportOpen] = useState(false);
   const [importText, setImportText] = useState("");
@@ -226,6 +228,18 @@ export function PipelineApp() {
       setVisitsLoading(false);
     }
   }
+
+  useEffect(() => {
+    if (view !== "map" || !mapScrollPending.current) return;
+    mapScrollPending.current = false;
+    const frame = window.requestAnimationFrame(() => {
+      document.getElementById("pipeline-target-map")?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [view]);
 
   async function importIntoDb(source: "drive" | "bundled" | "json", payload?: unknown, mode: "upsert" | "replace" = "upsert") {
     setSeedLoading(true);
@@ -427,6 +441,8 @@ export function PipelineApp() {
         salaryPeriod: fields.salaryPeriod || "",
         employmentType: fields.employmentType || "",
         source: fields.source || "",
+        dateApplied: fields.dateApplied || "",
+        dateDiscussed: fields.dateDiscussed || "",
       });
       setIngestMode(data.mode === "ai" ? "ai" : "heuristic");
       setIngestWarning(typeof data.fetchWarning === "string" ? data.fetchWarning : "");
@@ -476,9 +492,9 @@ export function PipelineApp() {
       employmentType: ingestDraft.employmentType.trim(),
       source: ingestDraft.source.trim(),
       status: ingestStatus,
-      dateApplied: "",
-      dateDiscussed: "",
-      datePrecision: "unknown",
+      dateApplied: ingestDraft.dateApplied || "",
+      dateDiscussed: ingestDraft.dateDiscussed || "",
+      datePrecision: ingestDraft.dateApplied ? "exact" : "unknown",
     });
     void persist([nextJob, ...jobs], meta, "upsert");
     setIngestOpen(false);
@@ -795,6 +811,7 @@ export function PipelineApp() {
               key={id}
               type="button"
               onClick={() => {
+                if (id === "map") mapScrollPending.current = true;
                 setView(id);
                 if (id === "visits" || id === "map") void refreshVisits();
               }}
@@ -1752,6 +1769,27 @@ function IngestReviewForm({
         </label>
       </div>
 
+      <div className="grid grid-cols-2 gap-3">
+        <label className="block">
+          <span className="text-[10px] uppercase tracking-[0.2em] text-[var(--muted)]">Date applied</span>
+          <input
+            type="date"
+            value={draft.dateApplied}
+            onChange={(e) => onField("dateApplied", e.target.value)}
+            className={field}
+          />
+        </label>
+        <label className="block">
+          <span className="text-[10px] uppercase tracking-[0.2em] text-[var(--muted)]">Shared w/ ChatGPT</span>
+          <input
+            type="date"
+            value={draft.dateDiscussed}
+            onChange={(e) => onField("dateDiscussed", e.target.value)}
+            className={field}
+          />
+        </label>
+      </div>
+
       <label className="block">
         <span className="text-[10px] uppercase tracking-[0.2em] text-[var(--muted)]">Description</span>
         <textarea
@@ -1762,7 +1800,9 @@ function IngestReviewForm({
         />
       </label>
 
-      <p className="text-xs text-[var(--muted)]">Dates are left blank — set applied date later when you submit.</p>
+      <p className="text-xs text-[var(--muted)]">
+        Leave dates blank if not yet applied — you can set them later from the job form.
+      </p>
 
       {error ? <p className="text-red-300">{error}</p> : null}
 
@@ -1794,6 +1834,15 @@ function JobForm({
   }
   const field =
     "mt-1.5 w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2.5 outline-none focus:border-[var(--accent)]";
+  const workType = (normalizeWorkType(job.location) ||
+    normalizeWorkType(job.employmentType) ||
+    "") as WorkType;
+
+  function setWorkType(next: WorkType) {
+    const place = stripWorkArrangement(job.location);
+    const location = composeLocation({ location: place, workType: next }) || place;
+    onChange({ ...job, location });
+  }
 
   return (
     <form
@@ -1814,8 +1863,32 @@ function JobForm({
       <div className="grid grid-cols-2 gap-3">
         <label className="block">
           <span className="text-[10px] uppercase tracking-[0.2em] text-[var(--muted)]">Location</span>
-          <input value={job.location} onChange={(e) => set("location", e.target.value)} className={field} />
+          <input
+            value={stripWorkArrangement(job.location) || job.location}
+            onChange={(e) => {
+              const place = e.target.value;
+              const location = composeLocation({ location: place, workType }) || place;
+              set("location", location);
+            }}
+            className={field}
+            placeholder="Austin, TX"
+          />
         </label>
+        <label className="block">
+          <span className="text-[10px] uppercase tracking-[0.2em] text-[var(--muted)]">Work arrangement</span>
+          <select
+            value={workType}
+            onChange={(e) => setWorkType(e.target.value as WorkType)}
+            className={field}
+          >
+            <option value="">Unknown</option>
+            <option value="remote">Remote</option>
+            <option value="hybrid">Hybrid</option>
+            <option value="onsite">Onsite</option>
+          </select>
+        </label>
+      </div>
+      <div className="grid grid-cols-2 gap-3">
         <label className="block">
           <span className="text-[10px] uppercase tracking-[0.2em] text-[var(--muted)]">Date precision</span>
           <select
@@ -1826,6 +1899,16 @@ function JobForm({
             <option value="exact">exact</option>
             <option value="week_estimate">week_estimate</option>
             <option value="unknown">unknown</option>
+          </select>
+        </label>
+        <label className="block">
+          <span className="text-[10px] uppercase tracking-[0.2em] text-[var(--muted)]">Status</span>
+          <select value={job.status} onChange={(e) => set("status", e.target.value as JobStatus)} className={field}>
+            {BOARD_COLUMNS.map((s) => (
+              <option key={s} value={s}>
+                {STATUS_LABELS[s]}
+              </option>
+            ))}
           </select>
         </label>
       </div>
@@ -1849,20 +1932,10 @@ function JobForm({
           <input value={job.rate} onChange={(e) => set("rate", e.target.value)} className={field} />
         </label>
         <label className="block">
-          <span className="text-[10px] uppercase tracking-[0.2em] text-[var(--muted)]">Status</span>
-          <select value={job.status} onChange={(e) => set("status", e.target.value as JobStatus)} className={field}>
-            {BOARD_COLUMNS.map((s) => (
-              <option key={s} value={s}>
-                {STATUS_LABELS[s]}
-              </option>
-            ))}
-          </select>
+          <span className="text-[10px] uppercase tracking-[0.2em] text-[var(--muted)]">Employment type</span>
+          <input value={job.employmentType} onChange={(e) => set("employmentType", e.target.value)} className={field} />
         </label>
       </div>
-      <label className="block">
-        <span className="text-[10px] uppercase tracking-[0.2em] text-[var(--muted)]">Employment type</span>
-        <input value={job.employmentType} onChange={(e) => set("employmentType", e.target.value)} className={field} />
-      </label>
       <label className="block">
         <span className="text-[10px] uppercase tracking-[0.2em] text-[var(--muted)]">Match score (0–10)</span>
         <input

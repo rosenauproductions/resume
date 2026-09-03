@@ -15,6 +15,8 @@ export type IngestFields = {
   salaryPeriod: "annual" | "hourly" | "daily" | "";
   employmentType: string;
   source: string;
+  dateApplied: string;
+  dateDiscussed: string;
 };
 
 export const REQUIRED_INGEST_KEYS = ["company", "title", "location", "url"] as const;

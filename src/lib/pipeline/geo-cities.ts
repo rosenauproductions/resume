@@ -17,12 +17,12 @@ export const US_CENTER: GeoPoint = {
 
 /**
  * Canvas cluster for remote / empty / unplaced apps.
- * Placed in empty Albers USA space SW of the contiguous US (below Baja / Mexico gap),
- * clear of Texas and the AZ–NM border. ViewBox is 975×610 — keep the box fully inside.
+ * Placed over the Gulf of Mexico (middle-bottom of the contiguous Albers USA
+ * canvas), clear of Florida and the lower-left EU HTML inset. ViewBox is 975×610.
  */
 export const REMOTE_CLUSTER = {
-  boxX: 48,
-  boxY: 508,
+  boxX: 530,
+  boxY: 505,
   boxW: 220,
   boxH: 98,
   padX: 16,

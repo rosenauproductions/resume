@@ -30,6 +30,8 @@ function emptyIngest(url = ""): IngestFields {
     salaryPeriod: "",
     employmentType: "",
     source: "",
+    dateApplied: "",
+    dateDiscussed: "",
   };
 }
 
