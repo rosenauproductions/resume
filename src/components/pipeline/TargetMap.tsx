@@ -118,18 +118,27 @@ const ZOOM_STEP = 0.4;
 const MAP_CX = MAP_SIZE.width / 2;
 const MAP_CY = MAP_SIZE.height / 2;
 
-/** Slower missile flight: trail + glowing head along straight hub→target geometry. */
-const LINK_FLIGHT_MS = 2100;
-const LINK_STAGGER_MS = 80;
+/** Missile flight: all launch together; duration scales with path length. */
+const LINK_MIN_MS = 1100;
+const LINK_MAX_MS = 2600;
+const LINK_PX_PER_MS = 0.28;
 const SITE_REVEAL_MS = 380;
-const MAX_LINK_WAVE = 36;
+/** Fast → slow → fast along the path (inverse of ease-in-out). */
+const MISSILE_EASE = "cubic-bezier(0.15, 0.85, 0.85, 0.15)";
 
-function linkStartDelay(i: number) {
-  return Math.min(i, MAX_LINK_WAVE - 1) * LINK_STAGGER_MS;
+function pathDist(
+  ax: number,
+  ay: number,
+  bx: number,
+  by: number,
+) {
+  return Math.hypot(bx - ax, by - ay);
 }
 
-function impactDelay(i: number) {
-  return linkStartDelay(i) + LINK_FLIGHT_MS;
+function flightDurationMs(dist: number) {
+  return Math.round(
+    Math.min(LINK_MAX_MS, Math.max(LINK_MIN_MS, dist / LINK_PX_PER_MS)),
+  );
 }
 
 function inferWorkType(job: JobApplication, inRemoteCluster: boolean): WorkArrangement {
@@ -663,14 +672,16 @@ export function TargetMap({
       return;
     }
     setLinksDrawn(false);
-    const count = Math.min(edgeTargets.length, MAX_LINK_WAVE);
-    const lastImpact = count > 0 ? impactDelay(count - 1) : 0;
+    const maxFlight = edgeTargets.reduce((max, t) => {
+      const d = pathDist(hub.x, hub.y, t.x, t.y);
+      return Math.max(max, flightDurationMs(d));
+    }, LINK_MIN_MS);
     const t = window.setTimeout(
       () => setLinksDrawn(true),
-      lastImpact + SITE_REVEAL_MS + 120,
+      maxFlight + SITE_REVEAL_MS + 120,
     );
     return () => window.clearTimeout(t);
-  }, [reducedMotion, showEdges, mapInView, edgeTargets.length, jobs.length]);
+  }, [reducedMotion, showEdges, mapInView, edgeTargets.length, jobs.length, hub.x, hub.y]);
 
   const hovered = hoverId ? targets.find((t) => t.job.id === hoverId) : null;
   const ranked = [...targets]
@@ -682,16 +693,19 @@ export function TargetMap({
   const animatingLinks = showEdges && !reducedMotion && mapInView && !linksDrawn;
   const deferSites = awaitingView || animatingLinks;
 
-  const edgeIndexById = useMemo(() => {
+  const flightById = useMemo(() => {
     const m = new Map<string, number>();
-    edgeTargets.forEach((t, i) => m.set(t.job.id, i));
+    for (const t of edgeTargets) {
+      m.set(t.job.id, flightDurationMs(pathDist(hub.x, hub.y, t.x, t.y)));
+    }
     return m;
-  }, [edgeTargets]);
+  }, [edgeTargets, hub.x, hub.y]);
 
-  const lastImpactMs =
-    edgeTargets.length > 0
-      ? impactDelay(Math.min(edgeTargets.length, MAX_LINK_WAVE) - 1)
-      : 0;
+  const lastImpactMs = useMemo(() => {
+    let max = LINK_MIN_MS;
+    for (const ms of flightById.values()) max = Math.max(max, ms);
+    return max;
+  }, [flightById]);
 
   function siteRevealProps(jobId: string): {
     className?: string;
@@ -699,20 +713,11 @@ export function TargetMap({
   } {
     if (awaitingView) return { style: { opacity: 0 } };
     if (!animatingLinks) return {};
-    const idx = edgeIndexById.get(jobId);
-    if (idx === undefined) {
-      return {
-        className: "site-await-impact",
-        style: {
-          animationDelay: `${lastImpactMs}ms`,
-          animationDuration: `${SITE_REVEAL_MS}ms`,
-        },
-      };
-    }
+    const flight = flightById.get(jobId) ?? lastImpactMs;
     return {
       className: "site-await-impact",
       style: {
-        animationDelay: `${impactDelay(idx)}ms`,
+        animationDelay: `${flight}ms`,
         animationDuration: `${SITE_REVEAL_MS}ms`,
       },
     };
@@ -1013,7 +1018,7 @@ export function TargetMap({
           ref={(el) => {
             mapStageRef.current = el;
           }}
-          className="relative overflow-hidden rounded-2xl border border-white/10 bg-[var(--panel)]"
+          className="relative flex max-h-[min(68vh,34rem)] items-center justify-center overflow-hidden rounded-2xl border border-white/10 bg-[var(--panel)] lg:max-h-[min(58vh,30rem)]"
         >
           <div
             className="pointer-events-none absolute inset-0 opacity-70"
@@ -1025,7 +1030,8 @@ export function TargetMap({
           <svg
             ref={svgRef}
             viewBox={US_MAP_VIEWBOX}
-            className={`relative z-[1] h-auto w-full ${canPan ? "cursor-grab active:cursor-grabbing" : ""}`}
+            preserveAspectRatio="xMidYMid meet"
+            className={`relative z-[1] h-auto max-h-[min(68vh,34rem)] w-full lg:max-h-[min(58vh,30rem)] ${canPan ? "cursor-grab active:cursor-grabbing" : ""}`}
             role="img"
             aria-label="US map of job targets and resume visit hits"
             onPointerDown={onPointerDown}
@@ -1072,45 +1078,38 @@ export function TargetMap({
                   transform-box: fill-box;
                   transform-origin: center;
                 }
-                @keyframes missile-trail {
+                /* Fast start → slow mid → fast end */
+                @keyframes missile-travel {
                   from { stroke-dashoffset: 1; }
                   to { stroke-dashoffset: 0; }
                 }
-                @keyframes missile-head {
-                  from { stroke-dashoffset: 1; }
-                  to { stroke-dashoffset: 0; }
+                /* Bright trail holds, then fades into the steady-state line underneath */
+                @keyframes missile-trail-fade {
+                  0%, 48% { opacity: 1; }
+                  100% { opacity: 0; }
                 }
                 @keyframes site-reveal {
                   from { opacity: 0; }
                   to { opacity: 1; }
                 }
-                .missile-trail {
-                  stroke-dasharray: 1;
-                  stroke-dashoffset: 1;
-                  animation-name: missile-trail;
-                  animation-timing-function: linear;
-                  animation-fill-mode: forwards;
-                }
+                .missile-trail,
                 .missile-trail-light {
                   stroke-dasharray: 1;
                   stroke-dashoffset: 1;
-                  animation-name: missile-trail;
-                  animation-timing-function: linear;
-                  animation-fill-mode: forwards;
+                  animation-name: missile-travel, missile-trail-fade;
+                  animation-timing-function: ${MISSILE_EASE}, ease-in;
+                  animation-fill-mode: forwards, forwards;
                 }
-                .missile-head {
+                .missile-head,
+                .missile-head-light {
                   stroke-dasharray: 0.045 1;
                   stroke-dashoffset: 1;
-                  animation-name: missile-head;
-                  animation-timing-function: linear;
-                  animation-fill-mode: forwards;
+                  animation-name: missile-travel, missile-trail-fade;
+                  animation-timing-function: ${MISSILE_EASE}, ease-in;
+                  animation-fill-mode: forwards, forwards;
                 }
                 .missile-head-light {
                   stroke-dasharray: 0.055 1;
-                  stroke-dashoffset: 1;
-                  animation-name: missile-head;
-                  animation-timing-function: linear;
-                  animation-fill-mode: forwards;
                 }
                 .site-await-impact {
                   opacity: 0;
@@ -1130,6 +1129,7 @@ export function TargetMap({
                     animation: none !important;
                     stroke-dashoffset: 0;
                     stroke-dasharray: none;
+                    opacity: 0;
                   }
                   .site-await-impact {
                     animation: none !important;
@@ -1153,77 +1153,91 @@ export function TargetMap({
               </g>
 
               {showEdges && (animatingLinks || linksDrawn)
-                ? edgeTargets.map((t, i) => {
+                ? edgeTargets.map((t) => {
                     const edge = edgeStroke(t.hits, maxHits);
                     const isLight = t.hits <= 0;
-                    const delay = linkStartDelay(i);
-                    const baseStroke = isLight
-                      ? "color-mix(in oklab, var(--muted) 50%, transparent)"
-                      : "var(--accent)";
-                    const trailStroke = animatingLinks
-                      ? isLight
-                        ? "color-mix(in oklab, var(--cream) 72%, var(--muted))"
-                        : "var(--accent)"
-                      : baseStroke;
-                    const trailOpacity = animatingLinks
-                      ? isLight
-                        ? hoverId && hoverId !== t.job.id
-                          ? 0.42
-                          : 0.78
-                        : hoverId && hoverId !== t.job.id
-                          ? edge.opacity * 0.35
-                          : Math.min(0.92, edge.opacity + 0.2)
+                    const flightMs = flightById.get(t.job.id) ?? LINK_MIN_MS;
+                    const steadyOpacity =
+                      hoverId && hoverId !== t.job.id ? edge.opacity * 0.25 : edge.opacity;
+                    const trailPeak = isLight
+                      ? hoverId && hoverId !== t.job.id
+                        ? 0.55
+                        : 0.92
                       : hoverId && hoverId !== t.job.id
-                        ? edge.opacity * 0.25
-                        : edge.opacity;
+                        ? Math.min(0.7, edge.opacity + 0.15)
+                        : Math.min(0.95, edge.opacity + 0.28);
                     const animStyle = animatingLinks
-                      ? {
-                          animationDelay: `${delay}ms`,
-                          animationDuration: `${LINK_FLIGHT_MS}ms`,
-                        }
+                      ? ({
+                          animationDuration: `${flightMs}ms`,
+                          animationDelay: "0ms",
+                          ["--trail-peak" as string]: String(trailPeak),
+                        } as CSSProperties)
                       : undefined;
 
                     return (
                       <g key={`edge-${t.job.id}`} pointerEvents="none">
+                        {/* Steady-state link — visible under fading trail */}
                         <line
-                          className={
-                            animatingLinks
-                              ? isLight
-                                ? "missile-trail-light"
-                                : "missile-trail"
-                              : undefined
-                          }
                           x1={hub.x}
                           y1={hub.y}
                           x2={t.x}
                           y2={t.y}
-                          stroke={trailStroke}
-                          strokeWidth={
-                            animatingLinks && isLight ? Math.max(edge.width, 1.15) : edge.width
+                          stroke={
+                            isLight
+                              ? "color-mix(in oklab, var(--muted) 50%, transparent)"
+                              : "var(--accent)"
                           }
-                          strokeOpacity={trailOpacity}
+                          strokeWidth={edge.width}
+                          strokeOpacity={animatingLinks ? edge.opacity * 0.55 : steadyOpacity}
                           strokeLinecap="round"
-                          pathLength={animatingLinks ? 1 : undefined}
-                          style={animStyle}
-                          filter={
-                            animatingLinks && isLight ? "url(#missile-glow-bright)" : undefined
-                          }
                         />
                         {animatingLinks ? (
-                          <line
-                            className={isLight ? "missile-head-light" : "missile-head"}
-                            x1={hub.x}
-                            y1={hub.y}
-                            x2={t.x}
-                            y2={t.y}
-                            stroke={isLight ? "var(--cream)" : "color-mix(in oklab, var(--cream) 55%, var(--accent))"}
-                            strokeWidth={isLight ? Math.max(edge.width + 1.6, 2.4) : Math.max(edge.width + 1.1, 2.1)}
-                            strokeOpacity={0.95}
-                            strokeLinecap="round"
-                            pathLength={1}
-                            style={animStyle}
-                            filter={isLight ? "url(#missile-glow-bright)" : "url(#missile-glow)"}
-                          />
+                          <>
+                            <line
+                              className={isLight ? "missile-trail-light" : "missile-trail"}
+                              x1={hub.x}
+                              y1={hub.y}
+                              x2={t.x}
+                              y2={t.y}
+                              stroke={
+                                isLight
+                                  ? "color-mix(in oklab, var(--cream) 78%, var(--muted))"
+                                  : "var(--accent)"
+                              }
+                              strokeWidth={
+                                isLight ? Math.max(edge.width, 1.2) : Math.max(edge.width, 1)
+                              }
+                              strokeOpacity={trailPeak}
+                              strokeLinecap="round"
+                              pathLength={1}
+                              style={animStyle}
+                              filter={isLight ? "url(#missile-glow-bright)" : undefined}
+                            />
+                            <line
+                              className={isLight ? "missile-head-light" : "missile-head"}
+                              x1={hub.x}
+                              y1={hub.y}
+                              x2={t.x}
+                              y2={t.y}
+                              stroke={
+                                isLight
+                                  ? "var(--cream)"
+                                  : "color-mix(in oklab, var(--cream) 55%, var(--accent))"
+                              }
+                              strokeWidth={
+                                isLight
+                                  ? Math.max(edge.width + 1.6, 2.4)
+                                  : Math.max(edge.width + 1.1, 2.1)
+                              }
+                              strokeOpacity={0.95}
+                              strokeLinecap="round"
+                              pathLength={1}
+                              style={animStyle}
+                              filter={
+                                isLight ? "url(#missile-glow-bright)" : "url(#missile-glow)"
+                              }
+                            />
+                          </>
                         ) : null}
                       </g>
                     );
