@@ -8,6 +8,7 @@ import {
 import { getVisitorIdentifySetting } from "./settings";
 import { visits, visitorIdentifications } from "./schema";
 import { getVisit, isDeviceIgnored, linkVisit } from "./visits";
+import { hasIdentifyDoneCookie } from "@/lib/identify-persistence";
 import { extractCityKey } from "@/lib/pipeline/geo-cities";
 import { notifyVisitChannels } from "@/lib/visit-notify";
 import type { IdentifyPosition, IdentifyPromptPayload } from "@/lib/visit-identify-types";
@@ -73,11 +74,15 @@ export async function buildIdentifyPrompt(input: {
   linkedApplicationId: string | null;
   linkConfidence: string | null;
   deviceIgnored: boolean;
+  /** Raw Cookie header — skip if they already confirmed in this browser. */
+  cookieHeader?: string | null;
 }): Promise<IdentifyPromptPayload | null> {
   if (input.deviceIgnored) return null;
   if (!isPublicResumePath(input.path)) return null;
   const deviceId = (input.deviceId || "").trim();
   if (!deviceId) return null;
+
+  if (hasIdentifyDoneCookie(input.cookieHeader)) return null;
 
   const setting = await getVisitorIdentifySetting();
   if (!setting.enabled) return null;

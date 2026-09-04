@@ -5,6 +5,7 @@ import { getOrCreateDeviceId } from "@/lib/device-id";
 import type { IdentifyPromptPayload } from "@/lib/visit-identify-types";
 import {
   VisitorIdentifyModal,
+  hasVisitorIdentifiedClient,
   wasIdentifyDismissedThisSession,
 } from "@/components/VisitorIdentifyModal";
 
@@ -38,6 +39,8 @@ export function VisitNotifier() {
     const path = window.location.pathname || "/";
     if (isHeadCountPath(path)) return;
 
+    const alreadyIdentified = hasVisitorIdentifiedClient();
+
     const sessionKey = sessionKeyForPath(path);
     const alreadyNotified = Boolean(sessionStorage.getItem(sessionKey));
     if (!alreadyNotified) {
@@ -64,11 +67,13 @@ export function VisitNotifier() {
       keepalive: true,
     })
       .then(async (res) => {
+        if (alreadyIdentified) return;
         const data = (await res.json().catch(() => ({}))) as {
           identify?: IdentifyPromptPayload;
         };
         if (
           data.identify?.show &&
+          !hasVisitorIdentifiedClient() &&
           !wasIdentifyDismissedThisSession() &&
           !isPipelinePath(path)
         ) {

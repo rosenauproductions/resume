@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { dbConfigured } from "@/lib/db";
 import { saveVisitorIdentification, type VisitorLeadInput } from "@/lib/db/visitor-identify";
+import { identifyDoneCookieHeaderValue } from "@/lib/identify-persistence";
 
 export const runtime = "nodejs";
 
@@ -32,7 +33,9 @@ export async function POST(req: NextRequest) {
       visitId: body.visitId,
       lead: body.lead ?? null,
     });
-    return NextResponse.json(result);
+    const res = NextResponse.json(result);
+    res.headers.append("Set-Cookie", identifyDoneCookieHeaderValue());
+    return res;
   } catch (error) {
     const message = error instanceof Error ? error.message : "Failed to save";
     return NextResponse.json({ error: message }, { status: 400 });

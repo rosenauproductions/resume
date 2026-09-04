@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { dbConfigured } from "@/lib/db";
 import { isDeviceIgnored, recordVisit } from "@/lib/db/visits";
-import { buildIdentifyPrompt } from "@/lib/db/visitor-identify";
+import {
+  buildIdentifyPrompt,
+  hasVisitorIdentified,
+} from "@/lib/db/visitor-identify";
 import type { IdentifyPromptPayload } from "@/lib/visit-identify-types";
+import { identifyDoneCookieHeaderValue } from "@/lib/identify-persistence";
 import { notifyVisitChannels } from "@/lib/visit-notify";
 
 export const runtime = "nodejs";
@@ -111,6 +115,7 @@ export async function POST(req: NextRequest) {
   let linkConfidence: string | null = null;
   let linkedApplicationId: string | null = null;
   let identify: IdentifyPromptPayload | null = null;
+  let reinforceIdentifiedCookie = false;
 
   // Dual-track: persist detailed visit even if notifications are off
   if (dbConfigured()) {
@@ -140,6 +145,9 @@ export async function POST(req: NextRequest) {
 
     if (visitId && fingerprint) {
       try {
+        if (await hasVisitorIdentified(fingerprint)) {
+          reinforceIdentifiedCookie = true;
+        }
         identify = await buildIdentifyPrompt({
           path,
           deviceId: fingerprint,
@@ -147,6 +155,7 @@ export async function POST(req: NextRequest) {
           linkedApplicationId,
           linkConfidence,
           deviceIgnored,
+          cookieHeader: req.headers.get("cookie"),
         });
       } catch (error) {
         console.error("identify prompt build failed", error);
@@ -154,43 +163,56 @@ export async function POST(req: NextRequest) {
     }
   }
 
+  const withIdentifyCookie = (res: NextResponse) => {
+    if (reinforceIdentifiedCookie) {
+      res.headers.append("Set-Cookie", identifyDoneCookieHeaderValue());
+    }
+    return res;
+  };
+
   // Never ntfy/Discord for ignored home devices (still stored above as ignored)
   if (deviceIgnored) {
-    return NextResponse.json({
-      ok: true,
-      stored: Boolean(visitId),
-      visitId,
-      linkConfidence,
-      notified: false,
-      skippedNotify: "device_ignore",
-      identify,
-    });
+    return withIdentifyCookie(
+      NextResponse.json({
+        ok: true,
+        stored: Boolean(visitId),
+        visitId,
+        linkConfidence,
+        notified: false,
+        skippedNotify: "device_ignore",
+        identify,
+      }),
+    );
   }
 
   // Never ntfy/Discord for your own pipeline sessions
   if (isPipeline) {
-    return NextResponse.json({
-      ok: true,
-      stored: Boolean(visitId),
-      visitId,
-      linkConfidence,
-      notified: false,
-      skippedNotify: "pipeline",
-      identify,
-    });
+    return withIdentifyCookie(
+      NextResponse.json({
+        ok: true,
+        stored: Boolean(visitId),
+        visitId,
+        linkConfidence,
+        notified: false,
+        skippedNotify: "pipeline",
+        identify,
+      }),
+    );
   }
 
   // Client already pinged this browser session — still store + return identify
   if (payload.skipNotify) {
-    return NextResponse.json({
-      ok: true,
-      stored: Boolean(visitId),
-      visitId,
-      linkConfidence,
-      notified: false,
-      skippedNotify: "session",
-      identify,
-    });
+    return withIdentifyCookie(
+      NextResponse.json({
+        ok: true,
+        stored: Boolean(visitId),
+        visitId,
+        linkConfidence,
+        notified: false,
+        skippedNotify: "session",
+        identify,
+      }),
+    );
   }
 
   try {
@@ -199,19 +221,23 @@ export async function POST(req: NextRequest) {
       lines,
       kind: isPipeline ? "pipeline" : "visit",
     });
-    return NextResponse.json({
-      ok: true,
-      stored: Boolean(visitId),
-      visitId,
-      linkConfidence,
-      notified,
-      identify,
-    });
+    return withIdentifyCookie(
+      NextResponse.json({
+        ok: true,
+        stored: Boolean(visitId),
+        visitId,
+        linkConfidence,
+        notified,
+        identify,
+      }),
+    );
   } catch (error) {
     console.error("visit notify failed", error);
-    return NextResponse.json(
-      { ok: false, stored: Boolean(visitId), visitId, linkConfidence, identify },
-      { status: 500 },
+    return withIdentifyCookie(
+      NextResponse.json(
+        { ok: false, stored: Boolean(visitId), visitId, linkConfidence, identify },
+        { status: 500 },
+      ),
     );
   }
 }

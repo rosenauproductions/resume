@@ -2,9 +2,13 @@
 
 import { useEffect, useId, useRef, useState } from "react";
 import type { KeyboardEvent } from "react";
+import {
+  hasVisitorIdentifiedClient,
+  markVisitorIdentifiedClient,
+  wasIdentifyDismissedThisSession,
+  IDENTIFY_DISMISS_SESSION_KEY,
+} from "@/lib/identify-persistence";
 import type { IdentifyPosition, IdentifyPromptPayload } from "@/lib/visit-identify-types";
-
-const DISMISS_KEY = "resume-identify-dismissed";
 
 type Step = "confirm" | "identify" | "offer" | "lead" | "thanks";
 
@@ -110,9 +114,11 @@ export function VisitorIdentifyModal({
         return false;
       }
       if (opts.nextStep === "done" || !opts.nextStep) {
-        sessionStorage.setItem(DISMISS_KEY, "1");
+        markVisitorIdentifiedClient();
         onDone();
       } else {
+        // Soft note / offer path — still counts as identified so we don't re-ask
+        markVisitorIdentifiedClient();
         setStep(opts.nextStep);
         setBusy(false);
       }
@@ -125,13 +131,17 @@ export function VisitorIdentifyModal({
   }
 
   function dismiss() {
-    sessionStorage.setItem(DISMISS_KEY, "1");
+    try {
+      sessionStorage.setItem(IDENTIFY_DISMISS_SESSION_KEY, "1");
+    } catch {
+      // ignore
+    }
     onDone();
   }
 
   async function finishWithoutLead() {
     // Identification already saved when entering offer; just close.
-    sessionStorage.setItem(DISMISS_KEY, "1");
+    markVisitorIdentifiedClient();
     onDone();
   }
 
@@ -528,7 +538,4 @@ export function VisitorIdentifyModal({
   );
 }
 
-export function wasIdentifyDismissedThisSession() {
-  if (typeof window === "undefined") return true;
-  return sessionStorage.getItem(DISMISS_KEY) === "1";
-}
+export { wasIdentifyDismissedThisSession, hasVisitorIdentifiedClient } from "@/lib/identify-persistence";
