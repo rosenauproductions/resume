@@ -1,12 +1,22 @@
 import { and, count, desc, eq, ne, sql } from "drizzle-orm";
 import { getDb } from "./index";
-import { listOpenApplicationsForAssociation } from "./applications";
+import { createApplication, listOpenApplicationsForAssociation } from "./applications";
 import { getVisitorIdentifySetting } from "./settings";
 import { visits, visitorIdentifications } from "./schema";
 import { linkVisit } from "./visits";
 import type { IdentifyPosition, IdentifyPromptPayload } from "@/lib/visit-identify-types";
 
 export type { IdentifyPosition, IdentifyPromptPayload } from "@/lib/visit-identify-types";
+
+export type VisitorLeadInput = {
+  name: string;
+  email: string;
+  phone?: string;
+  company: string;
+  title?: string;
+  location?: string;
+  message?: string;
+};
 
 function isPublicResumePath(path: string) {
   if (!path || path === "/") return true;
@@ -126,50 +136,142 @@ export async function buildIdentifyPrompt(input: {
   };
 }
 
+async function upsertIdentificationRow(input: {
+  deviceId: string;
+  applicationId: string | null;
+  freeText: string;
+  confirmedSuggested: boolean;
+  lead?: VisitorLeadInput | null;
+}) {
+  const db = getDb();
+  const lead = input.lead;
+  const values = {
+    applicationId: input.applicationId,
+    freeText: input.freeText,
+    confirmedSuggested: input.confirmedSuggested,
+    contactName: lead?.name?.trim() || "",
+    contactEmail: lead?.email?.trim() || "",
+    contactPhone: lead?.phone?.trim() || "",
+    leadCompany: lead?.company?.trim() || "",
+    leadTitle: lead?.title?.trim() || "",
+    leadLocation: lead?.location?.trim() || "",
+    updatedAt: new Date(),
+  };
+
+  const existing = await db
+    .select({ id: visitorIdentifications.id })
+    .from(visitorIdentifications)
+    .where(eq(visitorIdentifications.deviceId, input.deviceId))
+    .limit(1);
+
+  if (existing.length) {
+    await db
+      .update(visitorIdentifications)
+      .set(values)
+      .where(eq(visitorIdentifications.deviceId, input.deviceId));
+  } else {
+    await db.insert(visitorIdentifications).values({
+      deviceId: input.deviceId,
+      ...values,
+    });
+  }
+}
+
+async function createWebsiteLeadApplication(input: {
+  deviceId: string;
+  freeText: string;
+  lead: VisitorLeadInput;
+  visitId?: string | null;
+}): Promise<string> {
+  const company = input.lead.company.trim() || "Website lead";
+  const title = input.lead.title?.trim() || "Opportunity (website lead)";
+  const location = input.lead.location?.trim() || "";
+  const lookingFor = input.freeText || input.lead.message?.trim() || "";
+  const noteLines = [
+    "Website lead from resume identify prompt",
+    `Name: ${input.lead.name.trim()}`,
+    `Email: ${input.lead.email.trim()}`,
+    input.lead.phone?.trim() ? `Phone: ${input.lead.phone.trim()}` : null,
+    lookingFor ? `Looking for: ${lookingFor}` : null,
+    `Device: ${input.deviceId}`,
+  ].filter(Boolean);
+
+  const job = await createApplication({
+    company,
+    title,
+    shortName: company.slice(0, 24),
+    location,
+    status: "researching",
+    statusRaw: "website_lead",
+    source: "Website lead",
+    tags: ["website-lead"],
+    description: input.lead.message?.trim() || lookingFor || "",
+    notes: noteLines.join("\n"),
+    userInterest: "inbound",
+    datePrecision: "unknown",
+  });
+
+  if (input.visitId) {
+    try {
+      await linkVisit(input.visitId, "link", job.id);
+    } catch (error) {
+      console.error("website lead visit link failed", error);
+    }
+  }
+
+  return job.id;
+}
+
 export async function saveVisitorIdentification(input: {
   deviceId: string;
   applicationId?: string | null;
   freeText?: string;
   confirmedSuggested?: boolean;
   visitId?: string | null;
-}): Promise<{ ok: true }> {
+  lead?: VisitorLeadInput | null;
+}): Promise<{ ok: true; applicationId: string | null; createdLead: boolean }> {
   const deviceId = (input.deviceId || "").trim();
   if (!deviceId) throw new Error("deviceId required");
 
-  const applicationId = (input.applicationId || "").trim() || null;
+  let applicationId = (input.applicationId || "").trim() || null;
   const freeText = (input.freeText || "").trim();
-  if (!applicationId && !freeText) {
+  const lead = input.lead ?? null;
+  const creatingLead = Boolean(lead);
+
+  if (creatingLead) {
+    if (!lead?.name?.trim()) throw new Error("Name is required");
+    if (!lead?.email?.trim()) throw new Error("Email is required");
+    if (!lead?.company?.trim()) throw new Error("Company is required");
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(lead.email.trim())) {
+      throw new Error("Enter a valid email");
+    }
+  }
+
+  if (!applicationId && !freeText && !creatingLead) {
     throw new Error("Pick a position or describe what you are looking for");
   }
 
-  const db = getDb();
-  const existing = await db
-    .select({ id: visitorIdentifications.id })
-    .from(visitorIdentifications)
-    .where(eq(visitorIdentifications.deviceId, deviceId))
-    .limit(1);
-
-  if (existing.length) {
-    await db
-      .update(visitorIdentifications)
-      .set({
-        applicationId,
-        freeText,
-        confirmedSuggested: Boolean(input.confirmedSuggested),
-        updatedAt: new Date(),
-      })
-      .where(eq(visitorIdentifications.deviceId, deviceId));
-  } else {
-    await db.insert(visitorIdentifications).values({
+  let createdLead = false;
+  if (creatingLead && lead) {
+    applicationId = await createWebsiteLeadApplication({
       deviceId,
-      applicationId,
       freeText,
-      confirmedSuggested: Boolean(input.confirmedSuggested),
+      lead,
+      visitId: input.visitId,
     });
+    createdLead = true;
   }
 
-  // Confirm link on the current visit when a position was chosen
-  if (input.visitId && applicationId) {
+  await upsertIdentificationRow({
+    deviceId,
+    applicationId,
+    freeText,
+    confirmedSuggested: Boolean(input.confirmedSuggested),
+    lead,
+  });
+
+  // Link visit when choosing an existing tracked position (not already linked above)
+  if (!createdLead && input.visitId && applicationId) {
     try {
       await linkVisit(input.visitId, "link", applicationId);
     } catch (error) {
@@ -177,5 +279,5 @@ export async function saveVisitorIdentification(input: {
     }
   }
 
-  return { ok: true };
+  return { ok: true, applicationId, createdLead };
 }

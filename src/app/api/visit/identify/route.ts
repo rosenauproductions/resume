@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { dbConfigured } from "@/lib/db";
-import { saveVisitorIdentification } from "@/lib/db/visitor-identify";
+import { saveVisitorIdentification, type VisitorLeadInput } from "@/lib/db/visitor-identify";
 
 export const runtime = "nodejs";
 
@@ -15,6 +15,7 @@ export async function POST(req: NextRequest) {
     freeText?: string;
     confirmedSuggested?: boolean;
     visitId?: string | null;
+    lead?: VisitorLeadInput | null;
   } = {};
   try {
     body = (await req.json()) as typeof body;
@@ -23,14 +24,15 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    await saveVisitorIdentification({
+    const result = await saveVisitorIdentification({
       deviceId: body.fingerprint || "",
       applicationId: body.applicationId,
       freeText: body.freeText,
       confirmedSuggested: body.confirmedSuggested,
       visitId: body.visitId,
+      lead: body.lead ?? null,
     });
-    return NextResponse.json({ ok: true });
+    return NextResponse.json(result);
   } catch (error) {
     const message = error instanceof Error ? error.message : "Failed to save";
     return NextResponse.json({ error: message }, { status: 400 });

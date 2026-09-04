@@ -91,6 +91,12 @@ export const visitorIdentifications = pgTable("visitor_identifications", {
   }),
   freeText: text("free_text").notNull().default(""),
   confirmedSuggested: boolean("confirmed_suggested").notNull().default(false),
+  contactName: text("contact_name").notNull().default(""),
+  contactEmail: text("contact_email").notNull().default(""),
+  contactPhone: text("contact_phone").notNull().default(""),
+  leadCompany: text("lead_company").notNull().default(""),
+  leadTitle: text("lead_title").notNull().default(""),
+  leadLocation: text("lead_location").notNull().default(""),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
