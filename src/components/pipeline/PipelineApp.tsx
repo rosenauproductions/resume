@@ -143,7 +143,18 @@ function money(n: number | null | undefined) {
   return `$${Math.round(n).toLocaleString()}`;
 }
 
-export function PipelineApp() {
+export function PipelineApp({
+  deploy,
+}: {
+  deploy?: {
+    sha: string;
+    env: string;
+    url?: string | null;
+  };
+}) {
+  const deployLabel = deploy
+    ? `${deploy.env === "production" ? "prod" : deploy.env} · ${deploy.sha}`
+    : "local";
   const [booting, setBooting] = useState(true);
   const [configured, setConfigured] = useState(true);
   const [authed, setAuthed] = useState(false);
@@ -866,6 +877,9 @@ export function PipelineApp() {
           <p className="mt-3 text-sm text-[var(--muted)]">
             Password-gated job tracker with match scores, salary trends, and outcome charts.
           </p>
+          <p className="mt-2 font-mono text-[11px] text-[var(--muted)]/80" title={deploy?.url || undefined}>
+            Deploy {deployLabel}
+          </p>
           <form onSubmit={handleLogin} className="mt-8 space-y-4">
             <label className="block text-xs uppercase tracking-[0.2em] text-[var(--muted)]">
               Password
@@ -901,12 +915,29 @@ export function PipelineApp() {
             <h1 className="font-[family-name:var(--font-display)] text-2xl tracking-tight">
               Pipeline
             </h1>
+            <p className="mt-0.5 font-mono text-[10px] text-[var(--muted)]" title={deploy?.url || undefined}>
+              Deploy {deployLabel}
+            </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <span className="rounded-full border border-white/10 px-3 py-1 text-xs text-[var(--muted)]">
               {storageMode === "db" ? "Neon DB" : storageMode === "blob" ? "Synced" : "Browser storage"}
               {saving ? " · saving…" : ""}
             </span>
+            <button
+              type="button"
+              onClick={() => {
+                setView("resume");
+                void refreshResume();
+              }}
+              className={`rounded-lg px-3 py-1.5 text-sm ${
+                view === "resume"
+                  ? "bg-[var(--cream)] font-semibold text-[var(--ink)]"
+                  : "border border-[var(--accent)]/50 text-[var(--accent)] hover:bg-[var(--accent)]/10"
+              }`}
+            >
+              Resume CMS
+            </button>
             <button
               type="button"
               onClick={() => void hydrateFromDrive()}
@@ -1036,12 +1067,12 @@ export function PipelineApp() {
         <div className="mt-6 flex flex-wrap gap-2">
           {(
             [
+              ["resume", "Resume CMS"],
               ["insights", "Charts & trends"],
               ["board", "Board"],
               ["list", "All applications"],
               ["visits", "Visits"],
               ["map", "Target map"],
-              ["resume", "Resume CMS"],
             ] as const
           ).map(([id, label]) => (
             <button

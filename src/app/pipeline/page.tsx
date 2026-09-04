@@ -14,6 +14,17 @@ export const metadata: Metadata = {
   },
 };
 
+export const dynamic = "force-dynamic";
+
+function deployInfo() {
+  const sha = (process.env.VERCEL_GIT_COMMIT_SHA || "").trim();
+  return {
+    sha: sha ? sha.slice(0, 7) : "local",
+    env: process.env.VERCEL_ENV || process.env.NODE_ENV || "development",
+    url: process.env.VERCEL_URL || null,
+  };
+}
+
 export default function PipelinePage() {
-  return <PipelineApp />;
+  return <PipelineApp deploy={deployInfo()} />;
 }
