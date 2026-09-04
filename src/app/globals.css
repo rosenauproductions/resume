@@ -173,6 +173,13 @@ body {
 }
 
 @media print {
+  /* Kill default printer margins so dark PDF can bleed edge-to-edge.
+   * Print-friendly mode restores readable inset via body padding below.
+   * In the system dialog, leave Margins on Default/None (not Custom). */
+  @page {
+    margin: 0;
+  }
+
   .no-print {
     display: none !important;
   }
@@ -203,8 +210,21 @@ body {
   html,
   html[data-print-mode="dark"],
   body {
+    margin: 0 !important;
     background: #071018 !important;
     color: #eef4f8 !important;
+  }
+
+  /* Fixed layer paints ink on every printed page (body bg alone often doesn't). */
+  html[data-print-mode="dark"] body::before,
+  html:not([data-print-mode="light"]) body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    background: #071018;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
 
   html[data-print-mode="dark"] header,
@@ -297,6 +317,11 @@ body {
   html[data-print-mode="light"] body {
     background: #ffffff !important;
     color: #0c1218 !important;
+  }
+
+  /* Readable inset after @page margin: 0 */
+  html[data-print-mode="light"] body {
+    padding: 0.55in !important;
   }
 
   html[data-print-mode="light"] header,

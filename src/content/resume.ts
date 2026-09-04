@@ -396,7 +396,7 @@ export const certifications = [
  */
 export const roleFit = {
   heading: "Role fit",
-  note: "Select what you’re hiring for. I’ll map it to matching roles and short proof points.",
+  note: "Select what you’re hiring for. I’ll map it to matching roles, side projects, and short proof points.",
   needs: [
     {
       id: "instructional-design",
@@ -476,6 +476,12 @@ export const roleFit = {
           company: "Higher Ed Partners",
           proof: "Remote Rise updates, CSS for iframes, and multilingual JS layer in Canvas.",
         },
+        {
+          role: "StepBot — Canvas LMS help bot",
+          company: "Side project",
+          proof:
+            "Embeddable Canvas help bot with guided answers, session memory, and multi-site admin tooling.",
+        },
       ],
     },
     {
@@ -533,6 +539,17 @@ export const roleFit = {
           role: "Instructional Design Specialist (Media)",
           company: "Medical Sales College",
           proof: "Custom Canvas programming enhancements, troubleshooting, and faculty support.",
+        },
+        {
+          role: "Pistomp-Mobile",
+          company: "Side project",
+          proof:
+            "TypeScript + Vite PWA for Pi-Stomp pedalboard control over the MOD-UI API.",
+        },
+        {
+          role: "StepBot — Canvas LMS help bot",
+          company: "Side project",
+          proof: "JavaScript help bot with multi-step flows, theming, and LMS embedding.",
         },
       ],
     },

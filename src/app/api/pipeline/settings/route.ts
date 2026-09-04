@@ -9,8 +9,10 @@ import {
   setPipelineHomeDismissed,
   setPipelineHomePanelOrder,
   restorePipelineHomePanels,
+  setSiteDeploySetting,
   setSkillsSectionEnabled,
   setVisitorIdentifyEnabled,
+  type SiteDeploySetting,
 } from "@/lib/db/settings";
 import { authError, requirePipelineAuth } from "@/lib/jobs/require-auth";
 
@@ -56,6 +58,7 @@ export async function PATCH(req: NextRequest) {
     dismissedPanels?: string[];
     panelOrder?: string[];
     restoreHomePanels?: boolean;
+    siteDeploy?: Partial<SiteDeploySetting>;
   } = {};
   try {
     body = (await req.json()) as typeof body;
@@ -83,6 +86,11 @@ export async function PATCH(req: NextRequest) {
       await setInsetMapSetting(null);
     } else if (body.insetMap && typeof body.insetMap === "object") {
       await setInsetMapSetting(body.insetMap);
+    }
+    if (body.siteDeploy && typeof body.siteDeploy === "object") {
+      await setSiteDeploySetting(body.siteDeploy);
+      revalidatePath("/");
+      revalidatePath("/pipeline");
     }
     if (body.restoreHomePanels) {
       await restorePipelineHomePanels();

@@ -119,6 +119,8 @@ export type RoleFitMatch = {
   role: string;
   company: string;
   proof: string;
+  /** When set, Fit cites an enabled side project (link on the public resume). */
+  projectId?: string;
 };
 
 export type RoleFitNeed = {

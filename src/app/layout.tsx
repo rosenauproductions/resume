@@ -3,6 +3,8 @@ import { Figtree, Syne } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { VisitNotifier } from "@/components/VisitNotifier";
+import { dbConfigured } from "@/lib/db";
+import { DEFAULT_SITE_DEPLOY, getSiteDeploySetting } from "@/lib/db/settings";
 import "./globals.css";
 
 const display = Syne({
@@ -17,37 +19,45 @@ const body = Figtree({
   weight: ["400", "500", "600", "700"],
 });
 
-export const metadata: Metadata = {
-  metadataBase: new URL("https://resume-rho-taupe.vercel.app"),
-  title: "Chris Rosenau — Multimedia Designer & Learning Media Specialist",
-  description:
-    "Multimedia design, graphic arts, video, LMS administration, AI development, and programming. Dallas-based learning media specialist.",
-  openGraph: {
-    title: "Chris Rosenau — Multimedia Designer & Learning Media Specialist",
-    description:
-      "Multimedia design, graphic arts, video, LMS, AI development, and programming for learning experiences.",
-    url: "https://resume-rho-taupe.vercel.app",
-    siteName: "Chris Rosenau",
-    locale: "en_US",
-    type: "website",
-    images: [
-      {
-        url: "/images/og-preview.jpg",
-        width: 1200,
-        height: 630,
-        alt: "Chris Rosenau — Multimedia Designer & Learning Media Specialist",
-      },
-    ],
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "Chris Rosenau — Multimedia Designer & Learning Media Specialist",
-    description:
-      "Multimedia design, graphic arts, video, LMS, AI development, and programming for learning experiences.",
-    images: ["/images/og-preview.jpg"],
-  },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  let deploy = { ...DEFAULT_SITE_DEPLOY };
+  if (dbConfigured()) {
+    try {
+      deploy = await getSiteDeploySetting();
+    } catch {
+      // defaults
+    }
+  }
 
+  const base = deploy.publicUrl || DEFAULT_SITE_DEPLOY.publicUrl;
+  return {
+    metadataBase: new URL(base),
+    title: deploy.metaTitle,
+    description: deploy.metaDescription,
+    openGraph: {
+      title: deploy.metaTitle,
+      description: deploy.metaDescription,
+      url: base,
+      siteName: deploy.siteName,
+      locale: "en_US",
+      type: "website",
+      images: [
+        {
+          url: "/images/og-preview.jpg",
+          width: 1200,
+          height: 630,
+          alt: deploy.metaTitle,
+        },
+      ],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: deploy.metaTitle,
+      description: deploy.metaDescription,
+      images: ["/images/og-preview.jpg"],
+    },
+  };
+}
 
 export default function RootLayout({
   children,

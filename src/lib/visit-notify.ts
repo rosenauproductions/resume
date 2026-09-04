@@ -2,6 +2,8 @@
  * Shared Discord / ntfy helpers for visit + identify events.
  */
 
+import { resolveNtfyNotifyConfig } from "@/lib/db/settings";
+
 export type VisitNotifyKind = "visit" | "pipeline" | "identify" | "lead";
 
 function tagsFor(kind: VisitNotifyKind) {
@@ -49,6 +51,7 @@ async function notifyDiscord(webhook: string, title: string, lines: string[], ki
 }
 
 async function notifyNtfy(
+  server: string,
   topic: string,
   title: string,
   message: string,
@@ -56,7 +59,8 @@ async function notifyNtfy(
   priority: "default" | "high" = "default",
 ) {
   const token = process.env.VISIT_NOTIFY_NTFY_TOKEN;
-  const url = `https://ntfy.sh/${encodeURIComponent(topic)}`;
+  const base = server.replace(/\/$/, "");
+  const url = `${base}/${encodeURIComponent(topic)}`;
   const baseHeaders: Record<string, string> = {
     Title: title,
     Priority: priority,
@@ -87,7 +91,7 @@ export async function notifyVisitChannels(input: {
   priority?: "default" | "high";
 }): Promise<boolean> {
   const discordWebhook = process.env.VISIT_NOTIFY_DISCORD_WEBHOOK;
-  const ntfyTopic = process.env.VISIT_NOTIFY_NTFY_TOPIC;
+  const { topic: ntfyTopic, server: ntfyServer } = await resolveNtfyNotifyConfig();
   if (!discordWebhook && !ntfyTopic) return false;
 
   const kind = input.kind ?? "visit";
@@ -97,7 +101,9 @@ export async function notifyVisitChannels(input: {
     jobs.push(notifyDiscord(discordWebhook, input.title, input.lines, kind));
   }
   if (ntfyTopic) {
-    jobs.push(notifyNtfy(ntfyTopic, input.title, plain, kind, input.priority ?? "default"));
+    jobs.push(
+      notifyNtfy(ntfyServer, ntfyTopic, input.title, plain, kind, input.priority ?? "default"),
+    );
   }
   await Promise.all(jobs);
   return true;

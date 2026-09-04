@@ -31,6 +31,16 @@ function defaultSections(): ResumeContent["sections"] {
 
 /** Build editable CMS document from the static resume.ts seed. */
 export function buildDefaultResumeContent(): ResumeContent {
+  const projects = sideProjectsStatic.projects.map((p) => ({
+    id: newId("proj"),
+    enabled: true,
+    title: p.title,
+    summary: p.summary,
+    href: p.href,
+    linkLabel: p.linkLabel,
+    tags: [...p.tags],
+  }));
+
   return {
     version: 1,
     theme: "dark",
@@ -76,15 +86,7 @@ export function buildDefaultResumeContent(): ResumeContent {
     sideProjects: {
       heading: sideProjectsStatic.heading,
       note: sideProjectsStatic.note,
-      projects: sideProjectsStatic.projects.map((p) => ({
-        id: newId("proj"),
-        enabled: true,
-        title: p.title,
-        summary: p.summary,
-        href: p.href,
-        linkLabel: p.linkLabel,
-        tags: [...p.tags],
-      })),
+      projects,
     },
     skills: {
       heading: skillsStatic.heading,
@@ -129,7 +131,18 @@ export function buildDefaultResumeContent(): ResumeContent {
         label: n.label,
         strength: n.strength,
         summary: n.summary,
-        matches: n.matches.map((m) => ({ ...m })),
+        matches: n.matches.map((m) => {
+          const project =
+            m.company === "Side project"
+              ? projects.find((p) => p.title === m.role)
+              : undefined;
+          return {
+            role: m.role,
+            company: m.company,
+            proof: m.proof,
+            ...(project ? { projectId: project.id } : {}),
+          };
+        }),
       })),
     },
   };
@@ -296,11 +309,18 @@ export function normalizeResumeContent(raw: unknown): ResumeContent {
             strength: String(n.strength ?? ""),
             summary: String(n.summary ?? ""),
             matches: Array.isArray(n.matches)
-              ? n.matches.map((m) => ({
-                  role: String(m.role ?? ""),
-                  company: String(m.company ?? ""),
-                  proof: String(m.proof ?? ""),
-                }))
+              ? n.matches.map((m) => {
+                  const projectId =
+                    typeof m.projectId === "string" && m.projectId.trim()
+                      ? m.projectId.trim()
+                      : undefined;
+                  return {
+                    role: String(m.role ?? ""),
+                    company: String(m.company ?? ""),
+                    proof: String(m.proof ?? ""),
+                    ...(projectId ? { projectId } : {}),
+                  };
+                })
               : [],
           }))
         : fallback.roleFit.needs,

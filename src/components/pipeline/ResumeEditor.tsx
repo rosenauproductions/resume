@@ -611,16 +611,60 @@ function SkillsEditor({
 
 function FitEditor({
   roleFit,
+  projects,
   onChange,
 }: {
   roleFit: ResumeContent["roleFit"];
+  projects: SideProject[];
   onChange: (n: ResumeContent["roleFit"]) => void;
 }) {
+  const enabledProjects = projects.filter((p) => p.enabled);
   const patchNeed = (i: number, partial: Partial<RoleFitNeed>) => {
     const needs = [...roleFit.needs];
     needs[i] = { ...needs[i], ...partial };
     onChange({ ...roleFit, needs });
   };
+
+  function applyProject(needIndex: number, matchIndex: number, projectId: string) {
+    const matches = [...roleFit.needs[needIndex].matches];
+    if (!projectId) {
+      matches[matchIndex] = {
+        role: matches[matchIndex].role,
+        company: matches[matchIndex].company,
+        proof: matches[matchIndex].proof,
+      };
+      patchNeed(needIndex, { matches });
+      return;
+    }
+    const project = enabledProjects.find((p) => p.id === projectId);
+    if (!project) return;
+    const prev = matches[matchIndex];
+    matches[matchIndex] = {
+      role: project.title,
+      company: "Side project",
+      proof: prev.proof?.trim() ? prev.proof : project.summary.slice(0, 160),
+      projectId: project.id,
+    };
+    patchNeed(needIndex, { matches });
+  }
+
+  function addFromProject(needIndex: number, projectId: string) {
+    const project = enabledProjects.find((p) => p.id === projectId);
+    if (!project) return;
+    const need = roleFit.needs[needIndex];
+    patchNeed(needIndex, {
+      matches: [
+        ...need.matches,
+        {
+          role: project.title,
+          company: "Side project",
+          proof: project.summary.slice(0, 160),
+          projectId: project.id,
+        },
+      ],
+    });
+  }
+
   return (
     <div className="space-y-4">
       <div className="grid gap-3 sm:grid-cols-2">
@@ -643,52 +687,92 @@ function FitEditor({
             </div>
           </div>
           <div className="space-y-2">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-wrap items-center justify-between gap-2">
               <span className="text-xs text-[var(--muted)]">Matches</span>
-              <button
-                type="button"
-                className={btnGhost}
-                onClick={() => patchNeed(i, { matches: [...need.matches, { role: "", company: "", proof: "" }] })}
-              >
-                Add match
-              </button>
-            </div>
-            {need.matches.map((m, mi) => (
-              <div key={mi} className="grid gap-2 rounded-lg border border-white/10 p-2 sm:grid-cols-[1fr_1fr_1fr_auto]">
-                <Text
-                  label="Role"
-                  value={m.role}
-                  onChange={(v) => {
-                    const matches = [...need.matches];
-                    matches[mi] = { ...matches[mi], role: v };
-                    patchNeed(i, { matches });
-                  }}
-                />
-                <Text
-                  label="Company"
-                  value={m.company}
-                  onChange={(v) => {
-                    const matches = [...need.matches];
-                    matches[mi] = { ...matches[mi], company: v };
-                    patchNeed(i, { matches });
-                  }}
-                />
-                <Text
-                  label="Proof"
-                  value={m.proof}
-                  onChange={(v) => {
-                    const matches = [...need.matches];
-                    matches[mi] = { ...matches[mi], proof: v };
-                    patchNeed(i, { matches });
-                  }}
-                />
+              <div className="flex flex-wrap gap-2">
+                {enabledProjects.length ? (
+                  <select
+                    className={`${fieldClass} mt-0 w-auto min-w-[12rem] py-1.5 text-xs`}
+                    defaultValue=""
+                    onChange={(e) => {
+                      const id = e.target.value;
+                      e.target.value = "";
+                      if (id) addFromProject(i, id);
+                    }}
+                    aria-label="Add side project match"
+                  >
+                    <option value="">Add side project…</option>
+                    {enabledProjects.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.title}
+                      </option>
+                    ))}
+                  </select>
+                ) : null}
                 <button
                   type="button"
-                  className={`${btnGhost} self-end`}
-                  onClick={() => patchNeed(i, { matches: need.matches.filter((_, j) => j !== mi) })}
+                  className={btnGhost}
+                  onClick={() => patchNeed(i, { matches: [...need.matches, { role: "", company: "", proof: "" }] })}
                 >
-                  ✕
+                  Add match
                 </button>
+              </div>
+            </div>
+            {need.matches.map((m, mi) => (
+              <div key={mi} className="space-y-2 rounded-lg border border-white/10 p-2">
+                {enabledProjects.length ? (
+                  <label className="block text-xs text-[var(--muted)]">
+                    Side project
+                    <select
+                      className={fieldClass}
+                      value={m.projectId ?? ""}
+                      onChange={(e) => applyProject(i, mi, e.target.value)}
+                    >
+                      <option value="">None (job / custom)</option>
+                      {enabledProjects.map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.title}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                ) : null}
+                <div className="grid gap-2 sm:grid-cols-[1fr_1fr_1fr_auto]">
+                  <Text
+                    label="Role / title"
+                    value={m.role}
+                    onChange={(v) => {
+                      const matches = [...need.matches];
+                      matches[mi] = { ...matches[mi], role: v };
+                      patchNeed(i, { matches });
+                    }}
+                  />
+                  <Text
+                    label="Company"
+                    value={m.company}
+                    onChange={(v) => {
+                      const matches = [...need.matches];
+                      matches[mi] = { ...matches[mi], company: v };
+                      patchNeed(i, { matches });
+                    }}
+                  />
+                  <Text
+                    label="Proof"
+                    value={m.proof}
+                    onChange={(v) => {
+                      const matches = [...need.matches];
+                      matches[mi] = { ...matches[mi], proof: v };
+                      patchNeed(i, { matches });
+                    }}
+                  />
+                  <button
+                    type="button"
+                    className={`${btnGhost} self-end`}
+                    onClick={() => patchNeed(i, { matches: need.matches.filter((_, j) => j !== mi) })}
+                  >
+                    ✕
+                  </button>
+                </div>
               </div>
             ))}
           </div>
@@ -776,7 +860,13 @@ export function ResumeEditor({ content, onChange, onSave, onReset, onClose, savi
       case "skills":
         return <SkillsEditor skills={content.skills} onChange={(skills) => onChange({ ...content, skills })} />;
       case "fit":
-        return <FitEditor roleFit={content.roleFit} onChange={(roleFit) => onChange({ ...content, roleFit })} />;
+        return (
+          <FitEditor
+            roleFit={content.roleFit}
+            projects={content.sideProjects.projects}
+            onChange={(roleFit) => onChange({ ...content, roleFit })}
+          />
+        );
       default:
         return null;
     }

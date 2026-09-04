@@ -30,6 +30,7 @@ import { getOrCreateDeviceId } from "@/lib/device-id";
 import { BarChart, DonutChart, DismissiblePanel, StatCard, TimelineChart, VisitTimelineChart } from "./PipelineCharts";
 import { TargetMap } from "./TargetMap";
 import { ResumeEditor } from "./ResumeEditor";
+import { PipelineSettings } from "./PipelineSettings";
 import type { PipelineHomePanelId } from "@/lib/pipeline/home-panels";
 import {
   DEFAULT_HOME_PANEL_ORDER,
@@ -44,7 +45,7 @@ type IngestStep = "paste" | "review";
 
 const LOCAL_KEY = "pipeline-jobs-v4";
 const META_KEY = "pipeline-meta-v4";
-type ViewMode = "insights" | "board" | "list" | "visits" | "map" | "resume";
+type ViewMode = "insights" | "board" | "list" | "visits" | "map" | "resume" | "settings";
 type StorageMode = "local" | "blob" | "db";
 
 type VisitRow = {
@@ -1131,6 +1132,7 @@ export function PipelineApp({
           </p>
         ) : null}
 
+        {view !== "settings" && view !== "resume" ? (
         <div className="mb-4 flex flex-wrap items-center gap-3 rounded-xl border border-white/10 bg-black/20 px-4 py-3">
           <label className="flex cursor-pointer items-center gap-2.5 text-sm text-[var(--cream)]">
             <input
@@ -1166,7 +1168,9 @@ export function PipelineApp({
             </span>
           )}
         </div>
+        ) : null}
 
+        {view !== "settings" && view !== "resume" ? (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {orderedStatIds.map((id) => {
             if (id === "stat-applications") {
@@ -1224,10 +1228,12 @@ export function PipelineApp({
             return null;
           })}
         </div>
+        ) : null}
 
         <div className="mt-6 flex flex-wrap gap-2">
           {(
             [
+              ["settings", "Settings"],
               ["resume", "Resume CMS"],
               ["insights", "Charts & trends"],
               ["board", "Board"],
@@ -1264,6 +1270,10 @@ export function PipelineApp({
           ) : view === "resume" ? (
             <span className="ml-auto self-center text-xs text-[var(--muted)]">
               Edit public resume copy, section order, and visibility
+            </span>
+          ) : view === "settings" ? (
+            <span className="ml-auto self-center text-xs text-[var(--muted)]">
+              Site URL, ntfy, features · secrets stay in Vercel
             </span>
           ) : (
             <span className="ml-auto self-center text-xs text-[var(--muted)]">
@@ -1729,6 +1739,16 @@ export function PipelineApp({
                 {resumeNotice || "Resume content unavailable."}
               </p>
             )
+          ) : null}
+
+          {view === "settings" ? (
+            <PipelineSettings
+              onNotice={setNotice}
+              onSynced={({ visitorIdentifyEnabled: vi, skillsSectionEnabled: sk }) => {
+                setVisitorIdentifyEnabled(vi);
+                setSkillsSectionEnabled(sk);
+              }}
+            />
           ) : null}
         </div>
       </div>

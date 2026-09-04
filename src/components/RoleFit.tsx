@@ -1,15 +1,22 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { roleFit } from "@/content/resume";
+import { useResume } from "@/components/resume/ResumeProvider";
 import { Reveal } from "./Reveal";
 
 export function RoleFit() {
-  const [selected, setSelected] = useState<string[]>([roleFit.needs[0].id]);
+  const { roleFit, sideProjects } = useResume();
+  const needs = useMemo(() => roleFit.needs.filter((n) => n.enabled !== false), [roleFit.needs]);
+  const projectsById = useMemo(
+    () => new Map(sideProjects.projects.filter((p) => p.enabled).map((p) => [p.id, p])),
+    [sideProjects.projects],
+  );
+
+  const [selected, setSelected] = useState<string[]>(() => (needs[0] ? [needs[0].id] : []));
 
   const active = useMemo(
-    () => roleFit.needs.filter((need) => selected.includes(need.id)),
-    [selected],
+    () => needs.filter((need) => selected.includes(need.id)),
+    [needs, selected],
   );
 
   function toggle(id: string) {
@@ -23,6 +30,8 @@ export function RoleFit() {
     });
   }
 
+  if (!needs.length) return null;
+
   return (
     <section id="fit" className="relative pt-2 pb-4 md:pt-2 md:pb-4 lg:pt-2 lg:pb-2">
       <div className="mx-auto max-w-6xl px-6">
@@ -34,7 +43,7 @@ export function RoleFit() {
 
         <Reveal className="mt-8" delay={0.05}>
           <div className="flex flex-wrap gap-2.5" role="group" aria-label="Hiring needs">
-            {roleFit.needs.map((need) => {
+            {needs.map((need) => {
               const on = selected.includes(need.id);
               return (
                 <button
@@ -70,18 +79,35 @@ export function RoleFit() {
                 <p className="mt-3 max-w-3xl text-[var(--muted)]">{need.summary}</p>
 
                 <ul className="mt-5 space-y-4">
-                  {need.matches.map((match) => (
-                    <li
-                      key={`${need.id}-${match.company}-${match.role}`}
-                      className="grid gap-1 border-l border-[var(--accent)]/40 pl-4 sm:grid-cols-[minmax(0,14rem)_1fr] sm:gap-6"
-                    >
-                      <div>
-                        <p className="text-sm text-[var(--cream)]">{match.role}</p>
-                        <p className="text-xs text-[var(--accent)]">{match.company}</p>
-                      </div>
-                      <p className="text-sm leading-relaxed text-[var(--muted)]">{match.proof}</p>
-                    </li>
-                  ))}
+                  {need.matches.map((match) => {
+                    const project = match.projectId ? projectsById.get(match.projectId) : undefined;
+                    const href = project?.href;
+                    return (
+                      <li
+                        key={`${need.id}-${match.company}-${match.role}-${match.projectId ?? ""}`}
+                        className="grid gap-1 border-l border-[var(--accent)]/40 pl-4 sm:grid-cols-[minmax(0,14rem)_1fr] sm:gap-6"
+                      >
+                        <div>
+                          {href ? (
+                            <a
+                              href={href}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-sm text-[var(--cream)] transition-colors hover:text-[var(--accent)]"
+                            >
+                              {match.role}
+                            </a>
+                          ) : (
+                            <p className="text-sm text-[var(--cream)]">{match.role}</p>
+                          )}
+                          <p className="text-xs text-[var(--accent)]">
+                            {match.company || (project ? "Side project" : "")}
+                          </p>
+                        </div>
+                        <p className="text-sm leading-relaxed text-[var(--muted)]">{match.proof}</p>
+                      </li>
+                    );
+                  })}
                 </ul>
               </article>
             </Reveal>
