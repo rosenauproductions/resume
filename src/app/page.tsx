@@ -10,6 +10,8 @@ import { Skills } from "@/components/Skills";
 import { dbConfigured } from "@/lib/db";
 import { getSkillsSectionSetting } from "@/lib/db/settings";
 
+export const dynamic = "force-dynamic";
+
 export default async function Home() {
   let showSkills = false;
   if (dbConfigured()) {
