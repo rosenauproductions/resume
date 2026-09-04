@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
+import type { KeyboardEvent } from "react";
 import type { IdentifyPosition, IdentifyPromptPayload } from "@/lib/visit-identify-types";
 
 const DISMISS_KEY = "resume-identify-dismissed";
@@ -9,6 +10,28 @@ type Step = "confirm" | "identify" | "offer" | "lead" | "thanks";
 
 const fieldClass =
   "mt-1.5 w-full rounded-xl border border-white/12 bg-black/35 px-3 py-2.5 text-sm text-[var(--cream)] outline-none placeholder:text-[var(--muted)]/70 focus:border-[var(--accent)]";
+
+function positionLabel(p: IdentifyPosition) {
+  return `${p.company} — ${p.title}`;
+}
+
+function matchPositions(positions: IdentifyPosition[], query: string): IdentifyPosition[] {
+  const q = query.trim().toLowerCase();
+  if (q.length < 1) return [];
+  const tokens = q.split(/\s+/).filter(Boolean);
+  return positions
+    .map((p) => {
+      const hay = `${p.company} ${p.title}`.toLowerCase();
+      if (!tokens.every((t) => hay.includes(t))) return null;
+      const starts =
+        p.company.toLowerCase().startsWith(q) || p.title.toLowerCase().startsWith(q) ? 1 : 0;
+      return { p, score: starts, hay };
+    })
+    .filter((x): x is { p: IdentifyPosition; score: number; hay: string } => Boolean(x))
+    .sort((a, b) => b.score - a.score || a.hay.localeCompare(b.hay))
+    .slice(0, 6)
+    .map((x) => x.p);
+}
 
 export function VisitorIdentifyModal({
   prompt,
@@ -20,9 +43,16 @@ export function VisitorIdentifyModal({
   onDone: () => void;
 }) {
   const titleId = useId();
+  const listboxId = useId();
+  const queryRef = useRef<HTMLInputElement>(null);
   const [step, setStep] = useState<Step>(prompt.suggested ? "confirm" : "identify");
   const [selectedId, setSelectedId] = useState(prompt.suggested?.id ?? "");
+  const [query, setQuery] = useState(
+    prompt.suggested ? positionLabel(prompt.suggested) : "",
+  );
   const [freeText, setFreeText] = useState("");
+  const [hintsOpen, setHintsOpen] = useState(false);
+  const [activeHint, setActiveHint] = useState(0);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [leadName, setLeadName] = useState("");
@@ -32,6 +62,8 @@ export function VisitorIdentifyModal({
   const [leadTitle, setLeadTitle] = useState("");
   const [leadLocation, setLeadLocation] = useState("");
   const [leadMessage, setLeadMessage] = useState("");
+
+  const hints = selectedId ? [] : matchPositions(prompt.positions, query);
 
   useEffect(() => {
     const prev = document.body.style.overflow;
@@ -104,6 +136,40 @@ export function VisitorIdentifyModal({
   }
 
   const suggested = prompt.suggested;
+
+  function pickPosition(p: IdentifyPosition) {
+    setSelectedId(p.id);
+    setQuery(positionLabel(p));
+    setHintsOpen(false);
+    setActiveHint(0);
+    setError("");
+  }
+
+  function onQueryChange(value: string) {
+    setQuery(value);
+    setSelectedId("");
+    setHintsOpen(true);
+    setActiveHint(0);
+  }
+
+  function onQueryKeyDown(e: KeyboardEvent<HTMLInputElement>) {
+    if (!hintsOpen || !hints.length) {
+      if (e.key === "Escape") setHintsOpen(false);
+      return;
+    }
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setActiveHint((i) => (i + 1) % hints.length);
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setActiveHint((i) => (i - 1 + hints.length) % hints.length);
+    } else if (e.key === "Enter" && hints[activeHint]) {
+      e.preventDefault();
+      pickPosition(hints[activeHint]);
+    } else if (e.key === "Escape") {
+      setHintsOpen(false);
+    }
+  }
 
   return (
     <div
@@ -185,6 +251,9 @@ export function VisitorIdentifyModal({
                   onClick={() => {
                     setStep("identify");
                     setSelectedId("");
+                    setQuery("");
+                    setHintsOpen(false);
+                    requestAnimationFrame(() => queryRef.current?.focus());
                   }}
                   className="rounded-lg border border-white/15 px-4 py-2 text-sm text-[var(--cream)] hover:border-white/30"
                 >
@@ -197,25 +266,68 @@ export function VisitorIdentifyModal({
           {step === "identify" ? (
             <div className="space-y-3">
               <p className="text-sm text-[var(--muted)]">
-                If you&apos;re here about a position, select the one you&apos;re considering me for:
+                If you&apos;re here about a position, start typing the company or role — matching
+                hints appear as you type.
               </p>
-              <label className="block">
-                <span className="sr-only">Select a position</span>
-                <select
-                  value={selectedId}
-                  onChange={(e) => setSelectedId(e.target.value)}
-                  className={fieldClass}
-                >
-                  <option value="">Select a position</option>
-                  {prompt.positions.map((p: IdentifyPosition) => (
-                    <option key={p.id} value={p.id}>
-                      {p.company} — {p.title}
-                    </option>
-                  ))}
-                </select>
-              </label>
+              <div className="relative">
+                <label className="block">
+                  <span className="sr-only">Search positions</span>
+                  <input
+                    ref={queryRef}
+                    value={query}
+                    onChange={(e) => onQueryChange(e.target.value)}
+                    onFocus={() => setHintsOpen(true)}
+                    onBlur={() => {
+                      // Allow hint click before closing
+                      window.setTimeout(() => setHintsOpen(false), 120);
+                    }}
+                    onKeyDown={onQueryKeyDown}
+                    className={fieldClass}
+                    placeholder="e.g. Acme, instructional design…"
+                    autoComplete="off"
+                    role="combobox"
+                    aria-expanded={hintsOpen && hints.length > 0}
+                    aria-controls={listboxId}
+                    aria-autocomplete="list"
+                  />
+                </label>
+                {selectedId ? (
+                  <p className="mt-1.5 text-xs text-[var(--accent)]">Matched a tracked position</p>
+                ) : null}
+                {hintsOpen && hints.length > 0 ? (
+                  <ul
+                    id={listboxId}
+                    role="listbox"
+                    className="absolute z-10 mt-1.5 max-h-48 w-full overflow-auto rounded-xl border border-white/12 bg-[var(--panel)] py-1 shadow-lg"
+                  >
+                    {hints.map((p, i) => (
+                      <li key={p.id} role="option" aria-selected={i === activeHint}>
+                        <button
+                          type="button"
+                          className={`block w-full px-3 py-2 text-left text-sm ${
+                            i === activeHint
+                              ? "bg-[var(--accent)]/20 text-[var(--cream)]"
+                              : "text-[var(--cream)] hover:bg-white/5"
+                          }`}
+                          onMouseDown={(e) => e.preventDefault()}
+                          onMouseEnter={() => setActiveHint(i)}
+                          onClick={() => pickPosition(p)}
+                        >
+                          <span className="font-medium">{p.company}</span>
+                          <span className="text-[var(--muted)]"> — {p.title}</span>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
+                {hintsOpen && query.trim() && !selectedId && hints.length === 0 ? (
+                  <p className="mt-1.5 text-xs text-[var(--muted)]">
+                    No tracked match — add a note below if you like.
+                  </p>
+                ) : null}
+              </div>
               <p className="text-sm text-[var(--muted)]">
-                Not sure which? That&apos;s okay — just let me know what you&apos;re looking for.
+                Not seeing it? That&apos;s okay — just let me know what you&apos;re looking for.
               </p>
               <textarea
                 rows={3}
@@ -354,7 +466,7 @@ export function VisitorIdentifyModal({
                 {step === "identify" ? (
                   <button
                     type="button"
-                    disabled={busy || (!selectedId && !freeText.trim())}
+                    disabled={busy || (!selectedId && !freeText.trim() && !query.trim())}
                     onClick={() => {
                       if (selectedId) {
                         void submit({
@@ -365,10 +477,11 @@ export function VisitorIdentifyModal({
                         });
                         return;
                       }
-                      // No tracked match — save soft note, then gently offer more details
+                      // No tracked match — save soft note (query counts as note), then offer more
+                      const note = freeText.trim() || query.trim();
                       void submit({
                         applicationId: null,
-                        freeText: freeText.trim(),
+                        freeText: note,
                         confirmedSuggested: false,
                         nextStep: "offer",
                       });
