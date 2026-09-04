@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { dbConfigured } from "@/lib/db";
 import { isDeviceIgnored, recordVisit } from "@/lib/db/visits";
+import { buildIdentifyPrompt } from "@/lib/db/visitor-identify";
+import type { IdentifyPromptPayload } from "@/lib/visit-identify-types";
 
 export const runtime = "nodejs";
 
@@ -154,6 +156,8 @@ export async function POST(req: NextRequest) {
 
   let visitId: string | null = null;
   let linkConfidence: string | null = null;
+  let linkedApplicationId: string | null = null;
+  let identify: IdentifyPromptPayload | null = null;
 
   // Dual-track: persist detailed visit even if notifications are off
   if (dbConfigured()) {
@@ -173,11 +177,27 @@ export async function POST(req: NextRequest) {
       });
       visitId = visit.id;
       linkConfidence = visit.linkConfidence;
+      linkedApplicationId = visit.linkedApplicationId;
       if (visit.linkConfidence === "suggested" && visit.linkReason) {
         lines.push(`**Suggested job:** ${visit.linkReason}`);
       }
     } catch (error) {
       console.error("visit db write failed", error);
+    }
+
+    if (visitId && fingerprint) {
+      try {
+        identify = await buildIdentifyPrompt({
+          path,
+          deviceId: fingerprint,
+          visitId,
+          linkedApplicationId,
+          linkConfidence,
+          deviceIgnored,
+        });
+      } catch (error) {
+        console.error("identify prompt build failed", error);
+      }
     }
   }
 
@@ -190,6 +210,7 @@ export async function POST(req: NextRequest) {
       linkConfidence,
       notified: false,
       skippedNotify: "device_ignore",
+      identify,
     });
   }
 
@@ -202,6 +223,7 @@ export async function POST(req: NextRequest) {
       linkConfidence,
       notified: false,
       skippedNotify: "pipeline",
+      identify,
     });
   }
 
@@ -212,6 +234,7 @@ export async function POST(req: NextRequest) {
       visitId,
       linkConfidence,
       notified: false,
+      identify,
     });
   }
 
@@ -232,11 +255,12 @@ export async function POST(req: NextRequest) {
       visitId,
       linkConfidence,
       notified: true,
+      identify,
     });
   } catch (error) {
     console.error("visit notify failed", error);
     return NextResponse.json(
-      { ok: false, stored: Boolean(visitId), visitId, linkConfidence },
+      { ok: false, stored: Boolean(visitId), visitId, linkConfidence, identify },
       { status: 500 },
     );
   }

@@ -72,6 +72,31 @@ export const ignoredDevices = pgTable("ignored_devices", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+/** Key/value site settings (admin toggles, dismissed pipeline home panels, etc.). */
+export const siteSettings = pgTable("site_settings", {
+  key: text("key").primaryKey(),
+  valueJson: jsonb("value_json").$type<Record<string, unknown>>().notNull().default({}),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+/**
+ * Repeat visitors who identified themselves via the public resume prompt.
+ * One row per device — used to avoid re-asking.
+ */
+export const visitorIdentifications = pgTable("visitor_identifications", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  deviceId: text("device_id").notNull().unique(),
+  applicationId: uuid("application_id").references(() => applications.id, {
+    onDelete: "set null",
+  }),
+  freeText: text("free_text").notNull().default(""),
+  confirmedSuggested: boolean("confirmed_suggested").notNull().default(false),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 export type ApplicationRow = typeof applications.$inferSelect;
 export type VisitRow = typeof visits.$inferSelect;
 export type IgnoredDeviceRow = typeof ignoredDevices.$inferSelect;
+export type SiteSettingRow = typeof siteSettings.$inferSelect;
+export type VisitorIdentificationRow = typeof visitorIdentifications.$inferSelect;

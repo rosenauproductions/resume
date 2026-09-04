@@ -27,8 +27,9 @@ import {
 import { computeInsights } from "@/lib/jobs/insights";
 import { loadSeedJobs, loadSeedMeta } from "@/lib/jobs/seed";
 import { getOrCreateDeviceId } from "@/lib/device-id";
-import { BarChart, DonutChart, StatCard, TimelineChart } from "./PipelineCharts";
+import { BarChart, DonutChart, DismissiblePanel, StatCard, TimelineChart } from "./PipelineCharts";
 import { TargetMap } from "./TargetMap";
+import type { PipelineHomePanelId } from "@/lib/pipeline/home-panels";
 
 type IngestStep = "paste" | "review";
 
@@ -173,8 +174,15 @@ export function PipelineApp() {
   const [visitJobs, setVisitJobs] = useState<VisitJobOption[]>([]);
   const [visitsLoading, setVisitsLoading] = useState(false);
   const [thisDeviceId, setThisDeviceId] = useState("");
+  const [visitorIdentifyEnabled, setVisitorIdentifyEnabled] = useState(false);
+  const [dismissedPanels, setDismissedPanels] = useState<string[]>([]);
+  const [settingsLoading, setSettingsLoading] = useState(false);
 
   const insights = useMemo(() => computeInsights(jobs, meta), [jobs, meta]);
+  const isPanelVisible = useCallback(
+    (id: PipelineHomePanelId | string) => !dismissedPanels.includes(id),
+    [dismissedPanels],
+  );
   const filtered = useMemo(() => {
     const q = filter.trim().toLowerCase();
     if (!q) return jobs;
@@ -228,6 +236,72 @@ export function PipelineApp() {
     } finally {
       setVisitsLoading(false);
     }
+  }
+
+  async function refreshSettings() {
+    setSettingsLoading(true);
+    try {
+      const res = await fetch("/api/pipeline/settings");
+      const data = await res.json();
+      if (res.ok && data.settings) {
+        setVisitorIdentifyEnabled(Boolean(data.settings.visitorIdentify?.enabled));
+        setDismissedPanels(
+          Array.isArray(data.settings.pipelineHome?.dismissedPanels)
+            ? data.settings.pipelineHome.dismissedPanels
+            : [],
+        );
+      }
+    } catch {
+      // ignore
+    } finally {
+      setSettingsLoading(false);
+    }
+  }
+
+  async function patchSettings(body: Record<string, unknown>) {
+    try {
+      const res = await fetch("/api/pipeline/settings", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setNotice(data.error || "Could not save setting");
+        return;
+      }
+      if (data.settings) {
+        setVisitorIdentifyEnabled(Boolean(data.settings.visitorIdentify?.enabled));
+        setDismissedPanels(
+          Array.isArray(data.settings.pipelineHome?.dismissedPanels)
+            ? data.settings.pipelineHome.dismissedPanels
+            : [],
+        );
+      }
+    } catch {
+      setNotice("Network error saving setting");
+    }
+  }
+
+  function dismissHomePanel(panelId: string) {
+    const next = [...new Set([...dismissedPanels, panelId])];
+    setDismissedPanels(next);
+    void patchSettings({ dismissedPanels: next });
+  }
+
+  function restoreHomePanels() {
+    setDismissedPanels([]);
+    void patchSettings({ restoreHomePanels: true });
+  }
+
+  function toggleVisitorIdentify(enabled: boolean) {
+    setVisitorIdentifyEnabled(enabled);
+    void patchSettings({ visitorIdentifyEnabled: enabled });
+    setNotice(
+      enabled
+        ? "Return-visitor identify prompt enabled"
+        : "Return-visitor identify prompt disabled",
+    );
   }
 
   useEffect(() => {
@@ -337,6 +411,7 @@ export function PipelineApp() {
           setNotice("Database empty — Load from Drive or Bundled fallback to import applications");
         }
         void refreshVisits();
+        void refreshSettings();
       } catch {
         setAuthed(false);
       } finally {
@@ -366,6 +441,7 @@ export function PipelineApp() {
       setNotice("Database empty — Load from Drive or Bundled fallback to import applications");
     }
     void refreshVisits();
+    void refreshSettings();
   }
 
   async function handleLogout() {
@@ -783,23 +859,65 @@ export function PipelineApp() {
           </p>
         ) : null}
 
+        <div className="mb-4 flex flex-wrap items-center gap-3 rounded-xl border border-white/10 bg-black/20 px-4 py-3">
+          <label className="flex cursor-pointer items-center gap-2.5 text-sm text-[var(--cream)]">
+            <input
+              type="checkbox"
+              checked={visitorIdentifyEnabled}
+              disabled={settingsLoading}
+              onChange={(e) => toggleVisitorIdentify(e.target.checked)}
+              className="h-4 w-4 accent-[var(--accent)]"
+            />
+            Ask return visitors to identify (company / position)
+          </label>
+          {dismissedPanels.length ? (
+            <button
+              type="button"
+              onClick={restoreHomePanels}
+              className="ml-auto rounded-lg border border-white/15 px-3 py-1.5 text-xs text-[var(--muted)] hover:border-[var(--accent)] hover:text-[var(--cream)]"
+            >
+              Restore home panels ({dismissedPanels.length} hidden)
+            </button>
+          ) : (
+            <span className="ml-auto text-xs text-[var(--muted)]">
+              Home panels: click × to hide (saved)
+            </span>
+          )}
+        </div>
+
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <StatCard label="Applications" value={String(insights.total)} hint={`${insights.appliedThisWeek} dated this week`} />
-          <StatCard
-            label="Avg match"
-            value={insights.avgMatchScore != null ? `${insights.avgMatchScore}/10` : "—"}
-            hint={`${insights.withMatchScore} scored roles`}
-          />
-          <StatCard
-            label="Interviews open"
-            value={String(insights.interviewsOpen)}
-            hint={`${insights.rejected} rejected`}
-          />
-          <StatCard
-            label="Avg known pay"
-            value={money(insights.avgAnnualMid)}
-            hint={`${insights.abovePriorSalary}/${insights.knownSalaryCount} ≥ prior ${money(meta?.lastSalary)}`}
-          />
+          {isPanelVisible("stat-applications") ? (
+            <StatCard
+              label="Applications"
+              value={String(insights.total)}
+              hint={`${insights.appliedThisWeek} dated this week`}
+              onDismiss={() => dismissHomePanel("stat-applications")}
+            />
+          ) : null}
+          {isPanelVisible("stat-avg-match") ? (
+            <StatCard
+              label="Avg match"
+              value={insights.avgMatchScore != null ? `${insights.avgMatchScore}/10` : "—"}
+              hint={`${insights.withMatchScore} scored roles`}
+              onDismiss={() => dismissHomePanel("stat-avg-match")}
+            />
+          ) : null}
+          {isPanelVisible("stat-interviews") ? (
+            <StatCard
+              label="Interviews open"
+              value={String(insights.interviewsOpen)}
+              hint={`${insights.rejected} rejected`}
+              onDismiss={() => dismissHomePanel("stat-interviews")}
+            />
+          ) : null}
+          {isPanelVisible("stat-avg-pay") ? (
+            <StatCard
+              label="Avg known pay"
+              value={money(insights.avgAnnualMid)}
+              hint={`${insights.abovePriorSalary}/${insights.knownSalaryCount} ≥ prior ${money(meta?.lastSalary)}`}
+              onDismiss={() => dismissHomePanel("stat-avg-pay")}
+            />
+          ) : null}
         </div>
 
         <div className="mt-6 flex flex-wrap gap-2">
@@ -847,129 +965,189 @@ export function PipelineApp() {
           {view === "insights" ? (
             <div className="space-y-4">
               <div className="grid gap-4 lg:grid-cols-2">
-                <DonutChart
-                  title="Pipeline mix"
-                  subtitle="Status across all applications"
-                  data={insights.statusChart}
-                />
-                <BarChart
-                  title="Match score bands"
-                  subtitle="Where your scored applications land"
-                  data={insights.matchScoreChart}
-                />
-                <BarChart
-                  title="Match level mix"
-                  subtitle="Excellent / Very Good / Good / Unknown"
-                  data={insights.matchLevelChart}
-                />
-                <TimelineChart data={insights.timelineChart} />
-                <BarChart
-                  title="Salary vs prior ($79K)"
-                  subtitle="Annualized midpoint where known · teal ≥ prior"
-                  data={insights.salaryVsPriorChart}
-                  formatValue={(n) => `$${Math.round(n / 1000)}k`}
-                />
-                <section className="rounded-2xl border border-white/10 bg-[var(--panel)] p-5">
-                  <h3 className="font-[family-name:var(--font-display)] text-xl">Current targets</h3>
-                  <p className="mt-1 text-sm text-[var(--muted)]">High-priority companies from the tracker</p>
-                  <ul className="mt-4 space-y-2">
-                    {(meta?.targets ?? []).map((t) => (
-                      <li key={t.company} className="rounded-xl border border-[var(--accent)]/20 bg-[var(--accent)]/5 px-3 py-2 text-sm">
-                        <strong className="text-[var(--accent)]">{t.company}</strong>
-                        <span className="text-[var(--muted)]"> — {t.reason}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </section>
+                {isPanelVisible("chart-status") ? (
+                  <DismissiblePanel onDismiss={() => dismissHomePanel("chart-status")}>
+                    <DonutChart
+                      title="Pipeline mix"
+                      subtitle="Status across all applications"
+                      data={insights.statusChart}
+                    />
+                  </DismissiblePanel>
+                ) : null}
+                {isPanelVisible("chart-match-bands") ? (
+                  <DismissiblePanel onDismiss={() => dismissHomePanel("chart-match-bands")}>
+                    <BarChart
+                      title="Match score bands"
+                      subtitle="Where your scored applications land"
+                      data={insights.matchScoreChart}
+                    />
+                  </DismissiblePanel>
+                ) : null}
+                {isPanelVisible("chart-match-levels") ? (
+                  <DismissiblePanel onDismiss={() => dismissHomePanel("chart-match-levels")}>
+                    <BarChart
+                      title="Match level mix"
+                      subtitle="Excellent / Very Good / Good / Unknown"
+                      data={insights.matchLevelChart}
+                    />
+                  </DismissiblePanel>
+                ) : null}
+                {isPanelVisible("chart-timeline") ? (
+                  <DismissiblePanel onDismiss={() => dismissHomePanel("chart-timeline")}>
+                    <TimelineChart data={insights.timelineChart} />
+                  </DismissiblePanel>
+                ) : null}
+                {isPanelVisible("chart-salary") ? (
+                  <DismissiblePanel onDismiss={() => dismissHomePanel("chart-salary")}>
+                    <BarChart
+                      title="Salary vs prior ($79K)"
+                      subtitle="Annualized midpoint where known · teal ≥ prior"
+                      data={insights.salaryVsPriorChart}
+                      formatValue={(n) => `$${Math.round(n / 1000)}k`}
+                    />
+                  </DismissiblePanel>
+                ) : null}
+                {isPanelVisible("panel-targets") ? (
+                  <DismissiblePanel onDismiss={() => dismissHomePanel("panel-targets")}>
+                    <section className="rounded-2xl border border-white/10 bg-[var(--panel)] p-5 pr-10">
+                      <h3 className="font-[family-name:var(--font-display)] text-xl">Current targets</h3>
+                      <p className="mt-1 text-sm text-[var(--muted)]">High-priority companies from the tracker</p>
+                      <ul className="mt-4 space-y-2">
+                        {(meta?.targets ?? []).map((t) => (
+                          <li key={t.company} className="rounded-xl border border-[var(--accent)]/20 bg-[var(--accent)]/5 px-3 py-2 text-sm">
+                            <strong className="text-[var(--accent)]">{t.company}</strong>
+                            <span className="text-[var(--muted)]"> — {t.reason}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </section>
+                  </DismissiblePanel>
+                ) : null}
               </div>
 
               <div className="grid gap-4 lg:grid-cols-3">
-                <GuidanceCard title="Lean into" tone="good" items={insights.leanInto} />
-                <GuidanceCard title="Watch gaps" tone="warn" items={insights.gapThemes} />
-                <section className="rounded-2xl border border-white/10 bg-[var(--panel)] p-5">
-                  <h3 className="font-[family-name:var(--font-display)] text-xl">Date policy</h3>
-                  <p className="mt-2 text-sm leading-relaxed text-[var(--muted)]">
-                    {meta?.datePolicy ||
-                      "Keep application_date separate from when a posting was shared with ChatGPT. Never invent dates."}
-                  </p>
-                  <p className="mt-3 text-xs text-[var(--warm)]">
-                    Transfr + Baylor stay in Researching until you confirm “I applied.”
-                  </p>
-                </section>
+                {isPanelVisible("panel-lean-into") ? (
+                  <DismissiblePanel onDismiss={() => dismissHomePanel("panel-lean-into")}>
+                    <GuidanceCard title="Lean into" tone="good" items={insights.leanInto} />
+                  </DismissiblePanel>
+                ) : null}
+                {isPanelVisible("panel-watch-gaps") ? (
+                  <DismissiblePanel onDismiss={() => dismissHomePanel("panel-watch-gaps")}>
+                    <GuidanceCard title="Watch gaps" tone="warn" items={insights.gapThemes} />
+                  </DismissiblePanel>
+                ) : null}
+                {isPanelVisible("panel-date-policy") ? (
+                  <DismissiblePanel onDismiss={() => dismissHomePanel("panel-date-policy")}>
+                    <section className="rounded-2xl border border-white/10 bg-[var(--panel)] p-5 pr-10">
+                      <h3 className="font-[family-name:var(--font-display)] text-xl">Date policy</h3>
+                      <p className="mt-2 text-sm leading-relaxed text-[var(--muted)]">
+                        {meta?.datePolicy ||
+                          "Keep application_date separate from when a posting was shared with ChatGPT. Never invent dates."}
+                      </p>
+                      <p className="mt-3 text-xs text-[var(--warm)]">
+                        Transfr + Baylor stay in Researching until you confirm “I applied.”
+                      </p>
+                    </section>
+                  </DismissiblePanel>
+                ) : null}
               </div>
 
               <div className="grid gap-4 lg:grid-cols-2">
-                <section className="rounded-2xl border border-white/10 bg-[var(--panel)] p-5">
-                  <h3 className="font-[family-name:var(--font-display)] text-xl">Strategy</h3>
-                  <p className="mt-2 text-sm text-[var(--muted)]">{meta?.preferredEmployment}</p>
-                  <p className="mt-3 text-xs uppercase tracking-[0.18em] text-[var(--accent)]">Prefer</p>
-                  <p className="mt-1 text-sm text-[var(--cream)]/90">
-                    {(meta?.preferredWork ?? []).slice(0, 5).join(" · ")}
-                  </p>
-                  <p className="mt-3 text-xs uppercase tracking-[0.18em] text-[var(--warm)]">Less preferred</p>
-                  <p className="mt-1 text-sm text-[var(--cream)]/90">
-                    {(meta?.lessPreferred ?? []).slice(0, 4).join(" · ") || "Facilitation-heavy, travel-heavy, low-comp roles"}
-                  </p>
-                  <p className="mt-4 text-sm text-[var(--muted)]">
-                    Target {meta?.preferredTarget || "~$80K+"} · stretch {meta?.highValueTarget || "$100K+"}
-                  </p>
-                </section>
-                <section className="rounded-2xl border border-white/10 bg-[var(--panel)] p-5">
-                  <h3 className="font-[family-name:var(--font-display)] text-xl">Exact dates only</h3>
-                  <ul className="mt-4 space-y-2 text-sm">
-                    {jobs
-                      .filter((j) => j.dateApplied && j.datePrecision === "exact")
-                      .sort((a, b) => b.dateApplied.localeCompare(a.dateApplied))
-                      .map((j) => (
-                        <li key={j.id} className="flex justify-between gap-3 border-b border-white/5 pb-2">
-                          <span>
-                            <span className="font-medium">{j.shortName || j.company}</span>
-                            <span className="block text-xs text-[var(--muted)]">{j.title}</span>
-                          </span>
-                          <span className="shrink-0 tabular-nums text-[var(--accent)]">{j.dateApplied}</span>
-                        </li>
-                      ))}
-                  </ul>
-                </section>
+                {isPanelVisible("panel-strategy") ? (
+                  <DismissiblePanel onDismiss={() => dismissHomePanel("panel-strategy")}>
+                    <section className="rounded-2xl border border-white/10 bg-[var(--panel)] p-5 pr-10">
+                      <h3 className="font-[family-name:var(--font-display)] text-xl">Strategy</h3>
+                      <p className="mt-2 text-sm text-[var(--muted)]">{meta?.preferredEmployment}</p>
+                      <p className="mt-3 text-xs uppercase tracking-[0.18em] text-[var(--accent)]">Prefer</p>
+                      <p className="mt-1 text-sm text-[var(--cream)]/90">
+                        {(meta?.preferredWork ?? []).slice(0, 5).join(" · ")}
+                      </p>
+                      <p className="mt-3 text-xs uppercase tracking-[0.18em] text-[var(--warm)]">Less preferred</p>
+                      <p className="mt-1 text-sm text-[var(--cream)]/90">
+                        {(meta?.lessPreferred ?? []).slice(0, 4).join(" · ") || "Facilitation-heavy, travel-heavy, low-comp roles"}
+                      </p>
+                      <p className="mt-4 text-sm text-[var(--muted)]">
+                        Target {meta?.preferredTarget || "~$80K+"} · stretch {meta?.highValueTarget || "$100K+"}
+                      </p>
+                    </section>
+                  </DismissiblePanel>
+                ) : null}
+                {isPanelVisible("panel-exact-dates") ? (
+                  <DismissiblePanel onDismiss={() => dismissHomePanel("panel-exact-dates")}>
+                    <section className="rounded-2xl border border-white/10 bg-[var(--panel)] p-5 pr-10">
+                      <h3 className="font-[family-name:var(--font-display)] text-xl">Exact dates only</h3>
+                      <ul className="mt-4 space-y-2 text-sm">
+                        {jobs
+                          .filter((j) => j.dateApplied && j.datePrecision === "exact")
+                          .sort((a, b) => b.dateApplied.localeCompare(a.dateApplied))
+                          .map((j) => (
+                            <li key={j.id} className="flex justify-between gap-3 border-b border-white/5 pb-2">
+                              <span>
+                                <span className="font-medium">{j.shortName || j.company}</span>
+                                <span className="block text-xs text-[var(--muted)]">{j.title}</span>
+                              </span>
+                              <span className="shrink-0 tabular-nums text-[var(--accent)]">{j.dateApplied}</span>
+                            </li>
+                          ))}
+                      </ul>
+                    </section>
+                  </DismissiblePanel>
+                ) : null}
               </div>
 
               <div className="grid gap-4 lg:grid-cols-2">
-                <RankList
-                  title="Top match scores"
-                  jobs={insights.topMatches}
-                  onSelect={setDetail}
-                  primary={(j) => (j.matchScore != null ? `${j.matchScore}/10` : "—")}
-                />
-                <RankList
-                  title="Highest known pay"
-                  jobs={insights.topPay}
-                  onSelect={setDetail}
-                  primary={(j) => money(j.annualMid)}
-                />
+                {isPanelVisible("panel-top-matches") ? (
+                  <DismissiblePanel onDismiss={() => dismissHomePanel("panel-top-matches")}>
+                    <RankList
+                      title="Top match scores"
+                      jobs={insights.topMatches}
+                      onSelect={setDetail}
+                      primary={(j) => (j.matchScore != null ? `${j.matchScore}/10` : "—")}
+                    />
+                  </DismissiblePanel>
+                ) : null}
+                {isPanelVisible("panel-top-pay") ? (
+                  <DismissiblePanel onDismiss={() => dismissHomePanel("panel-top-pay")}>
+                    <RankList
+                      title="Highest known pay"
+                      jobs={insights.topPay}
+                      onSelect={setDetail}
+                      primary={(j) => money(j.annualMid)}
+                    />
+                  </DismissiblePanel>
+                ) : null}
               </div>
 
               {(meta?.risks?.length || meta?.strengths?.length) ? (
                 <div className="grid gap-4 lg:grid-cols-2">
-                  <section className="rounded-2xl border border-white/10 bg-[var(--panel)] p-5">
-                    <h3 className="font-[family-name:var(--font-display)] text-xl">Profile strengths</h3>
-                    <div className="mt-4 flex flex-wrap gap-2">
-                      {(meta?.strengths ?? []).map((s) => (
-                        <span key={s} className="rounded-full border border-white/15 px-3 py-1 text-xs text-[var(--cream)]/85">
-                          {s}
-                        </span>
-                      ))}
-                    </div>
-                  </section>
-                  <section className="rounded-2xl border border-white/10 bg-[var(--panel)] p-5">
-                    <h3 className="font-[family-name:var(--font-display)] text-xl">Application risks</h3>
-                    <ul className="mt-4 space-y-2 text-sm text-[var(--muted)]">
-                      {(meta?.risks ?? []).map((r) => (
-                        <li key={r.slice(0, 40)} className="border-l border-[var(--warm)]/40 pl-3">
-                          {r}
-                        </li>
-                      ))}
-                    </ul>
-                  </section>
+                  {meta?.strengths?.length && isPanelVisible("panel-strengths") ? (
+                    <DismissiblePanel onDismiss={() => dismissHomePanel("panel-strengths")}>
+                      <section className="rounded-2xl border border-white/10 bg-[var(--panel)] p-5 pr-10">
+                        <h3 className="font-[family-name:var(--font-display)] text-xl">Profile strengths</h3>
+                        <div className="mt-4 flex flex-wrap gap-2">
+                          {(meta?.strengths ?? []).map((s) => (
+                            <span key={s} className="rounded-full border border-white/15 px-3 py-1 text-xs text-[var(--cream)]/85">
+                              {s}
+                            </span>
+                          ))}
+                        </div>
+                      </section>
+                    </DismissiblePanel>
+                  ) : null}
+                  {meta?.risks?.length && isPanelVisible("panel-risks") ? (
+                    <DismissiblePanel onDismiss={() => dismissHomePanel("panel-risks")}>
+                      <section className="rounded-2xl border border-white/10 bg-[var(--panel)] p-5 pr-10">
+                        <h3 className="font-[family-name:var(--font-display)] text-xl">Application risks</h3>
+                        <ul className="mt-4 space-y-2 text-sm text-[var(--muted)]">
+                          {(meta?.risks ?? []).map((r) => (
+                            <li key={r.slice(0, 40)} className="border-l border-[var(--warm)]/40 pl-3">
+                              {r}
+                            </li>
+                          ))}
+                        </ul>
+                      </section>
+                    </DismissiblePanel>
+                  ) : null}
                 </div>
               ) : null}
             </div>
@@ -1336,7 +1514,7 @@ function GuidanceCard({
 }) {
   const color = tone === "good" ? "var(--accent)" : "var(--warm)";
   return (
-    <section className="rounded-2xl border border-white/10 bg-[var(--panel)] p-5">
+    <section className="rounded-2xl border border-white/10 bg-[var(--panel)] p-5 pr-10">
       <h3 className="font-[family-name:var(--font-display)] text-xl" style={{ color }}>
         {title}
       </h3>
@@ -1368,7 +1546,7 @@ function RankList({
   primary: (job: JobApplication) => string;
 }) {
   return (
-    <section className="rounded-2xl border border-white/10 bg-[var(--panel)] p-5">
+    <section className="rounded-2xl border border-white/10 bg-[var(--panel)] p-5 pr-10">
       <h3 className="font-[family-name:var(--font-display)] text-xl">{title}</h3>
       <ul className="mt-4 space-y-2">
         {jobs.map((job) => (

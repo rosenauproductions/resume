@@ -1,25 +1,56 @@
 "use client";
 
+import type { ReactNode } from "react";
 import type { ChartPoint } from "@/lib/jobs/insights";
 import { STATUS_LABELS, type JobStatus } from "@/lib/jobs/types";
+
+export function DismissiblePanel({
+  children,
+  onDismiss,
+  className = "",
+}: {
+  children: ReactNode;
+  onDismiss?: () => void;
+  className?: string;
+}) {
+  return (
+    <div className={`relative ${className}`}>
+      {onDismiss ? (
+        <button
+          type="button"
+          aria-label="Remove panel"
+          onClick={onDismiss}
+          className="absolute right-2 top-2 z-[2] flex h-7 w-7 items-center justify-center rounded-lg border border-white/10 bg-[var(--ink)]/70 text-sm text-[var(--muted)] backdrop-blur hover:border-white/25 hover:text-[var(--cream)]"
+        >
+          ×
+        </button>
+      ) : null}
+      {children}
+    </div>
+  );
+}
 
 export function StatCard({
   label,
   value,
   hint,
+  onDismiss,
 }: {
   label: string;
   value: string;
   hint?: string;
+  onDismiss?: () => void;
 }) {
   return (
-    <div className="rounded-2xl border border-white/10 bg-[var(--panel)] px-4 py-4">
-      <p className="text-[10px] uppercase tracking-[0.22em] text-[var(--muted)]">{label}</p>
-      <p className="mt-2 font-[family-name:var(--font-display)] text-3xl text-[var(--cream)]">
-        {value}
-      </p>
-      {hint ? <p className="mt-1 text-xs text-[var(--muted)]">{hint}</p> : null}
-    </div>
+    <DismissiblePanel onDismiss={onDismiss}>
+      <div className="rounded-2xl border border-white/10 bg-[var(--panel)] px-4 py-4 pr-10">
+        <p className="text-[10px] uppercase tracking-[0.22em] text-[var(--muted)]">{label}</p>
+        <p className="mt-2 font-[family-name:var(--font-display)] text-3xl text-[var(--cream)]">
+          {value}
+        </p>
+        {hint ? <p className="mt-1 text-xs text-[var(--muted)]">{hint}</p> : null}
+      </div>
+    </DismissiblePanel>
   );
 }
 
