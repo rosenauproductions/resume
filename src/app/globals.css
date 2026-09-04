@@ -296,4 +296,27 @@ body {
   html[data-print-mode="light"] a {
     color: #0f766e !important;
   }
+
+  /* Network maps used hard-coded cream SVG fills — force readable ink on white */
+  html[data-print-mode="light"] .site-network {
+    background: #f2f4f6 !important;
+    color: #0c1218 !important;
+  }
+
+  html[data-print-mode="light"] .site-network text {
+    fill: #0c1218 !important;
+  }
+
+  html[data-print-mode="light"] .site-network line {
+    stroke: color-mix(in oklab, #0f766e 55%, #0c1218) !important;
+  }
+
+  html[data-print-mode="light"] .site-network circle[fill^="url"] {
+    fill: transparent !important;
+  }
+
+  html[data-print-mode="light"] .site-network circle:not([fill^="url"]) {
+    fill: color-mix(in oklab, #0f766e 10%, white) !important;
+    stroke: #0f766e !important;
+  }
 }

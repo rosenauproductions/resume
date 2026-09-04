@@ -46,7 +46,7 @@ export function ProjectNetwork() {
   }, [active]);
 
   return (
-    <div className="relative overflow-hidden border border-white/10 bg-[var(--panel)]/35">
+    <div className="site-network relative overflow-hidden border border-white/10 bg-[var(--panel)]/35">
       <p className="absolute left-4 top-3 z-10 font-mono text-[10px] uppercase tracking-[0.2em] text-[var(--muted)]">
         {projectNetwork.caption} · hover a node
       </p>
@@ -61,7 +61,7 @@ export function ProjectNetwork() {
 
       <svg
         viewBox={`0 0 ${VIEW_W} ${VIEW_H}`}
-        className="h-auto w-full min-h-[300px] md:min-h-[400px]"
+        className="h-auto w-full min-h-[300px] text-[var(--cream)] md:min-h-[400px]"
         role="img"
         aria-label="Animated construction network of crafts and projects"
       >
@@ -181,7 +181,7 @@ export function ProjectNetwork() {
                   textAnchor="middle"
                   dominantBaseline="middle"
                   className="pointer-events-none select-none"
-                  fill="rgba(238,244,248,0.92)"
+                  fill="currentColor"
                   style={{
                     fontSize: node.kind === "hub" ? 12 : node.kind === "craft" ? 10 : 9,
                     fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",

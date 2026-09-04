@@ -36,14 +36,14 @@ export function SkillsNetwork() {
   }, [active]);
 
   return (
-    <div className="relative overflow-hidden border border-white/10 bg-[var(--panel)]/40">
+    <div className="site-network relative overflow-hidden border border-white/10 bg-[var(--panel)]/40">
       <p className="absolute left-4 top-3 z-10 font-mono text-[10px] uppercase tracking-[0.2em] text-[var(--muted)]">
         Hover a node · skills · responsibilities
       </p>
 
       <svg
         viewBox={`0 0 ${VIEW_W} ${VIEW_H}`}
-        className="h-auto w-full min-h-[320px] md:min-h-[420px]"
+        className="h-auto w-full min-h-[320px] text-[var(--cream)] md:min-h-[420px]"
         role="img"
         aria-label="Network map of skills and responsibilities"
       >
@@ -125,7 +125,7 @@ export function SkillsNetwork() {
                   textAnchor="middle"
                   dominantBaseline="middle"
                   className="pointer-events-none select-none"
-                  fill={lit ? "#eef4f8" : "#6b7f8f"}
+                  fill={lit ? "currentColor" : "var(--muted)"}
                   style={{
                     fontSize: isHub ? 12 : 10,
                     fontFamily: "ui-sans-serif, system-ui, sans-serif",
