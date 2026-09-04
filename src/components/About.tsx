@@ -1,10 +1,11 @@
 "use client";
 
 import Image from "next/image";
-import { about, portraits } from "@/content/resume";
+import { useResume } from "@/components/resume/ResumeProvider";
 import { Reveal } from "./Reveal";
 
 export function About() {
+  const { about, portraits } = useResume();
   return (
     <section id="about" className="relative pt-6 pb-4 md:pt-8 md:pb-4 lg:pt-10 lg:pb-2">
       <div className="mx-auto max-w-6xl px-6">

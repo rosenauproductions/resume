@@ -1,11 +1,13 @@
 "use client";
 
 import { motion, useReducedMotion } from "motion/react";
-import { experience } from "@/content/resume";
+import { useResume } from "@/components/resume/ResumeProvider";
 import { Reveal } from "./Reveal";
 
 export function Experience() {
   const reduce = useReducedMotion();
+  const { experience } = useResume();
+  const jobs = experience.filter((j) => j.enabled);
 
   return (
     <section id="experience" className="relative pt-2 pb-4 md:pt-2 md:pb-4 lg:pt-2 lg:pb-2">
@@ -22,8 +24,8 @@ export function Experience() {
           />
 
           <ol className="space-y-14">
-            {experience.map((job, i) => (
-              <li key={`${job.company}-${job.dates}`} className="relative pl-10 md:pl-14">
+            {jobs.map((job, i) => (
+              <li key={job.id} className="relative pl-10 md:pl-14">
                 {/* Marker stays put — no translate, just a soft fade */}
                 <motion.span
                   className="absolute left-0 top-2 flex h-4 w-4 items-center justify-center rounded-full border border-[var(--accent)] bg-[var(--ink)] md:h-6 md:w-6"

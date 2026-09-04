@@ -2,20 +2,41 @@
 
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { site } from "@/content/resume";
+import { useResume } from "@/components/resume/ResumeProvider";
+import {
+  RESUME_SECTION_LABELS,
+  type ResumeSectionId,
+} from "@/lib/resume/types";
 
-const allLinks = [
-  { href: "#about", label: "About" },
-  { href: "#experience", label: "Experience" },
-  { href: "#work", label: "Work" },
-  { href: "#projects", label: "Projects" },
-  { href: "#skills", label: "Skills", skillsOnly: true as const },
-  { href: "#fit", label: "Fit" },
-  { href: "#contact", label: "Contact" },
-];
+const NAV_HREF: Partial<Record<ResumeSectionId, string>> = {
+  about: "#about",
+  experience: "#experience",
+  work: "#work",
+  projects: "#projects",
+  skills: "#skills",
+  fit: "#fit",
+  contact: "#contact",
+};
 
-export function Nav({ showSkills = false }: { showSkills?: boolean }) {
-  const links = allLinks.filter((l) => !("skillsOnly" in l && l.skillsOnly) || showSkills);
+const DEFAULT_NAV_LABEL: Partial<Record<ResumeSectionId, string>> = {
+  about: "About",
+  experience: "Experience",
+  work: "Work",
+  projects: "Projects",
+  skills: "Skills",
+  fit: "Fit",
+  contact: "Contact",
+};
+
+export function Nav() {
+  const resume = useResume();
+  const links = resume.sectionOrder
+    .filter((id) => id !== "hero" && resume.sections[id]?.enabled !== false)
+    .map((id) => ({
+      href: NAV_HREF[id] || `#${id}`,
+      label: resume.sections[id]?.navLabel?.trim() || DEFAULT_NAV_LABEL[id] || RESUME_SECTION_LABELS[id],
+    }));
+
   const [scrolled, setScrolled] = useState(false);
   const [open, setOpen] = useState(false);
 
@@ -50,7 +71,7 @@ export function Nav({ showSkills = false }: { showSkills?: boolean }) {
           className="font-[family-name:var(--font-display)] text-base tracking-tight text-[var(--cream)] sm:text-lg"
           onClick={() => setOpen(false)}
         >
-          {site.name}
+          {resume.site.name}
         </a>
 
         <ul className="hidden items-center gap-8 text-sm text-[var(--muted)] md:flex">
@@ -78,26 +99,18 @@ export function Nav({ showSkills = false }: { showSkills?: boolean }) {
           <button
             type="button"
             className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/15 text-[var(--cream)] md:hidden"
-            aria-expanded={open}
             aria-label={open ? "Close menu" : "Open menu"}
+            aria-expanded={open}
             onClick={() => setOpen((v) => !v)}
           >
             <span className="sr-only">Menu</span>
-            <span className="relative block h-3.5 w-4">
+            <span className="flex flex-col gap-1.5">
               <span
-                className={`absolute left-0 top-0 h-0.5 w-full bg-current transition-transform ${
-                  open ? "translate-y-1.5 rotate-45" : ""
-                }`}
+                className={`block h-0.5 w-5 bg-current transition ${open ? "translate-y-2 rotate-45" : ""}`}
               />
+              <span className={`block h-0.5 w-5 bg-current transition ${open ? "opacity-0" : ""}`} />
               <span
-                className={`absolute left-0 top-1.5 h-0.5 w-full bg-current transition-opacity ${
-                  open ? "opacity-0" : ""
-                }`}
-              />
-              <span
-                className={`absolute left-0 top-3 h-0.5 w-full bg-current transition-transform ${
-                  open ? "-translate-y-1.5 -rotate-45" : ""
-                }`}
+                className={`block h-0.5 w-5 bg-current transition ${open ? "-translate-y-2 -rotate-45" : ""}`}
               />
             </span>
           </button>
@@ -105,22 +118,17 @@ export function Nav({ showSkills = false }: { showSkills?: boolean }) {
       </nav>
 
       <AnimatePresence>
-        {open && (
+        {open ? (
           <motion.div
             initial={{ opacity: 0, y: -8 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }}
-            transition={{ duration: 0.25 }}
             className="border-t border-white/10 bg-[var(--ink)] px-5 py-6 md:hidden"
           >
             <ul className="flex flex-col gap-4 text-lg text-[var(--cream)]">
               {links.map((link) => (
                 <li key={link.href}>
-                  <a
-                    href={link.href}
-                    className="block py-1"
-                    onClick={() => setOpen(false)}
-                  >
+                  <a href={link.href} onClick={() => setOpen(false)}>
                     {link.label}
                   </a>
                 </li>
@@ -128,7 +136,7 @@ export function Nav({ showSkills = false }: { showSkills?: boolean }) {
               <li>
                 <a
                   href="#contact"
-                  className="mt-2 inline-flex rounded-full border border-[var(--accent)]/40 px-4 py-2 text-sm text-[var(--accent)]"
+                  className="text-[var(--accent)]"
                   onClick={() => setOpen(false)}
                 >
                   Let’s talk
@@ -136,7 +144,7 @@ export function Nav({ showSkills = false }: { showSkills?: boolean }) {
               </li>
             </ul>
           </motion.div>
-        )}
+        ) : null}
       </AnimatePresence>
     </motion.header>
   );

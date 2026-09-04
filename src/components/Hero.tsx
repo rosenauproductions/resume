@@ -2,10 +2,12 @@
 
 import Image from "next/image";
 import { motion, useReducedMotion } from "motion/react";
-import { portraits, site } from "@/content/resume";
+import { useResume } from "@/components/resume/ResumeProvider";
 
 export function Hero() {
   const reduce = useReducedMotion();
+  const resume = useResume();
+  const { site, portraits } = resume;
 
   return (
     <section

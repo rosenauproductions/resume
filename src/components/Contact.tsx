@@ -1,7 +1,13 @@
-import { site } from "@/content/resume";
+"use client";
+
+import { site as siteFallback } from "@/content/resume";
+import { useResume } from "@/components/resume/ResumeProvider";
 import { Reveal } from "./Reveal";
 
 export function Contact() {
+  const resume = useResume();
+  const site = resume.site ?? siteFallback;
+
   return (
     <section id="contact" className="relative pt-2 pb-16 md:pt-2 md:pb-20 lg:pt-2 lg:pb-24">
       <div className="absolute inset-0 contact-glow" aria-hidden />

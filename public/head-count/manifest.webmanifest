@@ -1,0 +1,17 @@
+{
+  "name": "Head Count",
+  "short_name": "Head Count",
+  "start_url": "/head-count",
+  "display": "standalone",
+  "background_color": "#090b0a",
+  "theme_color": "#090b0a",
+  "description": "Count people from the back of the room. Hair, hats, and heads — on device.",
+  "icons": [
+    {
+      "src": "/head-count/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

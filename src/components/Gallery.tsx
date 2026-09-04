@@ -1,7 +1,13 @@
-import { work } from "@/content/resume";
+"use client";
+
+import { useResume } from "@/components/resume/ResumeProvider";
 import { Reveal } from "./Reveal";
 
 export function Gallery() {
+  const { work } = useResume();
+  const featured = work.featured.filter((f) => f.enabled);
+  const cases = work.cases.filter((c) => c.enabled);
+
   return (
     <section id="work" className="relative pt-2 pb-4 md:pt-2 md:pb-4 lg:pt-2 lg:pb-2">
       <div className="mx-auto max-w-6xl px-6">
@@ -12,8 +18,8 @@ export function Gallery() {
         </Reveal>
 
         <div className="mt-12 grid gap-6 md:grid-cols-3">
-          {work.featured.map((item, i) => (
-            <Reveal key={item.label} delay={0.06 + i * 0.04}>
+          {featured.map((item, i) => (
+            <Reveal key={item.id} delay={0.06 + i * 0.04}>
               <div className="overflow-hidden border border-white/10">
                 <div className="relative aspect-video bg-black">
                   {item.kind === "youtube" ? (
@@ -43,7 +49,7 @@ export function Gallery() {
                   {item.detail ? (
                     <p className="mt-1 text-sm text-[var(--muted)]">{item.detail}</p>
                   ) : null}
-                  {item.kind === "youtube" ? (
+                  {item.kind === "youtube" && item.href ? (
                     <a
                       href={item.href}
                       target="_blank"
@@ -60,8 +66,8 @@ export function Gallery() {
         </div>
 
         <div className="mt-6 grid gap-4 md:grid-cols-3">
-          {work.cases.map((item, i) => (
-            <Reveal key={item.title} delay={0.08 + i * 0.04}>
+          {cases.map((item, i) => (
+            <Reveal key={item.id} delay={0.08 + i * 0.04}>
               <article className="border border-white/10 px-5 py-5">
                 <p className="text-[10px] uppercase tracking-[0.22em] text-[var(--warm)]">
                   {item.tag}

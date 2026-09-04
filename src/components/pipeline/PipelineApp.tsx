@@ -321,10 +321,12 @@ export function PipelineApp() {
     if (view !== "map" || !mapScrollPending.current) return;
     mapScrollPending.current = false;
     const frame = window.requestAnimationFrame(() => {
-      document.getElementById("pipeline-target-map")?.scrollIntoView({
-        behavior: "smooth",
-        block: "start",
-      });
+      const el = document.getElementById("pipeline-target-map");
+      if (!el) return;
+      const header = document.querySelector<HTMLElement>("header.sticky");
+      const offset = (header?.getBoundingClientRect().height ?? 0) + 8;
+      const top = el.getBoundingClientRect().top + window.scrollY - offset;
+      window.scrollTo({ top: Math.max(0, top), behavior: "smooth" });
     });
     return () => window.cancelAnimationFrame(frame);
   }, [view]);

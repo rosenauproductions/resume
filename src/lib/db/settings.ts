@@ -1,10 +1,23 @@
 import { eq } from "drizzle-orm";
+import {
+  DEFAULT_INSET_MAP,
+  DEFAULT_METRO_MAP,
+  normalizeInsetMapSetting,
+  normalizeMetroMapSetting,
+  type InsetMapSetting,
+  type MetroMapSetting,
+} from "@/lib/pipeline/map-regions";
 import { getDb } from "./index";
 import { siteSettings } from "./schema";
+
+export type { InsetMapSetting, MetroMapSetting };
 
 export const SETTING_VISITOR_IDENTIFY = "visitor_identify_prompt";
 export const SETTING_PIPELINE_HOME = "pipeline_home_dismissed";
 export const SETTING_SKILLS_SECTION = "skills_section";
+export const SETTING_FRESH_VISIT_PING = "fresh_visit_ping";
+export const SETTING_METRO_MAP = "metro_map";
+export const SETTING_INSET_MAP = "inset_map";
 
 export type VisitorIdentifySetting = {
   enabled: boolean;
@@ -19,9 +32,29 @@ export type SkillsSectionSetting = {
   enabled: boolean;
 };
 
+/** How long the large “recent visit” radar burst plays before settling to normal glow. */
+export type FreshVisitPingSetting = {
+  durationSec: number;
+};
+
+export const FRESH_VISIT_PING_MIN_SEC = 1;
+export const FRESH_VISIT_PING_MAX_SEC = 30;
+export const FRESH_VISIT_PING_DEFAULT_SEC = 4;
+
 const DEFAULT_VISITOR_IDENTIFY: VisitorIdentifySetting = { enabled: false };
 const DEFAULT_PIPELINE_HOME: PipelineHomeSetting = { dismissedPanels: [] };
 const DEFAULT_SKILLS_SECTION: SkillsSectionSetting = { enabled: false };
+const DEFAULT_FRESH_VISIT_PING: FreshVisitPingSetting = {
+  durationSec: FRESH_VISIT_PING_DEFAULT_SEC,
+};
+
+function clampFreshVisitPingSec(n: number): number {
+  if (!Number.isFinite(n)) return FRESH_VISIT_PING_DEFAULT_SEC;
+  return Math.min(
+    FRESH_VISIT_PING_MAX_SEC,
+    Math.max(FRESH_VISIT_PING_MIN_SEC, Math.round(n)),
+  );
+}
 
 async function getSettingJson(key: string): Promise<Record<string, unknown> | null> {
   const db = getDb();
@@ -104,12 +137,69 @@ export async function setSkillsSectionEnabled(enabled: boolean): Promise<SkillsS
   return next;
 }
 
+export async function getFreshVisitPingSetting(): Promise<FreshVisitPingSetting> {
+  const raw = await getSettingJson(SETTING_FRESH_VISIT_PING);
+  if (!raw || typeof raw !== "object") return { ...DEFAULT_FRESH_VISIT_PING };
+  return {
+    durationSec: clampFreshVisitPingSec(Number(raw.durationSec)),
+  };
+}
+
+export async function setFreshVisitPingDurationSec(
+  durationSec: number,
+): Promise<FreshVisitPingSetting> {
+  const next = { durationSec: clampFreshVisitPingSec(durationSec) };
+  await setSettingJson(SETTING_FRESH_VISIT_PING, next);
+  return next;
+}
+
+export async function getMetroMapSetting(): Promise<MetroMapSetting> {
+  const raw = await getSettingJson(SETTING_METRO_MAP);
+  return normalizeMetroMapSetting(raw);
+}
+
+export async function setMetroMapSetting(
+  input: Partial<MetroMapSetting> | null,
+): Promise<MetroMapSetting> {
+  const next = normalizeMetroMapSetting(
+    input == null ? { ...DEFAULT_METRO_MAP } : { ...(await getMetroMapSetting()), ...input },
+  );
+  await setSettingJson(SETTING_METRO_MAP, next);
+  return next;
+}
+
+export async function getInsetMapSetting(): Promise<InsetMapSetting> {
+  const raw = await getSettingJson(SETTING_INSET_MAP);
+  return normalizeInsetMapSetting(raw);
+}
+
+export async function setInsetMapSetting(
+  input: Partial<InsetMapSetting> | null,
+): Promise<InsetMapSetting> {
+  const next = normalizeInsetMapSetting(
+    input == null ? { ...DEFAULT_INSET_MAP } : { ...(await getInsetMapSetting()), ...input },
+  );
+  await setSettingJson(SETTING_INSET_MAP, next);
+  return next;
+}
+
 /** Public + admin snapshot used by pipeline UI. */
 export async function getPipelineSettingsSnapshot() {
-  const [visitorIdentify, pipelineHome, skillsSection] = await Promise.all([
-    getVisitorIdentifySetting(),
-    getPipelineHomeSetting(),
-    getSkillsSectionSetting(),
-  ]);
-  return { visitorIdentify, pipelineHome, skillsSection };
+  const [visitorIdentify, pipelineHome, skillsSection, freshVisitPing, metroMap, insetMap] =
+    await Promise.all([
+      getVisitorIdentifySetting(),
+      getPipelineHomeSetting(),
+      getSkillsSectionSetting(),
+      getFreshVisitPingSetting(),
+      getMetroMapSetting(),
+      getInsetMapSetting(),
+    ]);
+  return {
+    visitorIdentify,
+    pipelineHome,
+    skillsSection,
+    freshVisitPing,
+    metroMap,
+    insetMap,
+  };
 }

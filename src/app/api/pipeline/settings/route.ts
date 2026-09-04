@@ -3,6 +3,9 @@ import { revalidatePath } from "next/cache";
 import { dbConfigured } from "@/lib/db";
 import {
   getPipelineSettingsSnapshot,
+  setFreshVisitPingDurationSec,
+  setInsetMapSetting,
+  setMetroMapSetting,
   setPipelineHomeDismissed,
   setSkillsSectionEnabled,
   setVisitorIdentifyEnabled,
@@ -10,6 +13,14 @@ import {
 import { authError, requirePipelineAuth } from "@/lib/jobs/require-auth";
 
 export const runtime = "nodejs";
+
+type RegionPatch = {
+  label?: string;
+  lng0?: number;
+  lng1?: number;
+  lat0?: number;
+  lat1?: number;
+} | null;
 
 export async function GET() {
   const auth = await requirePipelineAuth();
@@ -37,6 +48,9 @@ export async function PATCH(req: NextRequest) {
   let body: {
     visitorIdentifyEnabled?: boolean;
     skillsSectionEnabled?: boolean;
+    freshVisitPingDurationSec?: number;
+    metroMap?: RegionPatch;
+    insetMap?: RegionPatch;
     dismissedPanels?: string[];
     restoreHomePanels?: boolean;
   } = {};
@@ -53,6 +67,19 @@ export async function PATCH(req: NextRequest) {
     if (typeof body.skillsSectionEnabled === "boolean") {
       await setSkillsSectionEnabled(body.skillsSectionEnabled);
       revalidatePath("/");
+    }
+    if (typeof body.freshVisitPingDurationSec === "number") {
+      await setFreshVisitPingDurationSec(body.freshVisitPingDurationSec);
+    }
+    if (body.metroMap === null) {
+      await setMetroMapSetting(null);
+    } else if (body.metroMap && typeof body.metroMap === "object") {
+      await setMetroMapSetting(body.metroMap);
+    }
+    if (body.insetMap === null) {
+      await setInsetMapSetting(null);
+    } else if (body.insetMap && typeof body.insetMap === "object") {
+      await setInsetMapSetting(body.insetMap);
     }
     if (body.restoreHomePanels) {
       await setPipelineHomeDismissed([]);

@@ -53,6 +53,8 @@ export type MapVisit = {
   locationLabel: string;
   linkConfidence: string;
   linkedApplicationId: string | null;
+  /** ISO timestamp — used for “new visit” pings (≤ 7 days). */
+  occurredAt?: string;
   /** Optional; used to skip pipeline self-visits when present. */
   path?: string;
   linkReason?: string;
@@ -69,6 +71,8 @@ type RadarGlow = {
   count: number;
   tone: RadarTone;
   layer: MapLayer;
+  /** True when at least one visit here is ≤ 7 days old. */
+  fresh?: boolean;
 };
 
 /** City names always labeled on the DFW metro view. */
@@ -117,6 +121,8 @@ type TargetNode = {
   hits: number;
   linkedHits: number;
   suggestedHits: number;
+  /** Any attributed visit within the last week. */
+  fresh: boolean;
   remote: boolean;
   workType: WorkArrangement;
   strokeKind: StatusStrokeKind;
@@ -131,6 +137,7 @@ type UnlinkedPin = {
   lng?: number;
   lat?: number;
   count: number;
+  fresh: boolean;
   layer: MapLayer;
 };
 
@@ -275,17 +282,38 @@ function radarTier(count: number): 1 | 2 | 3 | 4 {
   return 4;
 }
 
-function radarParams(count: number) {
+const FRESH_VISIT_MS = 7 * 24 * 60 * 60 * 1000;
+
+function isFreshVisit(v: MapVisit, now = Date.now()): boolean {
+  if (!v.occurredAt) return false;
+  const t = Date.parse(v.occurredAt);
+  if (!Number.isFinite(t)) return false;
+  return now - t <= FRESH_VISIT_MS && now - t >= 0;
+}
+
+function radarParams(count: number, fresh = false) {
   const tier = radarTier(count);
+  if (fresh) {
+    return {
+      tier,
+      baseR: 56,
+      fillOp: 0.22,
+      strokeOp: 0.72,
+      rings: 3,
+      duration: 2.0,
+      pulse: true,
+      fresh: true as const,
+    };
+  }
   switch (tier) {
     case 1:
-      return { tier, baseR: 14, fillOp: 0.07, strokeOp: 0.18, rings: 1, duration: 3.4, pulse: false };
+      return { tier, baseR: 14, fillOp: 0.07, strokeOp: 0.18, rings: 1, duration: 3.4, pulse: false, fresh: false as const };
     case 2:
-      return { tier, baseR: 20, fillOp: 0.12, strokeOp: 0.32, rings: 2, duration: 2.9, pulse: true };
+      return { tier, baseR: 20, fillOp: 0.12, strokeOp: 0.32, rings: 2, duration: 2.9, pulse: true, fresh: false as const };
     case 3:
-      return { tier, baseR: 28, fillOp: 0.18, strokeOp: 0.45, rings: 2, duration: 2.4, pulse: true };
+      return { tier, baseR: 28, fillOp: 0.18, strokeOp: 0.45, rings: 2, duration: 2.4, pulse: true, fresh: false as const };
     case 4:
-      return { tier, baseR: 38, fillOp: 0.26, strokeOp: 0.58, rings: 3, duration: 2.0, pulse: true };
+      return { tier, baseR: 38, fillOp: 0.26, strokeOp: 0.58, rings: 3, duration: 2.0, pulse: true, fresh: false as const };
   }
 }
 
@@ -580,42 +608,55 @@ function renderRadarGlow(
   scale = 1,
   softId = "radar-soft",
   reveal?: { className?: string; style?: CSSProperties },
+  options?: { burst?: boolean; burstDurationSec?: number },
 ) {
-  const p = radarParams(g.count);
-  const stroke =
+  const burst = Boolean(options?.burst && g.fresh);
+  const burstDurationSec = options?.burstDurationSec ?? 4;
+  const steady = radarParams(g.count, false);
+  const fresh = burst ? radarParams(g.count, true) : null;
+
+  const strokeSteady =
     g.tone === "job"
       ? "var(--accent)"
       : "color-mix(in oklab, var(--warm) 55%, var(--muted))";
-  const fill =
+  const fillSteady =
     g.tone === "job"
       ? "color-mix(in oklab, var(--accent) 70%, transparent)"
       : "color-mix(in oklab, var(--warm) 45%, var(--muted))";
+  const strokeFresh = "color-mix(in oklab, var(--warm) 70%, var(--cream))";
+  const fillFresh = "color-mix(in oklab, var(--warm) 65%, var(--accent))";
 
-  const rings = Array.from({ length: p.rings }, (_, i) => {
-    const r = p.baseR * scale * (0.55 + i * 0.35);
-    const delay = i * 0.45;
-    return (
-      <circle
-        key={`ring-${i}`}
-        className={p.pulse ? "radar-ring" : undefined}
-        cx={g.x}
-        cy={g.y}
-        r={r}
-        fill="none"
-        stroke={stroke}
-        strokeWidth={(1.1 + i * 0.25) * scale}
-        strokeOpacity={p.strokeOp * (1 - i * 0.22)}
-        style={
-          p.pulse
-            ? {
-                animationDuration: `${p.duration}s`,
-                animationDelay: `${delay}s`,
-              }
-            : undefined
-        }
-      />
-    );
-  });
+  const ringsFor = (
+    p: ReturnType<typeof radarParams>,
+    stroke: string,
+    ringClass: string | undefined,
+    keyPrefix: string,
+  ) =>
+    Array.from({ length: p.rings }, (_, i) => {
+      const r = p.baseR * scale * (0.55 + i * 0.35);
+      const delay = i * 0.45;
+      return (
+        <circle
+          key={`${keyPrefix}-${i}`}
+          className={p.pulse ? ringClass : undefined}
+          cx={g.x}
+          cy={g.y}
+          r={r}
+          fill="none"
+          stroke={stroke}
+          strokeWidth={(p.fresh ? 1.8 + i * 0.35 : 1.1 + i * 0.25) * scale}
+          strokeOpacity={p.strokeOp * (1 - i * 0.22)}
+          style={
+            p.pulse
+              ? {
+                  animationDuration: `${p.duration}s`,
+                  animationDelay: `${delay}s`,
+                }
+              : undefined
+          }
+        />
+      );
+    });
 
   return (
     <g
@@ -628,12 +669,28 @@ function renderRadarGlow(
       <circle
         cx={g.x}
         cy={g.y}
-        r={p.baseR * scale * 0.72}
-        fill={fill}
-        fillOpacity={p.fillOp}
+        r={steady.baseR * scale * 0.72}
+        fill={fillSteady}
+        fillOpacity={steady.fillOp}
         filter={`url(#${softId})`}
       />
-      {rings}
+      {ringsFor(steady, strokeSteady, "radar-ring", "ring")}
+      {fresh ? (
+        <g
+          className="radar-glow-fresh-burst"
+          style={{ ["--fresh-ping-ms" as string]: `${burstDurationSec}s` }}
+        >
+          <circle
+            cx={g.x}
+            cy={g.y}
+            r={fresh.baseR * scale * 0.85}
+            fill={fillFresh}
+            fillOpacity={fresh.fillOp}
+            filter={`url(#${softId})`}
+          />
+          {ringsFor(fresh, strokeFresh, "radar-ring-fresh", "fresh-ring")}
+        </g>
+      ) : null}
     </g>
   );
 }
@@ -644,12 +701,15 @@ export function TargetMap({
   onSelectJob,
   loading,
   onRefresh,
+  freshPingDurationSec = 4,
 }: {
   jobs: JobApplication[];
   visits: MapVisit[];
   onSelectJob: (job: JobApplication) => void;
   loading?: boolean;
   onRefresh?: () => void;
+  /** Seconds the large recent-visit burst plays before fading to normal radar. */
+  freshPingDurationSec?: number;
 }) {
   const [hoverId, setHoverId] = useState<string | null>(null);
   const [showZero, setShowZero] = useState(true);
@@ -714,7 +774,8 @@ export function TargetMap({
     totalHits,
     radarGlows,
     euRadarGlows,
-  } = useMemo(() => {
+    } = useMemo(() => {
+    const now = Date.now();
     const activeVisits = visits.filter(
       (v) => v.linkConfidence !== "ignored" && !isPipelineSelfVisit(v),
     );
@@ -747,11 +808,13 @@ export function TargetMap({
 
       let linkedHits = 0;
       let suggestedHits = 0;
+      let fresh = false;
 
       for (const v of activeVisits) {
         if (v.linkedApplicationId === job.id) {
           linkedHits += 1;
           claimedVisitIds.add(v.id);
+          if (isFreshVisit(v, now)) fresh = true;
           continue;
         }
         if (v.linkedApplicationId) continue;
@@ -760,6 +823,7 @@ export function TargetMap({
         if (aliasOwner.get(vKey) === job.id) {
           suggestedHits += 1;
           claimedVisitIds.add(v.id);
+          if (isFreshVisit(v, now)) fresh = true;
         }
       }
 
@@ -788,6 +852,7 @@ export function TargetMap({
             hits,
             linkedHits,
             suggestedHits,
+            fresh,
             remote: false,
             workType: inferWorkType(job, false),
             strokeKind: strokeKindFor(job.status, hits),
@@ -811,6 +876,7 @@ export function TargetMap({
               hits,
               linkedHits,
               suggestedHits,
+              fresh,
               remote: false,
               workType: inferWorkType(job, false),
               strokeKind: strokeKindFor(job.status, hits),
@@ -821,22 +887,26 @@ export function TargetMap({
         }
       }
 
-      pendingRemote.push({
-        job,
-        cityKey,
-        geoLabel: remote
-          ? locLabel || "Remote"
-          : emptyish
-            ? "No location"
-            : locLabel || "Unknown",
-        hits,
-        linkedHits,
-        suggestedHits,
-        remote: true,
-        workType: inferWorkType(job, true),
-        strokeKind: strokeKindFor(job.status, hits),
-        layer: "us",
-      });
+      // Remote / unplaced — keep for remote cluster
+      if (remote || emptyish || !geo) {
+        pendingRemote.push({
+          job,
+          cityKey,
+          geoLabel: remote
+            ? locLabel || "Remote"
+            : emptyish
+              ? "No location"
+              : locLabel || "Unknown",
+          hits,
+          linkedHits,
+          suggestedHits,
+          fresh,
+          remote: true,
+          workType: inferWorkType(job, true),
+          strokeKind: strokeKindFor(job.status, hits),
+          layer: "us",
+        });
+      }
     }
 
     const remoteCount = pendingRemote.length;
@@ -867,6 +937,7 @@ export function TargetMap({
           lng: geo.lng,
           lat: geo.lat,
           count: remaining.length,
+          fresh: remaining.some((v) => isFreshVisit(v, now)),
           layer: "us",
         });
         continue;
@@ -881,6 +952,7 @@ export function TargetMap({
             x: eu.x,
             y: eu.y,
             count: remaining.length,
+            fresh: remaining.some((v) => isFreshVisit(v, now)),
             layer: "eu",
           });
         }
@@ -909,6 +981,7 @@ export function TargetMap({
           count: n.hits,
           tone: "job" as const,
           layer: "us" as const,
+          fresh: n.fresh,
         })),
       ...usUnlinked.map((u) => ({
         id: `glow-city-${u.cityKey}`,
@@ -917,6 +990,7 @@ export function TargetMap({
         count: u.count,
         tone: "city" as const,
         layer: "us" as const,
+        fresh: u.fresh,
       })),
     ];
 
@@ -930,6 +1004,7 @@ export function TargetMap({
           count: n.hits,
           tone: "job" as const,
           layer: "eu" as const,
+          fresh: n.fresh,
         })),
       ...euUnlinked.map((u) => ({
         id: `glow-eu-city-${u.cityKey}`,
@@ -938,6 +1013,7 @@ export function TargetMap({
         count: u.count,
         tone: "city" as const,
         layer: "eu" as const,
+        fresh: u.fresh,
       })),
     ];
 
@@ -1493,6 +1569,7 @@ export function TargetMap({
       </div>
 
       <div
+        id="pipeline-target-map"
         className="flex flex-wrap gap-1.5"
         role="group"
         aria-label="Filter targets by status"
@@ -1516,10 +1593,7 @@ export function TargetMap({
         })}
       </div>
 
-      <div
-        className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_16rem]"
-        id="pipeline-target-map"
-      >
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_16rem]">
         <section
           ref={(el) => {
             mapStageRef.current = el;

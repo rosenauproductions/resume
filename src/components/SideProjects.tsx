@@ -1,10 +1,12 @@
 "use client";
 
-import { sideProjects } from "@/content/resume";
+import { useResume } from "@/components/resume/ResumeProvider";
 import { Reveal } from "./Reveal";
 import { ProjectNetwork } from "./ProjectNetwork";
 
 export function SideProjects() {
+  const { sideProjects } = useResume();
+  const projects = sideProjects.projects.filter((p) => p.enabled);
   return (
     <section id="projects" className="relative pt-2 pb-4 md:pt-2 md:pb-4 lg:pt-2 lg:pb-2">
       <div className="mx-auto max-w-6xl px-6">
@@ -19,8 +21,8 @@ export function SideProjects() {
         </Reveal>
 
         <div className="mt-10 grid gap-6 lg:grid-cols-3">
-          {sideProjects.projects.map((project, i) => (
-            <Reveal key={project.title} delay={0.05 + i * 0.05}>
+          {projects.map((project, i) => (
+            <Reveal key={project.id} delay={0.05 + i * 0.05}>
               <article className="flex h-full flex-col border border-white/10 px-5 py-6">
                 <p className="text-[10px] uppercase tracking-[0.22em] text-[var(--accent)]">
                   {project.tags.join(" · ")}
