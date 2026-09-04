@@ -1,9 +1,15 @@
 import { and, count, desc, eq, ne, sql } from "drizzle-orm";
 import { getDb } from "./index";
-import { createApplication, listOpenApplicationsForAssociation } from "./applications";
+import {
+  createApplication,
+  getApplication,
+  listOpenApplicationsForAssociation,
+} from "./applications";
 import { getVisitorIdentifySetting } from "./settings";
 import { visits, visitorIdentifications } from "./schema";
-import { linkVisit } from "./visits";
+import { getVisit, isDeviceIgnored, linkVisit } from "./visits";
+import { extractCityKey } from "@/lib/pipeline/geo-cities";
+import { notifyVisitChannels } from "@/lib/visit-notify";
 import type { IdentifyPosition, IdentifyPromptPayload } from "@/lib/visit-identify-types";
 
 export type { IdentifyPosition, IdentifyPromptPayload } from "@/lib/visit-identify-types";
@@ -222,6 +228,130 @@ async function createWebsiteLeadApplication(input: {
   return job.id;
 }
 
+function locationLabel(city: string, region: string, country: string) {
+  return [city, region, country].filter(Boolean).join(", ") || "Unknown location";
+}
+
+async function notifyIdentificationOutcome(input: {
+  deviceId: string;
+  applicationId: string | null;
+  freeText: string;
+  confirmedSuggested: boolean;
+  createdLead: boolean;
+  visitId?: string | null;
+  lead?: VisitorLeadInput | null;
+}) {
+  if (await isDeviceIgnored(input.deviceId)) return;
+
+  const when = new Date().toLocaleString("en-US", {
+    timeZone: "America/Chicago",
+    dateStyle: "medium",
+    timeStyle: "short",
+  });
+
+  let visitCity = "";
+  let visitRegion = "";
+  let visitCountry = "";
+  if (input.visitId) {
+    try {
+      const visit = await getVisit(input.visitId);
+      if (visit) {
+        visitCity = visit.city;
+        visitRegion = visit.region;
+        visitCountry = visit.country;
+      }
+    } catch (error) {
+      console.error("identify notify visit lookup failed", error);
+    }
+  }
+
+  const visitLocation = locationLabel(visitCity, visitRegion, visitCountry);
+  const knownVisitCity = visitCity ? Boolean(extractCityKey(visitCity)) : false;
+  const leadLocation = input.lead?.location?.trim() || "";
+  const knownLeadCity = leadLocation ? Boolean(extractCityKey(leadLocation)) : false;
+  const freeTextCity = input.freeText ? extractCityKey(input.freeText) : null;
+
+  const baseLines = [
+    `**When:** ${when} (Central)`,
+    `**Visit geo:** ${visitLocation}`,
+    visitCity && !knownVisitCity
+      ? `**Geo city not in map DB:** ${visitCity}`
+      : null,
+    `**Device:** ${input.deviceId.slice(0, 12)}…`,
+  ].filter(Boolean) as string[];
+
+  if (input.createdLead && input.lead) {
+    const job = input.applicationId ? await getApplication(input.applicationId) : null;
+    const lines = [
+      ...baseLines,
+      `**Name:** ${input.lead.name.trim()}`,
+      `**Email:** ${input.lead.email.trim()}`,
+      input.lead.phone?.trim() ? `**Phone:** ${input.lead.phone.trim()}` : null,
+      `**Company:** ${input.lead.company.trim()}`,
+      input.lead.title?.trim() ? `**Role:** ${input.lead.title.trim()}` : null,
+      leadLocation
+        ? `**Their location:** ${leadLocation}${knownLeadCity ? "" : " (not in map DB)"}`
+        : null,
+      input.freeText || input.lead.message?.trim()
+        ? `**Note:** ${input.freeText || input.lead.message?.trim()}`
+        : null,
+      job ? `**Pipeline job:** ${job.company} — ${job.title}` : null,
+      "**Source:** Website lead",
+    ].filter(Boolean) as string[];
+
+    await notifyVisitChannels({
+      title: "Website lead created",
+      lines,
+      kind: "lead",
+      priority: "high",
+    });
+    return;
+  }
+
+  if (input.applicationId) {
+    const job = await getApplication(input.applicationId);
+    const lines = [
+      ...baseLines,
+      job
+        ? `**Matched:** ${job.company} — ${job.title}`
+        : `**Matched job id:** ${input.applicationId}`,
+      input.confirmedSuggested ? "**How:** Confirmed suggested match" : "**How:** Selected from list",
+      input.freeText ? `**Note:** ${input.freeText}` : null,
+    ].filter(Boolean) as string[];
+
+    await notifyVisitChannels({
+      title: "Visitor matched a job",
+      lines,
+      kind: "identify",
+      priority: "high",
+    });
+    return;
+  }
+
+  // Soft note / no tracked match — call out unknown cities
+  const lines = [
+    ...baseLines,
+    input.freeText ? `**They wrote:** ${input.freeText}` : null,
+    freeTextCity
+      ? `**City mentioned (known):** ${freeTextCity}`
+      : input.freeText
+        ? "**No known city found in their note**"
+        : null,
+    visitCity && !knownVisitCity
+      ? "**Action:** Visit geo city is not in the map/alias DB — worth a look"
+      : "**Action:** Soft identify with no pipeline match",
+  ].filter(Boolean) as string[];
+
+  await notifyVisitChannels({
+    title:
+      visitCity && !knownVisitCity
+        ? "Visitor note — unknown city"
+        : "Visitor note — no job match",
+    lines,
+    kind: "identify",
+  });
+}
+
 export async function saveVisitorIdentification(input: {
   deviceId: string;
   applicationId?: string | null;
@@ -277,6 +407,20 @@ export async function saveVisitorIdentification(input: {
     } catch (error) {
       console.error("identify visit link failed", error);
     }
+  }
+
+  try {
+    await notifyIdentificationOutcome({
+      deviceId,
+      applicationId,
+      freeText,
+      confirmedSuggested: Boolean(input.confirmedSuggested),
+      createdLead,
+      visitId: input.visitId,
+      lead,
+    });
+  } catch (error) {
+    console.error("identify notify failed", error);
   }
 
   return { ok: true, applicationId, createdLead };

@@ -3,6 +3,7 @@ import { dbConfigured } from "@/lib/db";
 import { isDeviceIgnored, recordVisit } from "@/lib/db/visits";
 import { buildIdentifyPrompt } from "@/lib/db/visitor-identify";
 import type { IdentifyPromptPayload } from "@/lib/visit-identify-types";
+import { notifyVisitChannels } from "@/lib/visit-notify";
 
 export const runtime = "nodejs";
 
@@ -36,56 +37,7 @@ function titleForPath(path: string) {
   return "Resume site visit";
 }
 
-async function notifyDiscord(webhook: string, title: string, lines: string[]) {
-  const body = {
-    embeds: [
-      {
-        title,
-        description: lines.join("\n"),
-        color: title.startsWith("Pipeline") ? 0xe8a35c : 0x3fd0c9,
-        timestamp: new Date().toISOString(),
-      },
-    ],
-  };
-  await fetch(webhook, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-}
-
-async function notifyNtfy(topic: string, title: string, message: string) {
-  const token = process.env.VISIT_NOTIFY_NTFY_TOKEN;
-  const url = `https://ntfy.sh/${encodeURIComponent(topic)}`;
-  const tags = title.startsWith("Pipeline")
-    ? "lock,briefcase"
-    : "eyes,globe_with_meridians";
-  const baseHeaders: Record<string, string> = {
-    Title: title,
-    Priority: "default",
-    Tags: tags,
-  };
-
-  const post = (headers: Record<string, string>) =>
-    fetch(url, { method: "POST", headers, body: message });
-
-  let res = await post(
-    token ? { ...baseHeaders, Authorization: `Bearer ${token}` } : baseHeaders,
-  );
-
-  if (res.status === 401 || res.status === 403) {
-    res = await post(baseHeaders);
-  }
-
-  if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    throw new Error(`ntfy ${res.status}: ${text}`);
-  }
-}
-
 export async function POST(req: NextRequest) {
-  const discordWebhook = process.env.VISIT_NOTIFY_DISCORD_WEBHOOK;
-  const ntfyTopic = process.env.VISIT_NOTIFY_NTFY_TOPIC;
 
   let payload: VisitPayload = {};
   try {
@@ -151,7 +103,6 @@ export async function POST(req: NextRequest) {
     payload.screen ? `**Screen:** ${payload.screen}` : null,
   ].filter(Boolean) as string[];
 
-  const plain = lines.map((l) => l.replace(/\*\*/g, "")).join("\n");
   const title = titleForPath(path);
 
   let visitId: string | null = null;
@@ -227,34 +178,18 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  if (!discordWebhook && !ntfyTopic) {
-    return NextResponse.json({
-      ok: true,
-      stored: Boolean(visitId),
-      visitId,
-      linkConfidence,
-      notified: false,
-      identify,
-    });
-  }
-
   try {
-    const jobs: Promise<unknown>[] = [];
-    if (discordWebhook) jobs.push(notifyDiscord(discordWebhook, title, lines));
-    if (ntfyTopic) {
-      const ntfyBody =
-        linkConfidence === "suggested"
-          ? `${plain}\nSuggested: ${lines.find((l) => l.includes("Suggested job"))?.replace(/\*\*/g, "") || ""}`
-          : plain;
-      jobs.push(notifyNtfy(ntfyTopic, title, ntfyBody));
-    }
-    await Promise.all(jobs);
+    const notified = await notifyVisitChannels({
+      title,
+      lines,
+      kind: isPipeline ? "pipeline" : "visit",
+    });
     return NextResponse.json({
       ok: true,
       stored: Boolean(visitId),
       visitId,
       linkConfidence,
-      notified: true,
+      notified,
       identify,
     });
   } catch (error) {
