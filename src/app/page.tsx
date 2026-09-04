@@ -7,18 +7,29 @@ import { Nav } from "@/components/Nav";
 import { RoleFit } from "@/components/RoleFit";
 import { SideProjects } from "@/components/SideProjects";
 import { Skills } from "@/components/Skills";
+import { dbConfigured } from "@/lib/db";
+import { getSkillsSectionSetting } from "@/lib/db/settings";
 
-export default function Home() {
+export default async function Home() {
+  let showSkills = false;
+  if (dbConfigured()) {
+    try {
+      showSkills = (await getSkillsSectionSetting()).enabled;
+    } catch {
+      showSkills = false;
+    }
+  }
+
   return (
     <>
-      <Nav />
+      <Nav showSkills={showSkills} />
       <main className="flex-1">
         <Hero />
         <About />
         <Experience />
         <Gallery />
         <SideProjects />
-        <Skills />
+        {showSkills ? <Skills /> : null}
         <RoleFit />
         <Contact />
       </main>

@@ -4,6 +4,7 @@ import { siteSettings } from "./schema";
 
 export const SETTING_VISITOR_IDENTIFY = "visitor_identify_prompt";
 export const SETTING_PIPELINE_HOME = "pipeline_home_dismissed";
+export const SETTING_SKILLS_SECTION = "skills_section";
 
 export type VisitorIdentifySetting = {
   enabled: boolean;
@@ -13,8 +14,14 @@ export type PipelineHomeSetting = {
   dismissedPanels: string[];
 };
 
+/** When false, Skills & tools is hidden on the public resume. Default: hidden. */
+export type SkillsSectionSetting = {
+  enabled: boolean;
+};
+
 const DEFAULT_VISITOR_IDENTIFY: VisitorIdentifySetting = { enabled: false };
 const DEFAULT_PIPELINE_HOME: PipelineHomeSetting = { dismissedPanels: [] };
+const DEFAULT_SKILLS_SECTION: SkillsSectionSetting = { enabled: false };
 
 async function getSettingJson(key: string): Promise<Record<string, unknown> | null> {
   const db = getDb();
@@ -85,11 +92,24 @@ export async function restorePipelineHomePanels(): Promise<PipelineHomeSetting> 
   return setPipelineHomeDismissed([]);
 }
 
+export async function getSkillsSectionSetting(): Promise<SkillsSectionSetting> {
+  const raw = await getSettingJson(SETTING_SKILLS_SECTION);
+  if (!raw || typeof raw !== "object") return { ...DEFAULT_SKILLS_SECTION };
+  return { enabled: Boolean(raw.enabled) };
+}
+
+export async function setSkillsSectionEnabled(enabled: boolean): Promise<SkillsSectionSetting> {
+  const next = { enabled: Boolean(enabled) };
+  await setSettingJson(SETTING_SKILLS_SECTION, next);
+  return next;
+}
+
 /** Public + admin snapshot used by pipeline UI. */
 export async function getPipelineSettingsSnapshot() {
-  const [visitorIdentify, pipelineHome] = await Promise.all([
+  const [visitorIdentify, pipelineHome, skillsSection] = await Promise.all([
     getVisitorIdentifySetting(),
     getPipelineHomeSetting(),
+    getSkillsSectionSetting(),
   ]);
-  return { visitorIdentify, pipelineHome };
+  return { visitorIdentify, pipelineHome, skillsSection };
 }

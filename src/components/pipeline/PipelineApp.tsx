@@ -175,6 +175,7 @@ export function PipelineApp() {
   const [visitsLoading, setVisitsLoading] = useState(false);
   const [thisDeviceId, setThisDeviceId] = useState("");
   const [visitorIdentifyEnabled, setVisitorIdentifyEnabled] = useState(false);
+  const [skillsSectionEnabled, setSkillsSectionEnabled] = useState(false);
   const [dismissedPanels, setDismissedPanels] = useState<string[]>([]);
   const [settingsLoading, setSettingsLoading] = useState(false);
 
@@ -245,6 +246,7 @@ export function PipelineApp() {
       const data = await res.json();
       if (res.ok && data.settings) {
         setVisitorIdentifyEnabled(Boolean(data.settings.visitorIdentify?.enabled));
+        setSkillsSectionEnabled(Boolean(data.settings.skillsSection?.enabled));
         setDismissedPanels(
           Array.isArray(data.settings.pipelineHome?.dismissedPanels)
             ? data.settings.pipelineHome.dismissedPanels
@@ -272,6 +274,7 @@ export function PipelineApp() {
       }
       if (data.settings) {
         setVisitorIdentifyEnabled(Boolean(data.settings.visitorIdentify?.enabled));
+        setSkillsSectionEnabled(Boolean(data.settings.skillsSection?.enabled));
         setDismissedPanels(
           Array.isArray(data.settings.pipelineHome?.dismissedPanels)
             ? data.settings.pipelineHome.dismissedPanels
@@ -301,6 +304,16 @@ export function PipelineApp() {
       enabled
         ? "Return-visitor identify prompt enabled"
         : "Return-visitor identify prompt disabled",
+    );
+  }
+
+  function toggleSkillsSection(enabled: boolean) {
+    setSkillsSectionEnabled(enabled);
+    void patchSettings({ skillsSectionEnabled: enabled });
+    setNotice(
+      enabled
+        ? "Skills & tools section shown on resume"
+        : "Skills & tools section hidden on resume",
     );
   }
 
@@ -869,6 +882,16 @@ export function PipelineApp() {
               className="h-4 w-4 accent-[var(--accent)]"
             />
             Ask return visitors to identify (company / position)
+          </label>
+          <label className="flex cursor-pointer items-center gap-2.5 text-sm text-[var(--cream)]">
+            <input
+              type="checkbox"
+              checked={skillsSectionEnabled}
+              disabled={settingsLoading}
+              onChange={(e) => toggleSkillsSection(e.target.checked)}
+              className="h-4 w-4 accent-[var(--accent)]"
+            />
+            Show Skills &amp; tools on resume
           </label>
           {dismissedPanels.length ? (
             <button

@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { dbConfigured } from "@/lib/db";
 import {
   getPipelineSettingsSnapshot,
   setPipelineHomeDismissed,
+  setSkillsSectionEnabled,
   setVisitorIdentifyEnabled,
 } from "@/lib/db/settings";
 import { authError, requirePipelineAuth } from "@/lib/jobs/require-auth";
@@ -34,6 +36,7 @@ export async function PATCH(req: NextRequest) {
 
   let body: {
     visitorIdentifyEnabled?: boolean;
+    skillsSectionEnabled?: boolean;
     dismissedPanels?: string[];
     restoreHomePanels?: boolean;
   } = {};
@@ -46,6 +49,10 @@ export async function PATCH(req: NextRequest) {
   try {
     if (typeof body.visitorIdentifyEnabled === "boolean") {
       await setVisitorIdentifyEnabled(body.visitorIdentifyEnabled);
+    }
+    if (typeof body.skillsSectionEnabled === "boolean") {
+      await setSkillsSectionEnabled(body.skillsSectionEnabled);
+      revalidatePath("/");
     }
     if (body.restoreHomePanels) {
       await setPipelineHomeDismissed([]);

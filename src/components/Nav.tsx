@@ -4,17 +4,18 @@ import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { site } from "@/content/resume";
 
-const links = [
+const allLinks = [
   { href: "#about", label: "About" },
   { href: "#experience", label: "Experience" },
   { href: "#work", label: "Work" },
   { href: "#projects", label: "Projects" },
-  { href: "#skills", label: "Skills" },
+  { href: "#skills", label: "Skills", skillsOnly: true as const },
   { href: "#fit", label: "Fit" },
   { href: "#contact", label: "Contact" },
 ];
 
-export function Nav() {
+export function Nav({ showSkills = false }: { showSkills?: boolean }) {
+  const links = allLinks.filter((l) => !("skillsOnly" in l && l.skillsOnly) || showSkills);
   const [scrolled, setScrolled] = useState(false);
   const [open, setOpen] = useState(false);
 
