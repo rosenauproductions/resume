@@ -7,6 +7,10 @@ import {
   type InsetMapSetting,
   type MetroMapSetting,
 } from "@/lib/pipeline/map-regions";
+import {
+  DEFAULT_HOME_PANEL_ORDER,
+  normalizeHomePanelOrder,
+} from "@/lib/pipeline/home-panels";
 import { getDb } from "./index";
 import { siteSettings } from "./schema";
 
@@ -25,6 +29,7 @@ export type VisitorIdentifySetting = {
 
 export type PipelineHomeSetting = {
   dismissedPanels: string[];
+  panelOrder: string[];
 };
 
 /** When false, Skills & tools is hidden on the public resume. Default: hidden. */
@@ -42,7 +47,10 @@ export const FRESH_VISIT_PING_MAX_SEC = 30;
 export const FRESH_VISIT_PING_DEFAULT_SEC = 4;
 
 const DEFAULT_VISITOR_IDENTIFY: VisitorIdentifySetting = { enabled: false };
-const DEFAULT_PIPELINE_HOME: PipelineHomeSetting = { dismissedPanels: [] };
+const DEFAULT_PIPELINE_HOME: PipelineHomeSetting = {
+  dismissedPanels: [],
+  panelOrder: [...DEFAULT_HOME_PANEL_ORDER],
+};
 const DEFAULT_SKILLS_SECTION: SkillsSectionSetting = { enabled: false };
 const DEFAULT_FRESH_VISIT_PING: FreshVisitPingSetting = {
   durationSec: FRESH_VISIT_PING_DEFAULT_SEC,
@@ -98,31 +106,59 @@ export async function setVisitorIdentifyEnabled(enabled: boolean): Promise<Visit
 
 export async function getPipelineHomeSetting(): Promise<PipelineHomeSetting> {
   const raw = await getSettingJson(SETTING_PIPELINE_HOME);
-  if (!raw || typeof raw !== "object") return { ...DEFAULT_PIPELINE_HOME };
+  if (!raw || typeof raw !== "object") return { ...DEFAULT_PIPELINE_HOME, panelOrder: [...DEFAULT_HOME_PANEL_ORDER] };
   const panels = Array.isArray(raw.dismissedPanels)
     ? raw.dismissedPanels.filter((p): p is string => typeof p === "string")
     : [];
-  return { dismissedPanels: panels };
+  return {
+    dismissedPanels: panels,
+    panelOrder: normalizeHomePanelOrder(raw.panelOrder),
+  };
 }
 
-export async function setPipelineHomeDismissed(
-  dismissedPanels: string[],
+export async function setPipelineHomeSetting(
+  patch: Partial<PipelineHomeSetting>,
 ): Promise<PipelineHomeSetting> {
-  const next = {
-    dismissedPanels: [...new Set(dismissedPanels.filter(Boolean))],
+  const current = await getPipelineHomeSetting();
+  const next: PipelineHomeSetting = {
+    dismissedPanels:
+      patch.dismissedPanels != null
+        ? [...new Set(patch.dismissedPanels.filter(Boolean))]
+        : current.dismissedPanels,
+    panelOrder:
+      patch.panelOrder != null
+        ? normalizeHomePanelOrder(patch.panelOrder)
+        : current.panelOrder,
   };
   await setSettingJson(SETTING_PIPELINE_HOME, next);
   return next;
 }
 
+export async function setPipelineHomeDismissed(
+  dismissedPanels: string[],
+): Promise<PipelineHomeSetting> {
+  return setPipelineHomeSetting({ dismissedPanels });
+}
+
+export async function setPipelineHomePanelOrder(
+  panelOrder: string[],
+): Promise<PipelineHomeSetting> {
+  return setPipelineHomeSetting({ panelOrder });
+}
+
 export async function dismissPipelineHomePanel(panelId: string): Promise<PipelineHomeSetting> {
   const current = await getPipelineHomeSetting();
   if (current.dismissedPanels.includes(panelId)) return current;
-  return setPipelineHomeDismissed([...current.dismissedPanels, panelId]);
+  return setPipelineHomeSetting({
+    dismissedPanels: [...current.dismissedPanels, panelId],
+  });
 }
 
 export async function restorePipelineHomePanels(): Promise<PipelineHomeSetting> {
-  return setPipelineHomeDismissed([]);
+  return setPipelineHomeSetting({
+    dismissedPanels: [],
+    panelOrder: [...DEFAULT_HOME_PANEL_ORDER],
+  });
 }
 
 export async function getSkillsSectionSetting(): Promise<SkillsSectionSetting> {

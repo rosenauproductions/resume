@@ -22,3 +22,39 @@ export const PIPELINE_HOME_PANELS = [
 ] as const;
 
 export type PipelineHomePanelId = (typeof PIPELINE_HOME_PANELS)[number]["id"];
+
+export const DEFAULT_HOME_PANEL_ORDER: PipelineHomePanelId[] = PIPELINE_HOME_PANELS.map(
+  (p) => p.id,
+);
+
+const VALID_HOME_PANEL_IDS = new Set<string>(DEFAULT_HOME_PANEL_ORDER);
+
+export function isHomeStatPanel(id: string): boolean {
+  return id.startsWith("stat-");
+}
+
+/** Keep known ids, append any missing defaults (stable for new panels). */
+export function normalizeHomePanelOrder(raw: unknown): PipelineHomePanelId[] {
+  const incoming = Array.isArray(raw)
+    ? raw.filter((id): id is string => typeof id === "string" && VALID_HOME_PANEL_IDS.has(id))
+    : [];
+  const seen = new Set(incoming);
+  const rest = DEFAULT_HOME_PANEL_ORDER.filter((id) => !seen.has(id));
+  return [...incoming, ...rest] as PipelineHomePanelId[];
+}
+
+/** Move `fromId` to sit where `toId` currently is (same list). */
+export function moveHomePanelId(
+  order: readonly string[],
+  fromId: string,
+  toId: string,
+): string[] {
+  if (fromId === toId) return [...order];
+  const next = [...order];
+  const from = next.indexOf(fromId);
+  const to = next.indexOf(toId);
+  if (from < 0 || to < 0) return next;
+  next.splice(from, 1);
+  next.splice(to, 0, fromId);
+  return next;
+}

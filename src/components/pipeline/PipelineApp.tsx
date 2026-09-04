@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent, type ReactNode } from "react";
 import {
   BOARD_COLUMNS,
   STATUS_LABELS,
@@ -31,6 +31,12 @@ import { BarChart, DonutChart, DismissiblePanel, StatCard, TimelineChart, VisitT
 import { TargetMap } from "./TargetMap";
 import { ResumeEditor } from "./ResumeEditor";
 import type { PipelineHomePanelId } from "@/lib/pipeline/home-panels";
+import {
+  DEFAULT_HOME_PANEL_ORDER,
+  isHomeStatPanel,
+  moveHomePanelId,
+  normalizeHomePanelOrder,
+} from "@/lib/pipeline/home-panels";
 import { buildDefaultResumeContent } from "@/lib/resume/defaults";
 import type { ResumeContent } from "@/lib/resume/types";
 
@@ -265,6 +271,8 @@ export function PipelineApp({
   const [visitorIdentifyEnabled, setVisitorIdentifyEnabled] = useState(false);
   const [skillsSectionEnabled, setSkillsSectionEnabled] = useState(false);
   const [dismissedPanels, setDismissedPanels] = useState<string[]>([]);
+  const [panelOrder, setPanelOrder] = useState<string[]>([...DEFAULT_HOME_PANEL_ORDER]);
+  const [draggingPanelId, setDraggingPanelId] = useState<string | null>(null);
   const [settingsLoading, setSettingsLoading] = useState(false);
   const [resumeContent, setResumeContent] = useState<ResumeContent | null>(null);
   const [resumeLoading, setResumeLoading] = useState(false);
@@ -346,6 +354,7 @@ export function PipelineApp({
             ? data.settings.pipelineHome.dismissedPanels
             : [],
         );
+        setPanelOrder(normalizeHomePanelOrder(data.settings.pipelineHome?.panelOrder));
       }
     } catch {
       // ignore
@@ -455,6 +464,7 @@ export function PipelineApp({
             ? data.settings.pipelineHome.dismissedPanels
             : [],
         );
+        setPanelOrder(normalizeHomePanelOrder(data.settings.pipelineHome?.panelOrder));
       }
     } catch {
       setNotice("Network error saving setting");
@@ -469,8 +479,56 @@ export function PipelineApp({
 
   function restoreHomePanels() {
     setDismissedPanels([]);
+    setPanelOrder([...DEFAULT_HOME_PANEL_ORDER]);
     void patchSettings({ restoreHomePanels: true });
   }
+
+  function reorderHomePanel(fromId: string, toId: string) {
+    if (!fromId || !toId || fromId === toId) return;
+    const next = normalizeHomePanelOrder(moveHomePanelId(panelOrder, fromId, toId));
+    setPanelOrder(next);
+    void patchSettings({ panelOrder: next });
+  }
+
+  function onPanelDragStart(id: string, e: DragEvent) {
+    setDraggingPanelId(id);
+    e.dataTransfer.setData("text/panel-id", id);
+    e.dataTransfer.effectAllowed = "move";
+  }
+
+  function onPanelDragOver(_id: string, e: DragEvent) {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+  }
+
+  function onPanelDrop(toId: string, e: DragEvent) {
+    e.preventDefault();
+    const fromId = e.dataTransfer.getData("text/panel-id") || draggingPanelId || "";
+    reorderHomePanel(fromId, toId);
+    setDraggingPanelId(null);
+  }
+
+  function onPanelDragEnd() {
+    setDraggingPanelId(null);
+  }
+
+  const orderedStatIds = useMemo(
+    () => panelOrder.filter((id) => isHomeStatPanel(id) && isPanelVisible(id)),
+    [panelOrder, isPanelVisible],
+  );
+
+  const orderedInsightIds = useMemo(
+    () => panelOrder.filter((id) => !isHomeStatPanel(id) && isPanelVisible(id)),
+    [panelOrder, isPanelVisible],
+  );
+
+  const panelDragProps = {
+    draggingId: draggingPanelId,
+    onPanelDragStart,
+    onPanelDragOver,
+    onPanelDrop,
+    onPanelDragEnd,
+  };
 
   function toggleVisitorIdentify(enabled: boolean) {
     setVisitorIdentifyEnabled(enabled);
@@ -1003,6 +1061,10 @@ export function PipelineApp({
             <button
               type="button"
               onClick={() => {
+                if (view === "resume") {
+                  setView("insights");
+                  return;
+                }
                 setView("resume");
                 void refreshResume();
               }}
@@ -1012,7 +1074,7 @@ export function PipelineApp({
                   : "border border-[var(--accent)]/50 text-[var(--accent)] hover:bg-[var(--accent)]/10"
               }`}
             >
-              Resume CMS
+              {view === "resume" ? "Exit Resume CMS" : "Resume CMS"}
             </button>
             <button
               type="button"
@@ -1100,44 +1162,67 @@ export function PipelineApp({
             </button>
           ) : (
             <span className="ml-auto text-xs text-[var(--muted)]">
-              Home panels: click × to hide (saved)
+              Home panels: drag ⋮⋮ to reorder · × to hide (saved)
             </span>
           )}
         </div>
 
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          {isPanelVisible("stat-applications") ? (
-            <StatCard
-              label="Applications"
-              value={String(insights.total)}
-              hint={`${insights.appliedThisWeek} dated this week`}
-              onDismiss={() => dismissHomePanel("stat-applications")}
-            />
-          ) : null}
-          {isPanelVisible("stat-avg-match") ? (
-            <StatCard
-              label="Avg match"
-              value={insights.avgMatchScore != null ? `${insights.avgMatchScore}/10` : "—"}
-              hint={`${insights.withMatchScore} scored roles`}
-              onDismiss={() => dismissHomePanel("stat-avg-match")}
-            />
-          ) : null}
-          {isPanelVisible("stat-interviews") ? (
-            <StatCard
-              label="Interviews open"
-              value={String(insights.interviewsOpen)}
-              hint={`${insights.rejected} rejected`}
-              onDismiss={() => dismissHomePanel("stat-interviews")}
-            />
-          ) : null}
-          {isPanelVisible("stat-avg-pay") ? (
-            <StatCard
-              label="Avg known pay"
-              value={money(insights.avgAnnualMid)}
-              hint={`${insights.abovePriorSalary}/${insights.knownSalaryCount} ≥ prior ${money(meta?.lastSalary)}`}
-              onDismiss={() => dismissHomePanel("stat-avg-pay")}
-            />
-          ) : null}
+          {orderedStatIds.map((id) => {
+            if (id === "stat-applications") {
+              return (
+                <StatCard
+                  key={id}
+                  dragId={id}
+                  {...panelDragProps}
+                  label="Applications"
+                  value={String(insights.total)}
+                  hint={`${insights.appliedThisWeek} dated this week`}
+                  onDismiss={() => dismissHomePanel(id)}
+                />
+              );
+            }
+            if (id === "stat-avg-match") {
+              return (
+                <StatCard
+                  key={id}
+                  dragId={id}
+                  {...panelDragProps}
+                  label="Avg match"
+                  value={insights.avgMatchScore != null ? `${insights.avgMatchScore}/10` : "—"}
+                  hint={`${insights.withMatchScore} scored roles`}
+                  onDismiss={() => dismissHomePanel(id)}
+                />
+              );
+            }
+            if (id === "stat-interviews") {
+              return (
+                <StatCard
+                  key={id}
+                  dragId={id}
+                  {...panelDragProps}
+                  label="Interviews open"
+                  value={String(insights.interviewsOpen)}
+                  hint={`${insights.rejected} rejected`}
+                  onDismiss={() => dismissHomePanel(id)}
+                />
+              );
+            }
+            if (id === "stat-avg-pay") {
+              return (
+                <StatCard
+                  key={id}
+                  dragId={id}
+                  {...panelDragProps}
+                  label="Avg known pay"
+                  value={money(insights.avgAnnualMid)}
+                  hint={`${insights.abovePriorSalary}/${insights.knownSalaryCount} ≥ prior ${money(meta?.lastSalary)}`}
+                  onDismiss={() => dismissHomePanel(id)}
+                />
+              );
+            }
+            return null;
+          })}
         </div>
 
         <div className="mt-6 flex flex-wrap gap-2">
@@ -1189,53 +1274,62 @@ export function PipelineApp({
 
         <div className="mt-6">
           {view === "insights" ? (
-            <div className="space-y-4">
-              <div className="grid gap-4 lg:grid-cols-2">
-                {isPanelVisible("chart-status") ? (
-                  <DismissiblePanel onDismiss={() => dismissHomePanel("chart-status")}>
+            <div className="grid gap-4 lg:grid-cols-2">
+              {orderedInsightIds.map((id) => {
+                const shell = (child: ReactNode) => (
+                  <DismissiblePanel
+                    key={id}
+                    dragId={id}
+                    {...panelDragProps}
+                    onDismiss={() => dismissHomePanel(id)}
+                  >
+                    {child}
+                  </DismissiblePanel>
+                );
+
+                if (id === "chart-status") {
+                  return shell(
                     <DonutChart
                       title="Pipeline mix"
                       subtitle="Status across all applications"
                       data={insights.statusChart}
-                    />
-                  </DismissiblePanel>
-                ) : null}
-                {isPanelVisible("chart-match-bands") ? (
-                  <DismissiblePanel onDismiss={() => dismissHomePanel("chart-match-bands")}>
+                    />,
+                  );
+                }
+                if (id === "chart-match-bands") {
+                  return shell(
                     <BarChart
                       title="Match score bands"
                       subtitle="Where your scored applications land"
                       data={insights.matchScoreChart}
-                    />
-                  </DismissiblePanel>
-                ) : null}
-                {isPanelVisible("chart-match-levels") ? (
-                  <DismissiblePanel onDismiss={() => dismissHomePanel("chart-match-levels")}>
+                    />,
+                  );
+                }
+                if (id === "chart-match-levels") {
+                  return shell(
                     <BarChart
                       title="Match level mix"
                       subtitle="Excellent / Very Good / Good / Unknown"
                       data={insights.matchLevelChart}
-                    />
-                  </DismissiblePanel>
-                ) : null}
-                {isPanelVisible("chart-timeline") ? (
-                  <DismissiblePanel onDismiss={() => dismissHomePanel("chart-timeline")}>
-                    <TimelineChart data={insights.timelineChart} />
-                  </DismissiblePanel>
-                ) : null}
-                {isPanelVisible("chart-salary") ? (
-                  <DismissiblePanel onDismiss={() => dismissHomePanel("chart-salary")}>
+                    />,
+                  );
+                }
+                if (id === "chart-timeline") {
+                  return shell(<TimelineChart data={insights.timelineChart} />);
+                }
+                if (id === "chart-salary") {
+                  return shell(
                     <BarChart
                       title="Salary vs prior ($79K)"
                       subtitle="Annualized midpoint where known · teal ≥ prior"
                       data={insights.salaryVsPriorChart}
                       formatValue={(n) => `$${Math.round(n / 1000)}k`}
-                    />
-                  </DismissiblePanel>
-                ) : null}
-                {isPanelVisible("panel-targets") ? (
-                  <DismissiblePanel onDismiss={() => dismissHomePanel("panel-targets")}>
-                    <section className="rounded-2xl border border-white/10 bg-[var(--panel)] p-5 pr-10">
+                    />,
+                  );
+                }
+                if (id === "panel-targets") {
+                  return shell(
+                    <section className="rounded-2xl border border-white/10 bg-[var(--panel)] p-5 pr-10 pl-9">
                       <h3 className="font-[family-name:var(--font-display)] text-xl">Current targets</h3>
                       <p className="mt-1 text-sm text-[var(--muted)]">High-priority companies from the tracker</p>
                       <ul className="mt-4 space-y-2">
@@ -1246,25 +1340,18 @@ export function PipelineApp({
                           </li>
                         ))}
                       </ul>
-                    </section>
-                  </DismissiblePanel>
-                ) : null}
-              </div>
-
-              <div className="grid gap-4 lg:grid-cols-3">
-                {isPanelVisible("panel-lean-into") ? (
-                  <DismissiblePanel onDismiss={() => dismissHomePanel("panel-lean-into")}>
-                    <GuidanceCard title="Lean into" tone="good" items={insights.leanInto} />
-                  </DismissiblePanel>
-                ) : null}
-                {isPanelVisible("panel-watch-gaps") ? (
-                  <DismissiblePanel onDismiss={() => dismissHomePanel("panel-watch-gaps")}>
-                    <GuidanceCard title="Watch gaps" tone="warn" items={insights.gapThemes} />
-                  </DismissiblePanel>
-                ) : null}
-                {isPanelVisible("panel-date-policy") ? (
-                  <DismissiblePanel onDismiss={() => dismissHomePanel("panel-date-policy")}>
-                    <section className="rounded-2xl border border-white/10 bg-[var(--panel)] p-5 pr-10">
+                    </section>,
+                  );
+                }
+                if (id === "panel-lean-into") {
+                  return shell(<GuidanceCard title="Lean into" tone="good" items={insights.leanInto} />);
+                }
+                if (id === "panel-watch-gaps") {
+                  return shell(<GuidanceCard title="Watch gaps" tone="warn" items={insights.gapThemes} />);
+                }
+                if (id === "panel-date-policy") {
+                  return shell(
+                    <section className="rounded-2xl border border-white/10 bg-[var(--panel)] p-5 pr-10 pl-9">
                       <h3 className="font-[family-name:var(--font-display)] text-xl">Date policy</h3>
                       <p className="mt-2 text-sm leading-relaxed text-[var(--muted)]">
                         {meta?.datePolicy ||
@@ -1273,15 +1360,12 @@ export function PipelineApp({
                       <p className="mt-3 text-xs text-[var(--warm)]">
                         Transfr + Baylor stay in Researching until you confirm “I applied.”
                       </p>
-                    </section>
-                  </DismissiblePanel>
-                ) : null}
-              </div>
-
-              <div className="grid gap-4 lg:grid-cols-2">
-                {isPanelVisible("panel-strategy") ? (
-                  <DismissiblePanel onDismiss={() => dismissHomePanel("panel-strategy")}>
-                    <section className="rounded-2xl border border-white/10 bg-[var(--panel)] p-5 pr-10">
+                    </section>,
+                  );
+                }
+                if (id === "panel-strategy") {
+                  return shell(
+                    <section className="rounded-2xl border border-white/10 bg-[var(--panel)] p-5 pr-10 pl-9">
                       <h3 className="font-[family-name:var(--font-display)] text-xl">Strategy</h3>
                       <p className="mt-2 text-sm text-[var(--muted)]">{meta?.preferredEmployment}</p>
                       <p className="mt-3 text-xs uppercase tracking-[0.18em] text-[var(--accent)]">Prefer</p>
@@ -1295,12 +1379,12 @@ export function PipelineApp({
                       <p className="mt-4 text-sm text-[var(--muted)]">
                         Target {meta?.preferredTarget || "~$80K+"} · stretch {meta?.highValueTarget || "$100K+"}
                       </p>
-                    </section>
-                  </DismissiblePanel>
-                ) : null}
-                {isPanelVisible("panel-exact-dates") ? (
-                  <DismissiblePanel onDismiss={() => dismissHomePanel("panel-exact-dates")}>
-                    <section className="rounded-2xl border border-white/10 bg-[var(--panel)] p-5 pr-10">
+                    </section>,
+                  );
+                }
+                if (id === "panel-exact-dates") {
+                  return shell(
+                    <section className="rounded-2xl border border-white/10 bg-[var(--panel)] p-5 pr-10 pl-9">
                       <h3 className="font-[family-name:var(--font-display)] text-xl">Exact dates only</h3>
                       <ul className="mt-4 space-y-2 text-sm">
                         {jobs
@@ -1316,66 +1400,61 @@ export function PipelineApp({
                             </li>
                           ))}
                       </ul>
-                    </section>
-                  </DismissiblePanel>
-                ) : null}
-              </div>
-
-              <div className="grid gap-4 lg:grid-cols-2">
-                {isPanelVisible("panel-top-matches") ? (
-                  <DismissiblePanel onDismiss={() => dismissHomePanel("panel-top-matches")}>
+                    </section>,
+                  );
+                }
+                if (id === "panel-top-matches") {
+                  return shell(
                     <RankList
                       title="Top match scores"
                       jobs={insights.topMatches}
                       onSelect={setDetail}
                       primary={(j) => (j.matchScore != null ? `${j.matchScore}/10` : "—")}
-                    />
-                  </DismissiblePanel>
-                ) : null}
-                {isPanelVisible("panel-top-pay") ? (
-                  <DismissiblePanel onDismiss={() => dismissHomePanel("panel-top-pay")}>
+                    />,
+                  );
+                }
+                if (id === "panel-top-pay") {
+                  return shell(
                     <RankList
                       title="Highest known pay"
                       jobs={insights.topPay}
                       onSelect={setDetail}
                       primary={(j) => money(j.annualMid)}
-                    />
-                  </DismissiblePanel>
-                ) : null}
-              </div>
-
-              {(meta?.risks?.length || meta?.strengths?.length) ? (
-                <div className="grid gap-4 lg:grid-cols-2">
-                  {meta?.strengths?.length && isPanelVisible("panel-strengths") ? (
-                    <DismissiblePanel onDismiss={() => dismissHomePanel("panel-strengths")}>
-                      <section className="rounded-2xl border border-white/10 bg-[var(--panel)] p-5 pr-10">
-                        <h3 className="font-[family-name:var(--font-display)] text-xl">Profile strengths</h3>
-                        <div className="mt-4 flex flex-wrap gap-2">
-                          {(meta?.strengths ?? []).map((s) => (
-                            <span key={s} className="rounded-full border border-white/15 px-3 py-1 text-xs text-[var(--cream)]/85">
-                              {s}
-                            </span>
-                          ))}
-                        </div>
-                      </section>
-                    </DismissiblePanel>
-                  ) : null}
-                  {meta?.risks?.length && isPanelVisible("panel-risks") ? (
-                    <DismissiblePanel onDismiss={() => dismissHomePanel("panel-risks")}>
-                      <section className="rounded-2xl border border-white/10 bg-[var(--panel)] p-5 pr-10">
-                        <h3 className="font-[family-name:var(--font-display)] text-xl">Application risks</h3>
-                        <ul className="mt-4 space-y-2 text-sm text-[var(--muted)]">
-                          {(meta?.risks ?? []).map((r) => (
-                            <li key={r.slice(0, 40)} className="border-l border-[var(--warm)]/40 pl-3">
-                              {r}
-                            </li>
-                          ))}
-                        </ul>
-                      </section>
-                    </DismissiblePanel>
-                  ) : null}
-                </div>
-              ) : null}
+                    />,
+                  );
+                }
+                if (id === "panel-strengths") {
+                  if (!meta?.strengths?.length) return null;
+                  return shell(
+                    <section className="rounded-2xl border border-white/10 bg-[var(--panel)] p-5 pr-10 pl-9">
+                      <h3 className="font-[family-name:var(--font-display)] text-xl">Profile strengths</h3>
+                      <div className="mt-4 flex flex-wrap gap-2">
+                        {(meta?.strengths ?? []).map((s) => (
+                          <span key={s} className="rounded-full border border-white/15 px-3 py-1 text-xs text-[var(--cream)]/85">
+                            {s}
+                          </span>
+                        ))}
+                      </div>
+                    </section>,
+                  );
+                }
+                if (id === "panel-risks") {
+                  if (!meta?.risks?.length) return null;
+                  return shell(
+                    <section className="rounded-2xl border border-white/10 bg-[var(--panel)] p-5 pr-10 pl-9">
+                      <h3 className="font-[family-name:var(--font-display)] text-xl">Application risks</h3>
+                      <ul className="mt-4 space-y-2 text-sm text-[var(--muted)]">
+                        {(meta?.risks ?? []).map((r) => (
+                          <li key={r.slice(0, 40)} className="border-l border-[var(--warm)]/40 pl-3">
+                            {r}
+                          </li>
+                        ))}
+                      </ul>
+                    </section>,
+                  );
+                }
+                return null;
+              })}
             </div>
           ) : null}
 
@@ -1641,6 +1720,7 @@ export function PipelineApp({
                 onChange={setResumeContent}
                 onSave={() => void saveResume()}
                 onReset={() => void resetResume()}
+                onClose={() => setView("insights")}
                 saving={resumeSaving || resumeLoading}
                 notice={resumeNotice}
               />
@@ -1871,7 +1951,7 @@ function GuidanceCard({
 }) {
   const color = tone === "good" ? "var(--accent)" : "var(--warm)";
   return (
-    <section className="rounded-2xl border border-white/10 bg-[var(--panel)] p-5 pr-10">
+    <section className="rounded-2xl border border-white/10 bg-[var(--panel)] p-5 pl-9 pr-10">
       <h3 className="font-[family-name:var(--font-display)] text-xl" style={{ color }}>
         {title}
       </h3>
@@ -1903,7 +1983,7 @@ function RankList({
   primary: (job: JobApplication) => string;
 }) {
   return (
-    <section className="rounded-2xl border border-white/10 bg-[var(--panel)] p-5 pr-10">
+    <section className="rounded-2xl border border-white/10 bg-[var(--panel)] p-5 pl-9 pr-10">
       <h3 className="font-[family-name:var(--font-display)] text-xl">{title}</h3>
       <ul className="mt-4 space-y-2">
         {jobs.map((job) => (

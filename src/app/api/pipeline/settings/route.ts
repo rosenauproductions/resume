@@ -7,6 +7,8 @@ import {
   setInsetMapSetting,
   setMetroMapSetting,
   setPipelineHomeDismissed,
+  setPipelineHomePanelOrder,
+  restorePipelineHomePanels,
   setSkillsSectionEnabled,
   setVisitorIdentifyEnabled,
 } from "@/lib/db/settings";
@@ -52,6 +54,7 @@ export async function PATCH(req: NextRequest) {
     metroMap?: RegionPatch;
     insetMap?: RegionPatch;
     dismissedPanels?: string[];
+    panelOrder?: string[];
     restoreHomePanels?: boolean;
   } = {};
   try {
@@ -82,11 +85,18 @@ export async function PATCH(req: NextRequest) {
       await setInsetMapSetting(body.insetMap);
     }
     if (body.restoreHomePanels) {
-      await setPipelineHomeDismissed([]);
-    } else if (Array.isArray(body.dismissedPanels)) {
-      await setPipelineHomeDismissed(
-        body.dismissedPanels.filter((p): p is string => typeof p === "string"),
-      );
+      await restorePipelineHomePanels();
+    } else {
+      if (Array.isArray(body.dismissedPanels)) {
+        await setPipelineHomeDismissed(
+          body.dismissedPanels.filter((p): p is string => typeof p === "string"),
+        );
+      }
+      if (Array.isArray(body.panelOrder)) {
+        await setPipelineHomePanelOrder(
+          body.panelOrder.filter((p): p is string => typeof p === "string"),
+        );
+      }
     }
 
     const settings = await getPipelineSettingsSnapshot();

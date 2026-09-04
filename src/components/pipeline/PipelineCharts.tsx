@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReactNode } from "react";
+import type { ReactNode, DragEvent } from "react";
 import type { ChartPoint } from "@/lib/jobs/insights";
 import { STATUS_LABELS, type JobStatus } from "@/lib/jobs/types";
 
@@ -8,13 +8,66 @@ export function DismissiblePanel({
   children,
   onDismiss,
   className = "",
+  dragId,
+  draggingId,
+  onPanelDragStart,
+  onPanelDragOver,
+  onPanelDrop,
+  onPanelDragEnd,
 }: {
   children: ReactNode;
   onDismiss?: () => void;
   className?: string;
+  dragId?: string;
+  draggingId?: string | null;
+  onPanelDragStart?: (id: string, e: DragEvent) => void;
+  onPanelDragOver?: (id: string, e: DragEvent) => void;
+  onPanelDrop?: (id: string, e: DragEvent) => void;
+  onPanelDragEnd?: () => void;
 }) {
+  const draggable = Boolean(dragId && onPanelDragStart);
   return (
-    <div className={`relative ${className}`}>
+    <div
+      className={`relative ${draggingId && dragId === draggingId ? "opacity-55" : ""} ${className}`}
+      draggable={draggable}
+      onDragStart={
+        draggable && dragId
+          ? (e) => {
+              if ((e.target as HTMLElement).closest("button,a,input,select,textarea")) {
+                e.preventDefault();
+                return;
+              }
+              onPanelDragStart?.(dragId, e);
+            }
+          : undefined
+      }
+      onDragOver={
+        dragId && onPanelDragOver
+          ? (e) => {
+              e.preventDefault();
+              onPanelDragOver(dragId, e);
+            }
+          : undefined
+      }
+      onDrop={
+        dragId && onPanelDrop
+          ? (e) => {
+              e.preventDefault();
+              onPanelDrop(dragId, e);
+            }
+          : undefined
+      }
+      onDragEnd={onPanelDragEnd}
+    >
+      {draggable ? (
+        <span
+          aria-hidden
+          title="Drag to reorder"
+          className="absolute left-2 top-2 z-[2] cursor-grab select-none rounded-md border border-white/10 bg-[var(--ink)]/70 px-1.5 py-0.5 text-[10px] tracking-widest text-[var(--muted)] backdrop-blur active:cursor-grabbing"
+        >
+          ⋮⋮
+        </span>
+      ) : null}
       {onDismiss ? (
         <button
           type="button"
@@ -35,15 +88,35 @@ export function StatCard({
   value,
   hint,
   onDismiss,
+  dragId,
+  draggingId,
+  onPanelDragStart,
+  onPanelDragOver,
+  onPanelDrop,
+  onPanelDragEnd,
 }: {
   label: string;
   value: string;
   hint?: string;
   onDismiss?: () => void;
+  dragId?: string;
+  draggingId?: string | null;
+  onPanelDragStart?: (id: string, e: DragEvent) => void;
+  onPanelDragOver?: (id: string, e: DragEvent) => void;
+  onPanelDrop?: (id: string, e: DragEvent) => void;
+  onPanelDragEnd?: () => void;
 }) {
   return (
-    <DismissiblePanel onDismiss={onDismiss}>
-      <div className="rounded-2xl border border-white/10 bg-[var(--panel)] px-4 py-4 pr-10">
+    <DismissiblePanel
+      onDismiss={onDismiss}
+      dragId={dragId}
+      draggingId={draggingId}
+      onPanelDragStart={onPanelDragStart}
+      onPanelDragOver={onPanelDragOver}
+      onPanelDrop={onPanelDrop}
+      onPanelDragEnd={onPanelDragEnd}
+    >
+      <div className="rounded-2xl border border-white/10 bg-[var(--panel)] px-4 py-4 pl-9 pr-10">
         <p className="text-[10px] uppercase tracking-[0.22em] text-[var(--muted)]">{label}</p>
         <p className="mt-2 font-[family-name:var(--font-display)] text-3xl text-[var(--cream)]">
           {value}

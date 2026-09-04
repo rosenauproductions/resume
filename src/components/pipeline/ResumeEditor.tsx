@@ -28,6 +28,7 @@ type Props = {
   onChange: (next: ResumeContent) => void;
   onSave: () => void;
   onReset: () => void;
+  onClose?: () => void;
   saving?: boolean;
   notice?: string;
 };
@@ -712,7 +713,7 @@ function FitEditor({
   );
 }
 
-export function ResumeEditor({ content, onChange, onSave, onReset, saving, notice }: Props) {
+export function ResumeEditor({ content, onChange, onSave, onReset, onClose, saving, notice }: Props) {
   const [expanded, setExpanded] = useState<Partial<Record<ResumeSectionId, boolean>>>({});
 
   const setSite = (patch: Partial<ResumeSite>) => onChange({ ...content, site: { ...content.site, ...patch } });
@@ -787,6 +788,11 @@ export function ResumeEditor({ content, onChange, onSave, onReset, saving, notic
         <h2 className="text-base font-medium text-[var(--cream)]">Resume content</h2>
         {notice ? <span className="text-xs text-[var(--muted)]">{notice}</span> : null}
         <div className="ml-auto flex flex-wrap gap-2">
+          {onClose ? (
+            <button type="button" className={btnGhost} onClick={onClose}>
+              ← Back to pipeline
+            </button>
+          ) : null}
           <button type="button" className={btnGhost} onClick={onReset} disabled={saving}>
             Reset to defaults
           </button>
