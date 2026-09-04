@@ -8,7 +8,6 @@ import {
 import { getVisitorIdentifySetting } from "./settings";
 import { visits, visitorIdentifications } from "./schema";
 import { getVisit, isDeviceIgnored, linkVisit } from "./visits";
-import { hasIdentifyDoneCookie } from "@/lib/identify-persistence";
 import { extractCityKey } from "@/lib/pipeline/geo-cities";
 import { notifyVisitChannels } from "@/lib/visit-notify";
 import type {
@@ -110,8 +109,9 @@ function knownIdentityFromRow(
 
 /**
  * Build identify / welcome prompt after a visit is recorded.
+ * Identity is determined from the DB row for this device fingerprint — no cookies.
  * - First-time repeat visitor → identify
- * - Already identified (DB or cookie) → soft welcome + option to correct
+ * - Already identified in DB → soft welcome + option to correct
  */
 export async function buildIdentifyPrompt(input: {
   path: string;
@@ -120,7 +120,6 @@ export async function buildIdentifyPrompt(input: {
   linkedApplicationId: string | null;
   linkConfidence: string | null;
   deviceIgnored: boolean;
-  cookieHeader?: string | null;
 }): Promise<IdentifyPromptPayload | null> {
   if (input.deviceIgnored) return null;
   if (!isPublicResumePath(input.path)) return null;
@@ -138,35 +137,16 @@ export async function buildIdentifyPrompt(input: {
   }));
 
   const existing = await getVisitorIdentification(deviceId);
-  const cookieDone = hasIdentifyDoneCookie(input.cookieHeader);
 
-  if (existing || cookieDone) {
-    let known: IdentifyKnownIdentity | null = existing
-      ? knownIdentityFromRow(existing, positions)
-      : null;
-
-    if (!known) {
-      const linked =
-        input.linkedApplicationId &&
-        (input.linkConfidence === "suggested" || input.linkConfidence === "confirmed")
-          ? positions.find((p) => p.id === input.linkedApplicationId) ?? null
-          : null;
-      known = {
-        applicationId: linked?.id ?? null,
-        company: linked?.company ?? "",
-        title: linked?.title ?? "",
-        freeText: "",
-        contactName: "",
-        label: linked ? `${linked.company} — ${linked.title}` : "a return visitor",
-      };
-    }
+  if (existing) {
+    const known = knownIdentityFromRow(existing, positions);
 
     return {
       show: true,
       mode: "welcome",
       visitId: input.visitId,
       suggested: known.applicationId
-        ? positions.find((p) => p.id === known!.applicationId) ?? null
+        ? positions.find((p) => p.id === known.applicationId) ?? null
         : null,
       known,
       positions,
