@@ -173,19 +173,8 @@ body {
 }
 
 @media print {
-  header,
-  nav,
-  .hero-orb,
-  .hero-orb-warm {
+  .no-print {
     display: none !important;
-  }
-
-  html,
-  body {
-    background: #071018 !important;
-    color: #eef4f8 !important;
-    -webkit-print-color-adjust: exact !important;
-    print-color-adjust: exact !important;
   }
 
   * {
@@ -194,11 +183,83 @@ body {
   }
 
   a {
-    color: inherit !important;
     text-decoration: none !important;
   }
 
-  section {
+  /*
+   * Dark PDF: same ink palette / gradients / imagery as the live site.
+   * Only strip interactive chrome (nav + Save PDF). Pagination will still
+   * differ from continuous scroll — browsers always do that.
+   */
+  html,
+  html[data-print-mode="dark"],
+  body {
+    background: #071018 !important;
+    color: #eef4f8 !important;
+  }
+
+  html[data-print-mode="dark"] header,
+  html:not([data-print-mode="light"]) header,
+  html[data-print-mode="dark"] nav,
+  html:not([data-print-mode="light"]) nav {
+    display: none !important;
+  }
+
+  html[data-print-mode="dark"] a,
+  html:not([data-print-mode="light"]) a {
+    color: inherit !important;
+  }
+
+  /* Print-friendly: white paper, readable ink, calmer layout */
+  html[data-print-mode="light"] {
+    --ink: #ffffff;
+    --panel: #f2f4f6;
+    --cream: #0c1218;
+    --muted: #4d5963;
+    --accent: #0f766e;
+    --warm: #b45309;
+    --background: #ffffff;
+    --foreground: #0c1218;
+  }
+
+  html[data-print-mode="light"],
+  html[data-print-mode="light"] body {
+    background: #ffffff !important;
+    color: #0c1218 !important;
+  }
+
+  html[data-print-mode="light"] header,
+  html[data-print-mode="light"] nav,
+  html[data-print-mode="light"] .hero-orb,
+  html[data-print-mode="light"] .hero-orb-warm {
+    display: none !important;
+  }
+
+  html[data-print-mode="light"] .hero-plane,
+  html[data-print-mode="light"] .hero-vignette,
+  html[data-print-mode="light"] .contact-glow {
+    background: none !important;
+  }
+
+  html[data-print-mode="light"] #top {
+    min-height: auto !important;
+    padding-top: 1.25rem !important;
+    padding-bottom: 1rem !important;
+  }
+
+  html[data-print-mode="light"] section {
     break-inside: avoid;
+  }
+
+  html[data-print-mode="light"] .border-white\/10,
+  html[data-print-mode="light"] .border-white\/12,
+  html[data-print-mode="light"] .border-white\/15,
+  html[data-print-mode="light"] .border-white\/20,
+  html[data-print-mode="light"] .border-white\/25 {
+    border-color: rgb(12 18 24 / 0.14) !important;
+  }
+
+  html[data-print-mode="light"] a {
+    color: #0f766e !important;
   }
 }

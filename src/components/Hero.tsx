@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { motion, useReducedMotion } from "motion/react";
 import { useResume } from "@/components/resume/ResumeProvider";
+import { PrintResumeMenu } from "@/components/PrintResume";
 
 export function Hero() {
   const reduce = useReducedMotion();
@@ -85,6 +86,7 @@ export function Hero() {
             >
               LinkedIn
             </a>
+            <PrintResumeMenu />
           </motion.div>
         </div>
 

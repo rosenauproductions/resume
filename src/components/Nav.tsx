@@ -7,6 +7,7 @@ import {
   RESUME_SECTION_LABELS,
   type ResumeSectionId,
 } from "@/lib/resume/types";
+import { PrintResumeMenu } from "@/components/PrintResume";
 
 const NAV_HREF: Partial<Record<ResumeSectionId, string>> = {
   about: "#about",
@@ -88,9 +89,10 @@ export function Nav() {
         </ul>
 
         <div className="flex items-center gap-3">
+          <PrintResumeMenu compact className="hidden sm:block" />
           <a
             href="#contact"
-            className="hidden rounded-full border border-[var(--accent)]/40 px-4 py-2 text-sm text-[var(--accent)] transition-colors hover:bg-[var(--accent)] hover:text-[var(--ink)] sm:inline-flex"
+            className="hidden rounded-full border border-[var(--accent)]/40 px-4 py-2 text-sm text-[var(--accent)] transition-colors hover:bg-[var(--accent)] hover:text-[var(--ink)] md:inline-flex"
             onClick={() => setOpen(false)}
           >
             Let’s talk
@@ -141,6 +143,9 @@ export function Nav() {
                 >
                   Let’s talk
                 </a>
+              </li>
+              <li className="pt-2">
+                <PrintResumeMenu />
               </li>
             </ul>
           </motion.div>
