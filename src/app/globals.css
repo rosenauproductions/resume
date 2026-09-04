@@ -239,12 +239,42 @@ body {
     color: inherit !important;
   }
 
+  /*
+   * Dark PDF: widen content past max-w-6xl / px-6 so copy sits near the page edge.
+   * Keep a thin inset so type doesn’t kiss the trim.
+   */
+  html[data-print-mode="dark"] main [class*="max-w-6xl"],
+  html:not([data-print-mode="light"]) main [class*="max-w-6xl"],
+  html[data-print-mode="dark"] main [class*="max-w-xl"],
+  html:not([data-print-mode="light"]) main [class*="max-w-xl"],
+  html[data-print-mode="dark"] main [class*="max-w-lg"],
+  html:not([data-print-mode="light"]) main [class*="max-w-lg"],
+  html[data-print-mode="dark"] main [class*="max-w-3xl"],
+  html:not([data-print-mode="light"]) main [class*="max-w-3xl"],
+  html[data-print-mode="dark"] main [class*="max-w-2xl"],
+  html:not([data-print-mode="light"]) main [class*="max-w-2xl"] {
+    max-width: none !important;
+    width: 100% !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+  }
+
+  html[data-print-mode="dark"] main [class*="px-5"],
+  html:not([data-print-mode="light"]) main [class*="px-5"],
+  html[data-print-mode="dark"] main [class*="px-6"],
+  html:not([data-print-mode="light"]) main [class*="px-6"],
+  html[data-print-mode="dark"] main [class*="sm:px-6"],
+  html:not([data-print-mode="light"]) main [class*="sm:px-6"] {
+    padding-left: 0.28in !important;
+    padding-right: 0.28in !important;
+  }
+
   /* Dark print: keep hero portrait large and beside the name (not a tiny bottom stamp) */
   html[data-print-mode="dark"] #top,
   html:not([data-print-mode="light"]) #top {
     min-height: auto !important;
-    padding-top: 0.5rem !important;
-    padding-bottom: 0.35rem !important;
+    padding-top: 0.35rem !important;
+    padding-bottom: 0.25rem !important;
   }
 
   html[data-print-mode="dark"] #top .grid,
