@@ -4,6 +4,7 @@ import { listApplications } from "@/lib/db/applications";
 import {
   addIgnoredDevice,
   deleteVisit,
+  deleteVisits,
   getVisit,
   linkVisit,
   listVisits,
@@ -99,19 +100,52 @@ export async function DELETE(request: Request) {
   }
 
   const { searchParams } = new URL(request.url);
-  const id = (searchParams.get("id") || "").trim();
-  if (!id) {
-    return NextResponse.json({ error: "Expected id query param" }, { status: 400 });
+  const ids: string[] = [];
+  const single = (searchParams.get("id") || "").trim();
+  const multi = (searchParams.get("ids") || "").trim();
+  if (single) ids.push(single);
+  if (multi) {
+    for (const part of multi.split(",")) {
+      const id = part.trim();
+      if (id) ids.push(id);
+    }
+  }
+  if (!ids.length) {
+    try {
+      const body = (await request.json()) as { ids?: unknown; id?: unknown };
+      if (typeof body.id === "string" && body.id.trim()) ids.push(body.id.trim());
+      if (Array.isArray(body.ids)) {
+        for (const raw of body.ids) {
+          if (typeof raw === "string" && raw.trim()) ids.push(raw.trim());
+        }
+      }
+    } catch {
+      // no body
+    }
   }
 
-  const existing = await getVisit(id);
-  if (!existing) {
-    return NextResponse.json({ error: "Visit not found" }, { status: 404 });
+  const unique = [...new Set(ids)];
+  if (!unique.length) {
+    return NextResponse.json({ error: "Expected id, ids, or JSON { ids: [] }" }, { status: 400 });
   }
 
-  const ok = await deleteVisit(id);
-  if (!ok) {
-    return NextResponse.json({ error: "Delete failed" }, { status: 500 });
+  if (unique.length === 1) {
+    const existing = await getVisit(unique[0]);
+    if (!existing) {
+      return NextResponse.json({ error: "Visit not found" }, { status: 404 });
+    }
+    const ok = await deleteVisit(unique[0]);
+    if (!ok) {
+      return NextResponse.json({ error: "Delete failed" }, { status: 500 });
+    }
+    return NextResponse.json({ ok: true, deletedIds: [unique[0]] });
   }
-  return NextResponse.json({ ok: true, deletedId: id });
+
+  const deletedIds = await deleteVisits(unique);
+  return NextResponse.json({
+    ok: true,
+    deletedIds,
+    requested: unique.length,
+    deleted: deletedIds.length,
+  });
 }

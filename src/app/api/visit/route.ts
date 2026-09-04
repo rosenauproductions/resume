@@ -107,6 +107,20 @@ export async function POST(req: NextRequest) {
 
   const title = titleForPath(path);
 
+  // Ignored devices: no ntfy/Discord and no visit DB / identify tracking
+  if (deviceIgnored) {
+    return NextResponse.json({
+      ok: true,
+      stored: false,
+      visitId: null,
+      linkConfidence: null,
+      notified: false,
+      skippedNotify: "device_ignore",
+      skippedTracking: true,
+      identify: null,
+    });
+  }
+
   let visitId: string | null = null;
   let linkConfidence: string | null = null;
   let linkedApplicationId: string | null = null;
@@ -126,7 +140,7 @@ export async function POST(req: NextRequest) {
         language: payload.language || "",
         screen: payload.screen || "",
         sessionFingerprint: fingerprint,
-        deviceIgnored,
+        deviceIgnored: false,
       });
       visitId = visit.id;
       linkConfidence = visit.linkConfidence;
@@ -146,25 +160,12 @@ export async function POST(req: NextRequest) {
           visitId,
           linkedApplicationId,
           linkConfidence,
-          deviceIgnored,
+          deviceIgnored: false,
         });
       } catch (error) {
         console.error("identify prompt build failed", error);
       }
     }
-  }
-
-  // Never ntfy/Discord for ignored home devices (still stored above as ignored)
-  if (deviceIgnored) {
-    return NextResponse.json({
-      ok: true,
-      stored: Boolean(visitId),
-      visitId,
-      linkConfidence,
-      notified: false,
-      skippedNotify: "device_ignore",
-      identify,
-    });
   }
 
   // Never ntfy/Discord for your own pipeline sessions

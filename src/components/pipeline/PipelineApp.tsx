@@ -70,10 +70,16 @@ type VisitVisitorGroup = {
   key: string;
   fingerprint: string;
   device: string;
+  /** Primary label for the row / drawer title */
   locationLabel: string;
+  /** Distinct cities in this group (most common first) */
+  locations: string[];
   visits: VisitRow[];
   latest: VisitRow;
 };
+
+/** Fingerprints that are not a real browser device (imports / seeds). */
+const SHARED_VISIT_FINGERPRINTS = new Set(["ntfy-import"]);
 
 function formatVisitCt(iso: string, style: "full" | "short" = "full") {
   const t = Date.parse(iso);
@@ -98,7 +104,12 @@ function buildVisitGroups(visits: VisitRow[]): VisitVisitorGroup[] {
   const map = new Map<string, VisitRow[]>();
   for (const v of visits) {
     const fp = (v.sessionFingerprint || "").trim();
-    const key = fp || `solo:${v.id}`;
+    // Shared import fingerprints are many people — group by location, not as one visitor
+    const key = !fp
+      ? `solo:${v.id}`
+      : SHARED_VISIT_FINGERPRINTS.has(fp)
+        ? `shared:${fp}:${v.locationLabel || "unknown"}`
+        : fp;
     const list = map.get(key) ?? [];
     list.push(v);
     map.set(key, list);
@@ -112,22 +123,24 @@ function buildVisitGroups(visits: VisitRow[]): VisitVisitorGroup[] {
     const latest = visitsSorted[0];
     const locCounts = new Map<string, number>();
     for (const v of visitsSorted) {
-      const label = v.locationLabel || "Unknown";
+      const label = (v.locationLabel || "Unknown").trim() || "Unknown";
       locCounts.set(label, (locCounts.get(label) ?? 0) + 1);
     }
-    let locationLabel = latest.locationLabel || "Unknown";
-    let best = 0;
-    for (const [label, n] of locCounts) {
-      if (n > best) {
-        best = n;
-        locationLabel = label;
-      }
-    }
+    const locations = [...locCounts.entries()]
+      .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+      .map(([label]) => label);
+    const primary = locations[0] || latest.locationLabel || "Unknown";
+    const locationLabel =
+      locations.length <= 1
+        ? primary
+        : `${latest.locationLabel || primary} · ${locations.length} locations`;
+
     groups.push({
       key,
       fingerprint: (latest.sessionFingerprint || "").trim(),
       device: latest.device || "Unknown",
       locationLabel,
+      locations,
       visits: visitsSorted,
       latest,
     });
@@ -268,6 +281,7 @@ export function PipelineApp({
   const [visitsLoading, setVisitsLoading] = useState(false);
   const [groupVisitsByVisitor, setGroupVisitsByVisitor] = useState(false);
   const [visitTimelineGroup, setVisitTimelineGroup] = useState<VisitVisitorGroup | null>(null);
+  const [selectedVisitIds, setSelectedVisitIds] = useState<string[]>([]);
   const [thisDeviceId, setThisDeviceId] = useState("");
   const [visitorIdentifyEnabled, setVisitorIdentifyEnabled] = useState(false);
   const [skillsSectionEnabled, setSkillsSectionEnabled] = useState(false);
@@ -952,13 +966,35 @@ export function PipelineApp({
       setNotice(
         data.ignoredDevice?.created === false
           ? "Device already on ignore list"
-          : "Device added to ignore list — future visits skip ntfy/Discord",
+          : "Device ignored — future visits skip ntfy/Discord and visit tracking",
       );
       void refreshVisits();
       setTimeout(() => setNotice(""), 3500);
     } else {
       setNotice(data.error || "Ignore device failed");
     }
+  }
+
+  function toggleVisitSelected(id: string) {
+    setSelectedVisitIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+    );
+  }
+
+  function toggleVisitGroupSelected(ids: string[]) {
+    setSelectedVisitIds((prev) => {
+      const allOn = ids.length > 0 && ids.every((x) => prev.includes(x));
+      if (allOn) return prev.filter((x) => !ids.includes(x));
+      return [...new Set([...prev, ...ids])];
+    });
+  }
+
+  function selectAllVisits() {
+    setSelectedVisitIds(visits.map((v) => v.id));
+  }
+
+  function clearVisitSelection() {
+    setSelectedVisitIds([]);
   }
 
   async function handleDeleteVisit(visitId: string) {
@@ -969,7 +1005,36 @@ export function PipelineApp({
     const data = await res.json().catch(() => ({}));
     if (res.ok) {
       setVisits((prev) => prev.filter((v) => v.id !== visitId));
+      setSelectedVisitIds((prev) => prev.filter((id) => id !== visitId));
       setNotice("Visit deleted");
+      setTimeout(() => setNotice(""), 2500);
+    } else {
+      setNotice(data.error || "Delete failed");
+    }
+  }
+
+  async function handleDeleteSelectedVisits() {
+    const ids = [...selectedVisitIds];
+    if (!ids.length) return;
+    if (
+      !window.confirm(
+        `Permanently delete ${ids.length} visit${ids.length === 1 ? "" : "s"} from the database?`,
+      )
+    ) {
+      return;
+    }
+    const res = await fetch("/api/pipeline/visits", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ids }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (res.ok) {
+      const deleted: string[] = Array.isArray(data.deletedIds) ? data.deletedIds : ids;
+      const gone = new Set(deleted);
+      setVisits((prev) => prev.filter((v) => !gone.has(v.id)));
+      setSelectedVisitIds([]);
+      setNotice(`Deleted ${deleted.length} visit${deleted.length === 1 ? "" : "s"}`);
       setTimeout(() => setNotice(""), 2500);
     } else {
       setNotice(data.error || "Delete failed");
@@ -1501,11 +1566,45 @@ export function PipelineApp({
                   </button>
                 </div>
               </div>
+              {visits.length ? (
+                <div className="flex flex-wrap items-center gap-2 rounded-xl border border-white/10 bg-black/20 px-3 py-2">
+                  <button
+                    type="button"
+                    onClick={selectAllVisits}
+                    className="rounded-lg border border-white/15 px-3 py-1.5 text-xs hover:border-[var(--accent)]"
+                  >
+                    Select all ({visits.length})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={clearVisitSelection}
+                    disabled={!selectedVisitIds.length}
+                    className="rounded-lg border border-white/15 px-3 py-1.5 text-xs hover:border-[var(--accent)] disabled:opacity-40"
+                  >
+                    Clear
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void handleDeleteSelectedVisits()}
+                    disabled={!selectedVisitIds.length}
+                    className="rounded-lg border border-red-400/40 px-3 py-1.5 text-xs text-red-300 hover:border-red-400/70 disabled:opacity-40"
+                  >
+                    Delete selected{selectedVisitIds.length ? ` (${selectedVisitIds.length})` : ""}
+                  </button>
+                  {selectedVisitIds.length ? (
+                    <span className="text-xs text-[var(--muted)]">
+                      {selectedVisitIds.length} selected
+                    </span>
+                  ) : (
+                    <span className="text-xs text-[var(--muted)]">Multi-select rows to bulk delete</span>
+                  )}
+                </div>
+              ) : null}
               {thisDeviceId ? (
                 <div className="rounded-xl border border-white/10 bg-black/20 px-4 py-3">
                   <p className="text-xs text-[var(--muted)]">
                     This browser&apos;s device ID (not a MAC — browsers can&apos;t expose those). Ignore it
-                    here to skip ntfy/Discord without redeploying (also works via{" "}
+                    here to skip ntfy/Discord and visit tracking without redeploying (also works via{" "}
                     <code className="text-[var(--cream)]">VISIT_IGNORE_DEVICE_IDS</code>).
                   </p>
                   <div className="mt-2 flex flex-wrap items-center gap-2">
@@ -1545,13 +1644,26 @@ export function PipelineApp({
                     const shown = times.slice(0, 6);
                     const more = times.length - shown.length;
                     const v = g.latest;
+                    const groupIds = g.visits.map((x) => x.id);
+                    const groupSelected =
+                      groupIds.length > 0 && groupIds.every((id) => selectedVisitIds.includes(id));
                     return (
                       <li key={g.key} className="flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-start sm:justify-between">
-                        <button
-                          type="button"
-                          onClick={() => setVisitTimelineGroup(g)}
-                          className="min-w-0 flex-1 space-y-1 rounded-lg text-left hover:bg-white/[0.03]"
-                        >
+                        <div className="flex min-w-0 flex-1 gap-3">
+                          <label className="mt-1 flex shrink-0 items-start">
+                            <input
+                              type="checkbox"
+                              checked={groupSelected}
+                              onChange={() => toggleVisitGroupSelected(groupIds)}
+                              className="h-4 w-4 accent-[var(--accent)]"
+                              aria-label={`Select ${g.visits.length} visits from ${g.locationLabel}`}
+                            />
+                          </label>
+                          <button
+                            type="button"
+                            onClick={() => setVisitTimelineGroup(g)}
+                            className="min-w-0 flex-1 space-y-1 rounded-lg text-left hover:bg-white/[0.03]"
+                          >
                           <p className="font-[family-name:var(--font-display)] text-[var(--cream)]">
                             {g.locationLabel}
                             <span className="ml-2 text-sm font-sans text-[var(--accent)]">
@@ -1575,7 +1687,8 @@ export function PipelineApp({
                             ) : null}
                           </p>
                           <p className="text-[11px] text-[var(--accent)]/90">Click for visit timeline →</p>
-                        </button>
+                          </button>
+                        </div>
                         <div
                           className="flex shrink-0 flex-wrap items-center gap-2"
                           onClick={(e) => e.stopPropagation()}
@@ -1617,7 +1730,17 @@ export function PipelineApp({
                 <ul className="divide-y divide-white/10 rounded-xl border border-white/10">
                   {visits.map((v) => (
                     <li key={v.id} className="flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-start sm:justify-between">
-                      <div className="min-w-0 space-y-1">
+                      <div className="flex min-w-0 flex-1 gap-3">
+                        <label className="mt-1 flex shrink-0 items-start">
+                          <input
+                            type="checkbox"
+                            checked={selectedVisitIds.includes(v.id)}
+                            onChange={() => toggleVisitSelected(v.id)}
+                            className="h-4 w-4 accent-[var(--accent)]"
+                            aria-label={`Select visit ${v.locationLabel}`}
+                          />
+                        </label>
+                        <div className="min-w-0 space-y-1">
                         <p className="font-[family-name:var(--font-display)] text-[var(--cream)]">
                           {v.locationLabel}
                         </p>
@@ -1636,6 +1759,7 @@ export function PipelineApp({
                         ) : (
                           <p className="text-xs text-[var(--muted)]">No auto-match</p>
                         )}
+                        </div>
                       </div>
                       <div className="flex shrink-0 flex-wrap items-center gap-2">
                         {v.linkConfidence === "suggested" && v.linkedApplicationId ? (
@@ -1852,10 +1976,18 @@ export function PipelineApp({
               label="Visitor"
               value={
                 visitTimelineGroup.fingerprint
-                  ? visitTimelineGroup.fingerprint
+                  ? SHARED_VISIT_FINGERPRINTS.has(visitTimelineGroup.fingerprint)
+                    ? `${visitTimelineGroup.fingerprint} (shared import id — grouped by city)`
+                    : visitTimelineGroup.fingerprint
                   : "No fingerprint (single visit)"
               }
             />
+            {visitTimelineGroup.locations.length > 1 ? (
+              <MetaRow
+                label="Locations"
+                value={visitTimelineGroup.locations.join(" · ")}
+              />
+            ) : null}
             <VisitTimelineChart
               title="Click timeline"
               subtitle="Each point is a resume visit from this visitor (Central Time)."

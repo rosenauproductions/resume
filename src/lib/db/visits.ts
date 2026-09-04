@@ -1,4 +1,4 @@
-import { desc, eq } from "drizzle-orm";
+import { desc, eq, inArray } from "drizzle-orm";
 import { getDb } from "./index";
 import { ignoredDevices, visits, type VisitRow } from "./schema";
 import { appendApplicationNote, listOpenApplicationsForAssociation } from "./applications";
@@ -56,9 +56,20 @@ export async function addIgnoredDevice(
 
 /** Permanently delete a visit row. */
 export async function deleteVisit(id: string): Promise<boolean> {
-  const db = getDb();
-  const deleted = await db.delete(visits).where(eq(visits.id, id)).returning({ id: visits.id });
+  const deleted = await deleteVisits([id]);
   return deleted.length > 0;
+}
+
+/** Permanently delete many visit rows. Returns deleted ids. */
+export async function deleteVisits(ids: string[]): Promise<string[]> {
+  const unique = [...new Set(ids.map((s) => s.trim()).filter(Boolean))];
+  if (!unique.length) return [];
+  const db = getDb();
+  const deleted = await db
+    .delete(visits)
+    .where(inArray(visits.id, unique))
+    .returning({ id: visits.id });
+  return deleted.map((r) => r.id);
 }
 
 export type LinkConfidence = "none" | "suggested" | "confirmed" | "ignored";
@@ -178,7 +189,7 @@ export type NewVisitInput = {
   language: string;
   screen: string;
   sessionFingerprint: string;
-  /** When true: store visit as ignored (no job association). Caller skips ntfy. */
+  /** When true: skip job association (legacy). Ignored devices no longer call recordVisit. */
   deviceIgnored?: boolean;
 };
 
