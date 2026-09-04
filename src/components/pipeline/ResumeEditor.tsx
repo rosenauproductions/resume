@@ -671,16 +671,27 @@ function FitEditor({
         <Text label="Heading" value={roleFit.heading} onChange={(v) => onChange({ ...roleFit, heading: v })} />
         <Text label="Note" value={roleFit.note} onChange={(v) => onChange({ ...roleFit, note: v })} />
       </div>
+      <p className="text-xs text-[var(--muted)]">
+        Fit buttons appear in this order on the public resume. Rename with Button name; reorder with ↑ ↓.
+      </p>
       {roleFit.needs.map((need, i) => (
         <NestedCard
           key={need.id}
-          title={`Need ${i + 1}`}
+          title={need.label.trim() ? need.label : `Fit button ${i + 1}`}
           enabled={need.enabled}
           onEnabled={(enabled) => patchNeed(i, { enabled })}
           onRemove={() => onChange({ ...roleFit, needs: roleFit.needs.filter((_, j) => j !== i) })}
+          onUp={() => onChange({ ...roleFit, needs: moveItem(roleFit.needs, i, -1) })}
+          onDown={() => onChange({ ...roleFit, needs: moveItem(roleFit.needs, i, 1) })}
+          canUp={i > 0}
+          canDown={i < roleFit.needs.length - 1}
         >
           <div className="grid gap-3 sm:grid-cols-2">
-            <Text label="Label" value={need.label} onChange={(v) => patchNeed(i, { label: v })} />
+            <Text
+              label="Button name"
+              value={need.label}
+              onChange={(v) => patchNeed(i, { label: v })}
+            />
             <Text label="Strength" value={need.strength} onChange={(v) => patchNeed(i, { strength: v })} />
             <div className="sm:col-span-2">
               <TextArea label="Summary" value={need.summary} onChange={(v) => patchNeed(i, { summary: v })} />
@@ -791,7 +802,7 @@ function FitEditor({
           })
         }
       >
-        Add need
+        Add fit button
       </button>
     </div>
   );
