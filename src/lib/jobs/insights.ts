@@ -83,7 +83,7 @@ export function computeInsights(jobs: JobApplication[], meta?: TrackerMeta | nul
       ? null
       : Math.round((scored.reduce((s, j) => s + (j.matchScore ?? 0), 0) / scored.length) * 10) / 10;
 
-  const withPay = jobs.filter((j) => j.annualMid != null);
+  const withPay = jobs.filter((j) => j.annualMid != null && j.annualMid > 0);
   const avgAnnualMid =
     withPay.length === 0
       ? null
