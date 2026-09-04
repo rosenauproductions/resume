@@ -27,7 +27,7 @@ import {
 import { computeInsights } from "@/lib/jobs/insights";
 import { loadSeedJobs, loadSeedMeta } from "@/lib/jobs/seed";
 import { getOrCreateDeviceId } from "@/lib/device-id";
-import { BarChart, DonutChart, DismissiblePanel, StatCard, TimelineChart } from "./PipelineCharts";
+import { BarChart, DonutChart, DismissiblePanel, StatCard, TimelineChart, VisitTimelineChart } from "./PipelineCharts";
 import { TargetMap } from "./TargetMap";
 import { ResumeEditor } from "./ResumeEditor";
 import type { PipelineHomePanelId } from "@/lib/pipeline/home-panels";
@@ -58,6 +58,78 @@ type VisitRow = {
 };
 
 type VisitJobOption = { id: string; company: string; title: string; location: string };
+
+type VisitVisitorGroup = {
+  key: string;
+  fingerprint: string;
+  device: string;
+  locationLabel: string;
+  visits: VisitRow[];
+  latest: VisitRow;
+};
+
+function formatVisitCt(iso: string, style: "full" | "short" = "full") {
+  const t = Date.parse(iso);
+  if (!Number.isFinite(t)) return iso;
+  if (style === "short") {
+    return new Date(t).toLocaleString("en-US", {
+      timeZone: "America/Chicago",
+      month: "short",
+      day: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+    });
+  }
+  return new Date(t).toLocaleString("en-US", {
+    timeZone: "America/Chicago",
+    dateStyle: "medium",
+    timeStyle: "short",
+  });
+}
+
+function buildVisitGroups(visits: VisitRow[]): VisitVisitorGroup[] {
+  const map = new Map<string, VisitRow[]>();
+  for (const v of visits) {
+    const fp = (v.sessionFingerprint || "").trim();
+    const key = fp || `solo:${v.id}`;
+    const list = map.get(key) ?? [];
+    list.push(v);
+    map.set(key, list);
+  }
+
+  const groups: VisitVisitorGroup[] = [];
+  for (const [key, list] of map) {
+    const visitsSorted = [...list].sort(
+      (a, b) => Date.parse(b.occurredAt) - Date.parse(a.occurredAt),
+    );
+    const latest = visitsSorted[0];
+    const locCounts = new Map<string, number>();
+    for (const v of visitsSorted) {
+      const label = v.locationLabel || "Unknown";
+      locCounts.set(label, (locCounts.get(label) ?? 0) + 1);
+    }
+    let locationLabel = latest.locationLabel || "Unknown";
+    let best = 0;
+    for (const [label, n] of locCounts) {
+      if (n > best) {
+        best = n;
+        locationLabel = label;
+      }
+    }
+    groups.push({
+      key,
+      fingerprint: (latest.sessionFingerprint || "").trim(),
+      device: latest.device || "Unknown",
+      locationLabel,
+      visits: visitsSorted,
+      latest,
+    });
+  }
+
+  return groups.sort(
+    (a, b) => Date.parse(b.latest.occurredAt) - Date.parse(a.latest.occurredAt),
+  );
+}
 
 const CHATGPT_PROMPT = `Export my job tracker as JSON with separate dates AND location for every job (from the posting only — never invent):
 
@@ -187,6 +259,8 @@ export function PipelineApp({
   const [visits, setVisits] = useState<VisitRow[]>([]);
   const [visitJobs, setVisitJobs] = useState<VisitJobOption[]>([]);
   const [visitsLoading, setVisitsLoading] = useState(false);
+  const [groupVisitsByVisitor, setGroupVisitsByVisitor] = useState(false);
+  const [visitTimelineGroup, setVisitTimelineGroup] = useState<VisitVisitorGroup | null>(null);
   const [thisDeviceId, setThisDeviceId] = useState("");
   const [visitorIdentifyEnabled, setVisitorIdentifyEnabled] = useState(false);
   const [skillsSectionEnabled, setSkillsSectionEnabled] = useState(false);
@@ -214,6 +288,8 @@ export function PipelineApp({
         j.tags.some((t) => t.toLowerCase().includes(q)),
     );
   }, [jobs, filter]);
+
+  const visitGroups = useMemo(() => buildVisitGroups(visits), [visits]);
 
   const persist = useCallback(async (next: JobApplication[], nextMeta: TrackerMeta | null = meta, mode: "replace" | "upsert" = "replace") => {
     setJobs(next);
@@ -1317,13 +1393,24 @@ export function PipelineApp({
                 <p className="text-sm text-[var(--muted)]">
                   Detailed visit log (ntfy still pings your phone). Unique city matches auto-suggest a job — confirm or ignore.
                 </p>
-                <button
-                  type="button"
-                  onClick={() => void refreshVisits()}
-                  className="rounded-lg border border-white/15 px-3 py-1.5 text-sm hover:border-[var(--accent)]"
-                >
-                  {visitsLoading ? "Refreshing…" : "Refresh"}
-                </button>
+                <div className="flex flex-wrap items-center gap-3">
+                  <label className="flex cursor-pointer items-center gap-2 text-sm text-[var(--cream)]">
+                    <input
+                      type="checkbox"
+                      checked={groupVisitsByVisitor}
+                      onChange={(e) => setGroupVisitsByVisitor(e.target.checked)}
+                      className="h-4 w-4 accent-[var(--accent)]"
+                    />
+                    Group same visitor
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => void refreshVisits()}
+                    className="rounded-lg border border-white/15 px-3 py-1.5 text-sm hover:border-[var(--accent)]"
+                  >
+                    {visitsLoading ? "Refreshing…" : "Refresh"}
+                  </button>
+                </div>
               </div>
               {thisDeviceId ? (
                 <div className="rounded-xl border border-white/10 bg-black/20 px-4 py-3">
@@ -1362,6 +1449,81 @@ export function PipelineApp({
                 <p className="rounded-xl border border-white/10 px-4 py-8 text-center text-sm text-[var(--muted)]">
                   No visits stored yet. They appear when someone opens the live resume.
                 </p>
+              ) : groupVisitsByVisitor ? (
+                <ul className="divide-y divide-white/10 rounded-xl border border-white/10">
+                  {visitGroups.map((g) => {
+                    const times = g.visits.map((v) => formatVisitCt(v.occurredAt, "short"));
+                    const shown = times.slice(0, 6);
+                    const more = times.length - shown.length;
+                    const v = g.latest;
+                    return (
+                      <li key={g.key} className="flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-start sm:justify-between">
+                        <button
+                          type="button"
+                          onClick={() => setVisitTimelineGroup(g)}
+                          className="min-w-0 flex-1 space-y-1 rounded-lg text-left hover:bg-white/[0.03]"
+                        >
+                          <p className="font-[family-name:var(--font-display)] text-[var(--cream)]">
+                            {g.locationLabel}
+                            <span className="ml-2 text-sm font-sans text-[var(--accent)]">
+                              {g.visits.length} visit{g.visits.length === 1 ? "" : "s"}
+                            </span>
+                          </p>
+                          <p className="text-xs text-[var(--muted)]">
+                            {g.device}
+                            {g.fingerprint ? ` · ${g.fingerprint.slice(0, 10)}…` : ""}
+                            {" · "}
+                            latest {formatVisitCt(v.occurredAt)} CT
+                          </p>
+                          <p className="flex flex-wrap gap-x-2 gap-y-1 text-xs tabular-nums text-[var(--cream)]/85">
+                            {shown.map((t) => (
+                              <span key={t} className="rounded border border-white/10 px-1.5 py-0.5">
+                                {t}
+                              </span>
+                            ))}
+                            {more > 0 ? (
+                              <span className="text-[var(--muted)]">+{more} more</span>
+                            ) : null}
+                          </p>
+                          <p className="text-[11px] text-[var(--accent)]/90">Click for visit timeline →</p>
+                        </button>
+                        <div
+                          className="flex shrink-0 flex-wrap items-center gap-2"
+                          onClick={(e) => e.stopPropagation()}
+                          onKeyDown={(e) => e.stopPropagation()}
+                        >
+                          {v.linkConfidence === "suggested" && v.linkedApplicationId ? (
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => void handleVisitAction(v.id, "confirm")}
+                                className="rounded-lg bg-[var(--accent)] px-3 py-1.5 text-xs font-semibold text-[var(--ink)]"
+                              >
+                                Confirm
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => void handleVisitAction(v.id, "ignore")}
+                                className="rounded-lg border border-white/15 px-3 py-1.5 text-xs"
+                              >
+                                Ignore
+                              </button>
+                            </>
+                          ) : null}
+                          {g.fingerprint ? (
+                            <button
+                              type="button"
+                              onClick={() => void handleIgnoreDevice(g.fingerprint, v.id)}
+                              className="rounded-lg border border-white/15 px-3 py-1.5 text-xs hover:border-[var(--accent)]"
+                            >
+                              Ignore device
+                            </button>
+                          ) : null}
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
               ) : (
                 <ul className="divide-y divide-white/10 rounded-xl border border-white/10">
                   {visits.map((v) => (
@@ -1371,12 +1533,7 @@ export function PipelineApp({
                           {v.locationLabel}
                         </p>
                         <p className="text-xs text-[var(--muted)]">
-                          {new Date(v.occurredAt).toLocaleString("en-US", {
-                            timeZone: "America/Chicago",
-                            dateStyle: "medium",
-                            timeStyle: "short",
-                          })}{" "}
-                          CT · {v.device || "Unknown"} · {v.path}
+                          {formatVisitCt(v.occurredAt)} CT · {v.device || "Unknown"} · {v.path}
                         </p>
                         {v.linkConfidence === "suggested" || v.linkConfidence === "confirmed" ? (
                           <p className="text-sm text-[var(--accent)]">
@@ -1580,6 +1737,35 @@ export function PipelineApp({
                 Delete
               </button>
             </div>
+          </div>
+        </Drawer>
+      ) : null}
+
+      {visitTimelineGroup ? (
+        <Drawer
+          onClose={() => setVisitTimelineGroup(null)}
+          title={`${visitTimelineGroup.locationLabel} · ${visitTimelineGroup.visits.length} visit${visitTimelineGroup.visits.length === 1 ? "" : "s"}`}
+        >
+          <div className="space-y-4 text-sm">
+            <MetaRow label="Device" value={visitTimelineGroup.device} />
+            <MetaRow
+              label="Visitor"
+              value={
+                visitTimelineGroup.fingerprint
+                  ? visitTimelineGroup.fingerprint
+                  : "No fingerprint (single visit)"
+              }
+            />
+            <VisitTimelineChart
+              title="Click timeline"
+              subtitle="Each point is a resume visit from this visitor (Central Time)."
+              points={visitTimelineGroup.visits.map((v) => ({
+                id: v.id,
+                occurredAt: v.occurredAt,
+                path: v.path,
+                locationLabel: v.locationLabel,
+              }))}
+            />
           </div>
         </Drawer>
       ) : null}

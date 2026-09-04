@@ -219,38 +219,57 @@ body {
     color: inherit !important;
   }
 
-  /* Dark print: don’t let the full-viewport hero dominate the first page */
+  /* Dark print: keep hero portrait large and beside the name (not a tiny bottom stamp) */
   html[data-print-mode="dark"] #top,
   html:not([data-print-mode="light"]) #top {
     min-height: auto !important;
-    padding-top: 0.75rem !important;
-    padding-bottom: 0.5rem !important;
+    padding-top: 0.5rem !important;
+    padding-bottom: 0.35rem !important;
   }
 
   html[data-print-mode="dark"] #top .grid,
   html:not([data-print-mode="light"]) #top .grid {
-    align-items: end !important;
+    display: grid !important;
+    grid-template-columns: minmax(0, 1.15fr) minmax(12rem, 0.85fr) !important;
+    align-items: center !important;
+    gap: 0.75rem !important;
+  }
+
+  html[data-print-mode="dark"] #top .grid > :first-child,
+  html:not([data-print-mode="light"]) #top .grid > :first-child {
+    grid-column: 1 !important;
   }
 
   html[data-print-mode="dark"] #top .hero-portrait,
   html:not([data-print-mode="light"]) #top .hero-portrait {
-    max-width: 11.5rem !important;
-    margin-left: auto !important;
-    margin-right: 0 !important;
+    grid-column: 2 !important;
+    width: 100% !important;
+    max-width: 18rem !important;
+    margin: 0 0 0 auto !important;
     justify-self: end !important;
+    align-self: center !important;
   }
 
   html[data-print-mode="dark"] #top .hero-portrait-frame,
   html:not([data-print-mode="light"]) #top .hero-portrait-frame {
     min-height: 0 !important;
-    max-height: 11.5rem !important;
-    width: 11.5rem !important;
-    aspect-ratio: 1 / 1 !important;
+    width: 100% !important;
+    max-width: 18rem !important;
+    height: 21rem !important;
+    max-height: 21rem !important;
+    aspect-ratio: auto !important;
   }
 
   html[data-print-mode="dark"] #top .hero-portrait img,
   html:not([data-print-mode="light"]) #top .hero-portrait img {
-    object-position: right bottom !important;
+    object-fit: contain !important;
+    object-position: right center !important;
+  }
+
+  html[data-print-mode="dark"] #top h1,
+  html:not([data-print-mode="light"]) #top h1 {
+    font-size: 3.25rem !important;
+    line-height: 0.92 !important;
   }
 
   /* Print viewport is often treated as narrow — keep work cards side-by-side */
