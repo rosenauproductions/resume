@@ -6,6 +6,7 @@ import {
   STATUS_LABELS,
   composeLocation,
   createEmptyJob,
+  isPureWorkArrangementLabel,
   parseTrackerPayload,
   normalizeJob,
   normalizeWorkType,
@@ -473,6 +474,10 @@ export function PipelineApp() {
     const rate =
       ingestDraft.rate.trim() ||
       formatRateLabel(ingestDraft.salaryMin, ingestDraft.salaryMax, salaryPeriod);
+    const employmentRaw = ingestDraft.employmentType.trim();
+    const employmentType = isPureWorkArrangementLabel(employmentRaw)
+      ? ""
+      : employmentRaw;
     const nextJob = createEmptyJob({
       company: ingestDraft.company.trim(),
       title: ingestDraft.title.trim(),
@@ -489,7 +494,7 @@ export function PipelineApp() {
         ingestDraft.salaryMax,
         salaryPeriod,
       ),
-      employmentType: ingestDraft.employmentType.trim(),
+      employmentType,
       source: ingestDraft.source.trim(),
       status: ingestStatus,
       dateApplied: ingestDraft.dateApplied || "",
@@ -1657,7 +1662,11 @@ function IngestReviewForm({
           <span className="text-[10px] uppercase tracking-[0.2em] text-[var(--muted)]">Work arrangement</span>
           <select
             value={draft.workType}
-            onChange={(e) => onField("workType", e.target.value as WorkType)}
+            onChange={(e) => {
+              const next = e.target.value as WorkType;
+              onField("workType", next);
+              onField("location", stripWorkArrangement(draft.location) || draft.location);
+            }}
             className={field}
           >
             <option value="">Unknown</option>
@@ -1835,13 +1844,18 @@ function JobForm({
   const field =
     "mt-1.5 w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2.5 outline-none focus:border-[var(--accent)]";
   const workType = (normalizeWorkType(job.location) ||
-    normalizeWorkType(job.employmentType) ||
+    (isPureWorkArrangementLabel(job.employmentType)
+      ? normalizeWorkType(job.employmentType)
+      : "") ||
     "") as WorkType;
 
   function setWorkType(next: WorkType) {
     const place = stripWorkArrangement(job.location);
     const location = composeLocation({ location: place, workType: next }) || place;
-    onChange({ ...job, location });
+    const employmentType = isPureWorkArrangementLabel(job.employmentType)
+      ? ""
+      : job.employmentType;
+    onChange({ ...job, location, employmentType });
   }
 
   return (
@@ -1932,8 +1946,13 @@ function JobForm({
           <input value={job.rate} onChange={(e) => set("rate", e.target.value)} className={field} />
         </label>
         <label className="block">
-          <span className="text-[10px] uppercase tracking-[0.2em] text-[var(--muted)]">Employment type</span>
-          <input value={job.employmentType} onChange={(e) => set("employmentType", e.target.value)} className={field} />
+          <span className="text-[10px] uppercase tracking-[0.2em] text-[var(--muted)]">Employment / hours</span>
+          <input
+            value={isPureWorkArrangementLabel(job.employmentType) ? "" : job.employmentType}
+            onChange={(e) => set("employmentType", e.target.value)}
+            className={field}
+            placeholder="Full-time · Part-time · Contract · 20 hrs/week"
+          />
         </label>
       </div>
       <label className="block">

@@ -311,17 +311,27 @@ export function normalizeWorkType(raw: unknown): "" | "remote" | "hybrid" | "ons
 /** Strip remote/hybrid/onsite tags so composeLocation can re-apply work arrangement. */
 export function stripWorkArrangement(location: string): string {
   return location
-    .replace(/^\s*Hybrid\s*[·|,/\-]\s*/i, "")
+    .replace(/^\s*(Hybrid|Onsite|On-site|On site)\s*[·|,/\-]\s*/i, "")
     .replace(/\s*\/\s*Remote\s*$/i, "")
     .replace(/\s*[·|,/]\s*(remote|hybrid|on[-\s]?site)\s*$/i, "")
     .replace(/^(Remote|Hybrid|Onsite|On-site|On site)$/i, "")
     .trim();
 }
 
+/** True when employmentType is only a work-arrangement synonym (legacy seed data). */
+export function isPureWorkArrangementLabel(raw: unknown): boolean {
+  const text = String(raw ?? "").trim();
+  if (!text) return false;
+  if (/\b(full[- ]?time|part[- ]?time|contract|1099|intern|temp|hour|week|salary)\b/i.test(text)) {
+    return false;
+  }
+  return Boolean(normalizeWorkType(text));
+}
+
 /**
  * Build a geocode-friendly location string for Target map.
  * Prefers structured city/state/country; falls back to free-text `location`.
- * Never invents — only uses fields present on the record.
+ * Always re-encodes work arrangement (remote / hybrid / onsite) so the form select persists.
  */
 export function composeLocation(fields: {
   location?: unknown;
@@ -330,39 +340,38 @@ export function composeLocation(fields: {
   country?: unknown;
   workType?: unknown;
 }): string {
-  const free = String(fields.location ?? "").trim();
+  const free = stripWorkArrangement(String(fields.location ?? "").trim());
   const city = String(fields.city ?? "").trim();
   const stateRaw = String(fields.state ?? "").trim();
   const country = String(fields.country ?? "").trim();
   const workType = normalizeWorkType(fields.workType);
 
-  if (city) {
-    const state = abbreviateRegion(stateRaw);
-    const place = [city, state].filter(Boolean).join(", ");
+  const withArrangement = (place: string) => {
+    if (!place) {
+      if (workType === "remote") return "Remote";
+      if (workType === "hybrid") return "Hybrid";
+      if (workType === "onsite") return "Onsite";
+      return "";
+    }
     if (workType === "hybrid") return `Hybrid · ${place}`;
     if (workType === "remote") return `${place} / Remote`;
+    if (workType === "onsite") return `Onsite · ${place}`;
     return place;
+  };
+
+  if (city) {
+    const state = abbreviateRegion(stateRaw);
+    return withArrangement([city, state].filter(Boolean).join(", "));
   }
 
-  if (workType === "remote" && !free) return "Remote";
-
-  if (free) {
-    // If free text is pure remote and we also have hybrid/onsite, prefer work type label
-    if (workType === "hybrid" && !/\bhybrid\b/i.test(free)) {
-      return `Hybrid · ${free}`;
-    }
-    return free;
-  }
+  if (free) return withArrangement(free);
 
   if (country && !city) {
     if (workType === "remote") return "Remote";
-    return country;
+    return withArrangement(country);
   }
 
-  if (workType === "remote") return "Remote";
-  if (workType === "hybrid") return "Hybrid";
-  if (workType === "onsite") return "Onsite";
-  return "";
+  return withArrangement("");
 }
 
 function readMinMaxObject(raw: unknown): { min: number | null; max: number | null } {
