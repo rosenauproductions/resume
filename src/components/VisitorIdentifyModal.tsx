@@ -3,14 +3,14 @@
 import { useEffect, useId, useRef, useState } from "react";
 import type { KeyboardEvent } from "react";
 import {
-  hasVisitorIdentifiedClient,
   markVisitorIdentifiedClient,
-  wasIdentifyDismissedThisSession,
+  markVisitorLeadSubmittedClient,
+  markWelcomeDismissedThisSession,
   IDENTIFY_DISMISS_SESSION_KEY,
 } from "@/lib/identify-persistence";
 import type { IdentifyPosition, IdentifyPromptPayload } from "@/lib/visit-identify-types";
 
-type Step = "confirm" | "identify" | "offer" | "lead" | "thanks";
+type Step = "welcome" | "confirm" | "identify" | "offer" | "lead" | "thanks";
 
 const fieldClass =
   "mt-1.5 w-full rounded-xl border border-white/12 bg-black/35 px-3 py-2.5 text-sm text-[var(--cream)] outline-none placeholder:text-[var(--muted)]/70 focus:border-[var(--accent)]";
@@ -37,24 +37,48 @@ function matchPositions(positions: IdentifyPosition[], query: string): IdentifyP
     .map((x) => x.p);
 }
 
+function initialStepFromPrompt(
+  prompt: IdentifyPromptPayload,
+  initialStep?: Step,
+): Step {
+  if (initialStep) return initialStep;
+  if (prompt.mode === "welcome") return "welcome";
+  if (prompt.suggested) return "confirm";
+  return "identify";
+}
+
 export function VisitorIdentifyModal({
   prompt,
   fingerprint,
   onDone,
+  initialStep,
 }: {
   prompt: IdentifyPromptPayload;
   fingerprint: string;
   onDone: () => void;
+  /** Skip straight to a step (e.g. Connect section → lead form). */
+  initialStep?: Step;
 }) {
   const titleId = useId();
   const listboxId = useId();
   const queryRef = useRef<HTMLInputElement>(null);
-  const [step, setStep] = useState<Step>(prompt.suggested ? "confirm" : "identify");
-  const [selectedId, setSelectedId] = useState(prompt.suggested?.id ?? "");
-  const [query, setQuery] = useState(
-    prompt.suggested ? positionLabel(prompt.suggested) : "",
+  const known = prompt.known;
+  const knownPosition = known?.applicationId
+    ? prompt.positions.find((p) => p.id === known.applicationId) ?? null
+    : prompt.suggested;
+  const [step, setStep] = useState<Step>(() => initialStepFromPrompt(prompt, initialStep));
+  const [correcting, setCorrecting] = useState(false);
+  const [selectedId, setSelectedId] = useState(
+    knownPosition?.id ?? prompt.suggested?.id ?? "",
   );
-  const [freeText, setFreeText] = useState("");
+  const [query, setQuery] = useState(
+    knownPosition
+      ? positionLabel(knownPosition)
+      : prompt.suggested
+        ? positionLabel(prompt.suggested)
+        : "",
+  );
+  const [freeText, setFreeText] = useState(known?.freeText ?? "");
   const [hintsOpen, setHintsOpen] = useState(false);
   const [activeHint, setActiveHint] = useState(0);
   const [busy, setBusy] = useState(false);
@@ -107,18 +131,24 @@ export function VisitorIdentifyModal({
           lead: opts.lead ?? null,
         }),
       });
-      const data = await res.json().catch(() => ({}));
+      const data = (await res.json().catch(() => ({}))) as {
+        error?: string;
+        createdLead?: boolean;
+      };
       if (!res.ok) {
         setError(data.error || "Could not save — try again");
         setBusy(false);
         return false;
       }
-      if (opts.nextStep === "done" || !opts.nextStep) {
+      if (data.createdLead) {
+        markVisitorLeadSubmittedClient();
+      } else {
         markVisitorIdentifiedClient();
+      }
+      markWelcomeDismissedThisSession();
+      if (opts.nextStep === "done" || !opts.nextStep) {
         onDone();
       } else {
-        // Soft note / offer path — still counts as identified so we don't re-ask
-        markVisitorIdentifiedClient();
         setStep(opts.nextStep);
         setBusy(false);
       }
@@ -136,16 +166,62 @@ export function VisitorIdentifyModal({
     } catch {
       // ignore
     }
+    markWelcomeDismissedThisSession();
     onDone();
+  }
+
+  function acceptWelcome() {
+    markVisitorIdentifiedClient();
+    markWelcomeDismissedThisSession();
+    onDone();
+  }
+
+  function startCorrection() {
+    setCorrecting(true);
+    setStep("identify");
+    if (knownPosition) {
+      setSelectedId(knownPosition.id);
+      setQuery(positionLabel(knownPosition));
+    } else {
+      setSelectedId("");
+      setQuery("");
+    }
+    setFreeText(known?.freeText ?? "");
+    setHintsOpen(false);
+    requestAnimationFrame(() => queryRef.current?.focus());
   }
 
   async function finishWithoutLead() {
     // Identification already saved when entering offer; just close.
     markVisitorIdentifiedClient();
+    markWelcomeDismissedThisSession();
     onDone();
   }
 
   const suggested = prompt.suggested;
+  const isLeadEntry = initialStep === "lead" || initialStep === "offer";
+
+  const heading =
+    step === "welcome"
+      ? known?.contactName
+        ? `Welcome back, ${known.contactName.split(" ")[0]}.`
+        : "Welcome back."
+      : step === "offer"
+        ? "Want to leave a little more?"
+        : step === "lead"
+          ? "A few details help me follow up."
+          : step === "thanks"
+            ? "Appreciate it."
+            : correcting
+              ? "Update who we have you as."
+              : "Thanks for taking another look at my resume.";
+
+  const kicker =
+    step === "lead" || step === "offer" || step === "thanks"
+      ? "Optional"
+      : step === "welcome" || correcting
+        ? "Welcome back"
+        : "Welcome back";
 
   function pickPosition(p: IdentifyPosition) {
     setSelectedId(p.id);
@@ -199,24 +275,26 @@ export function VisitorIdentifyModal({
         <div className="relative space-y-4 p-6 sm:p-7">
           <div>
             <p className="text-[10px] uppercase tracking-[0.28em] text-[var(--accent)]">
-              {step === "lead" || step === "offer" || step === "thanks"
-                ? "Optional"
-                : "Welcome back"}
+              {kicker}
             </p>
             <h2
               id={titleId}
               className="mt-2 font-[family-name:var(--font-display)] text-2xl tracking-tight text-[var(--cream)]"
             >
-              {step === "offer"
-                ? "Want to leave a little more?"
-                : step === "lead"
-                  ? "A few details help me follow up."
-                  : step === "thanks"
-                    ? "Appreciate it."
-                    : "Thanks for taking another look at my resume."}
+              {heading}
             </h2>
-            {step === "confirm" || step === "identify" ? (
+            {step === "welcome" ? (
+              <p className="mt-2 text-sm leading-relaxed text-[var(--muted)]">
+                Nice to see you again. You can confirm how this site has you, or correct it.
+              </p>
+            ) : null}
+            {step === "confirm" || (step === "identify" && !correcting) ? (
               <p className="mt-2 text-sm leading-relaxed text-[var(--muted)]">What brought you back?</p>
+            ) : null}
+            {step === "identify" && correcting ? (
+              <p className="mt-2 text-sm leading-relaxed text-[var(--muted)]">
+                Pick the right position, or leave a short note if none fit.
+              </p>
             ) : null}
             {step === "offer" ? (
               <p className="mt-2 text-sm leading-relaxed text-[var(--muted)]">
@@ -230,6 +308,35 @@ export function VisitorIdentifyModal({
               </p>
             ) : null}
           </div>
+
+          {step === "welcome" && known ? (
+            <div className="space-y-3 rounded-xl border border-[var(--accent)]/25 bg-[var(--accent)]/8 px-4 py-3">
+              <p className="text-sm text-[var(--cream)]">
+                This site currently has you as{" "}
+                <strong className="text-[var(--accent)]">{known.label}</strong>
+                {known.applicationId ? " — a tracked position." : "."}
+              </p>
+              {known.freeText && known.applicationId ? (
+                <p className="text-xs text-[var(--muted)]">Note on file: {known.freeText}</p>
+              ) : null}
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={acceptWelcome}
+                  className="rounded-lg bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-[var(--ink)]"
+                >
+                  Yep, that&apos;s me
+                </button>
+                <button
+                  type="button"
+                  onClick={startCorrection}
+                  className="rounded-lg border border-white/15 px-4 py-2 text-sm text-[var(--cream)] hover:border-white/30"
+                >
+                  That&apos;s not right
+                </button>
+              </div>
+            </div>
+          ) : null}
 
           {step === "confirm" && suggested ? (
             <div className="space-y-3 rounded-xl border border-[var(--accent)]/25 bg-[var(--accent)]/8 px-4 py-3">
@@ -487,18 +594,18 @@ export function VisitorIdentifyModal({
                         });
                         return;
                       }
-                      // No tracked match — save soft note (query counts as note), then offer more
                       const note = freeText.trim() || query.trim();
+                      // Corrections: save and close without pushing lead offer again
                       void submit({
                         applicationId: null,
                         freeText: note,
                         confirmedSuggested: false,
-                        nextStep: "offer",
+                        nextStep: correcting ? "done" : "offer",
                       });
                     }}
                     className="rounded-lg bg-[var(--accent)] px-4 py-2.5 text-sm font-semibold text-[var(--ink)] disabled:opacity-40"
                   >
-                    {busy ? "Saving…" : "Continue →"}
+                    {busy ? "Saving…" : correcting ? "Save update →" : "Continue →"}
                   </button>
                 ) : null}
                 {step === "lead" ? (

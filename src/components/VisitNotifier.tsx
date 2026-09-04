@@ -5,9 +5,9 @@ import { getOrCreateDeviceId } from "@/lib/device-id";
 import type { IdentifyPromptPayload } from "@/lib/visit-identify-types";
 import {
   VisitorIdentifyModal,
-  hasVisitorIdentifiedClient,
   wasIdentifyDismissedThisSession,
 } from "@/components/VisitorIdentifyModal";
+import { wasWelcomeDismissedThisSession } from "@/lib/identify-persistence";
 
 const SCROLL_SHOW_PX = 140;
 
@@ -39,8 +39,6 @@ export function VisitNotifier() {
     const path = window.location.pathname || "/";
     if (isHeadCountPath(path)) return;
 
-    const alreadyIdentified = hasVisitorIdentifiedClient();
-
     const sessionKey = sessionKeyForPath(path);
     const alreadyNotified = Boolean(sessionStorage.getItem(sessionKey));
     if (!alreadyNotified) {
@@ -67,25 +65,27 @@ export function VisitNotifier() {
       keepalive: true,
     })
       .then(async (res) => {
-        if (alreadyIdentified) return;
         const data = (await res.json().catch(() => ({}))) as {
           identify?: IdentifyPromptPayload;
         };
-        if (
-          data.identify?.show &&
-          !hasVisitorIdentifiedClient() &&
-          !wasIdentifyDismissedThisSession() &&
-          !isPipelinePath(path)
-        ) {
-          setIdentifyPrompt(data.identify);
+        const identify = data.identify;
+        if (!identify?.show || isPipelinePath(path)) return;
+
+        if (identify.mode === "welcome") {
+          if (wasWelcomeDismissedThisSession()) return;
+          setIdentifyPrompt(identify);
+          return;
         }
+
+        if (wasIdentifyDismissedThisSession()) return;
+        setIdentifyPrompt(identify);
       })
       .catch(() => {
         // non-blocking
       });
   }, []);
 
-  // Show identify only after a little scroll (when eligible).
+  // Show identify / welcome only after a little scroll (when eligible).
   useEffect(() => {
     if (!identifyPrompt || showIdentify) return;
     if (typeof window === "undefined") return;
@@ -100,7 +100,6 @@ export function VisitNotifier() {
     window.addEventListener("scroll", onScroll, { passive: true });
     onScroll();
 
-    // Short pages that barely scroll: still reveal after a gentle wait once they've landed.
     const maxScroll =
       document.documentElement.scrollHeight - window.innerHeight;
     const fallbackMs = maxScroll < SCROLL_SHOW_PX ? 4500 : 0;

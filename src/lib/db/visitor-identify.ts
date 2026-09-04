@@ -11,9 +11,13 @@ import { getVisit, isDeviceIgnored, linkVisit } from "./visits";
 import { hasIdentifyDoneCookie } from "@/lib/identify-persistence";
 import { extractCityKey } from "@/lib/pipeline/geo-cities";
 import { notifyVisitChannels } from "@/lib/visit-notify";
-import type { IdentifyPosition, IdentifyPromptPayload } from "@/lib/visit-identify-types";
+import type {
+  IdentifyKnownIdentity,
+  IdentifyPosition,
+  IdentifyPromptPayload,
+} from "@/lib/visit-identify-types";
 
-export type { IdentifyPosition, IdentifyPromptPayload } from "@/lib/visit-identify-types";
+export type { IdentifyPosition, IdentifyPromptPayload, IdentifyKnownIdentity } from "@/lib/visit-identify-types";
 
 export type VisitorLeadInput = {
   name: string;
@@ -35,13 +39,19 @@ function isPublicResumePath(path: string) {
 export async function hasVisitorIdentified(deviceId: string): Promise<boolean> {
   const id = (deviceId || "").trim();
   if (!id) return false;
+  return Boolean(await getVisitorIdentification(id));
+}
+
+export async function getVisitorIdentification(deviceId: string) {
+  const id = (deviceId || "").trim();
+  if (!id) return null;
   const db = getDb();
   const rows = await db
-    .select({ id: visitorIdentifications.id })
+    .select()
     .from(visitorIdentifications)
     .where(eq(visitorIdentifications.deviceId, id))
     .limit(1);
-  return rows.length > 0;
+  return rows[0] ?? null;
 }
 
 export async function countPriorPublicVisits(deviceId: string): Promise<number> {
@@ -62,10 +72,46 @@ export async function countPriorPublicVisits(deviceId: string): Promise<number> 
   return Number(rows[0]?.n ?? 0);
 }
 
+function knownIdentityFromRow(
+  row: {
+    applicationId: string | null;
+    freeText: string;
+    contactName: string;
+    leadCompany: string;
+    leadTitle: string;
+  },
+  positions: IdentifyPosition[],
+): IdentifyKnownIdentity {
+  const matched = row.applicationId
+    ? positions.find((p) => p.id === row.applicationId) ?? null
+    : null;
+  const company = matched?.company || row.leadCompany || "";
+  const title = matched?.title || row.leadTitle || "";
+  const contactName = (row.contactName || "").trim();
+  const freeText = (row.freeText || "").trim();
+
+  let label = "";
+  if (matched) label = `${matched.company} — ${matched.title}`;
+  else if (company && title) label = `${company} — ${title}`;
+  else if (company) label = company;
+  else if (contactName) label = contactName;
+  else if (freeText) label = freeText.length > 72 ? `${freeText.slice(0, 71)}…` : freeText;
+  else label = "a previous visitor";
+
+  return {
+    applicationId: row.applicationId,
+    company,
+    title,
+    freeText,
+    contactName,
+    label,
+  };
+}
+
 /**
- * Build identify-prompt payload after a visit is recorded.
- * Show when: toggle on, public resume path, device not ignored, not yet identified,
- * and this device has prior public visits (repeat visitor).
+ * Build identify / welcome prompt after a visit is recorded.
+ * - First-time repeat visitor → identify
+ * - Already identified (DB or cookie) → soft welcome + option to correct
  */
 export async function buildIdentifyPrompt(input: {
   path: string;
@@ -74,7 +120,6 @@ export async function buildIdentifyPrompt(input: {
   linkedApplicationId: string | null;
   linkConfidence: string | null;
   deviceIgnored: boolean;
-  /** Raw Cookie header — skip if they already confirmed in this browser. */
   cookieHeader?: string | null;
 }): Promise<IdentifyPromptPayload | null> {
   if (input.deviceIgnored) return null;
@@ -82,16 +127,8 @@ export async function buildIdentifyPrompt(input: {
   const deviceId = (input.deviceId || "").trim();
   if (!deviceId) return null;
 
-  if (hasIdentifyDoneCookie(input.cookieHeader)) return null;
-
   const setting = await getVisitorIdentifySetting();
   if (!setting.enabled) return null;
-
-  if (await hasVisitorIdentified(deviceId)) return null;
-
-  // Prior public visits including the one just recorded → repeat when >= 2
-  const prior = await countPriorPublicVisits(deviceId);
-  if (prior < 2) return null;
 
   const apps = await listOpenApplicationsForAssociation();
   const positions: IdentifyPosition[] = apps.map((a) => ({
@@ -99,6 +136,45 @@ export async function buildIdentifyPrompt(input: {
     company: a.company,
     title: a.title,
   }));
+
+  const existing = await getVisitorIdentification(deviceId);
+  const cookieDone = hasIdentifyDoneCookie(input.cookieHeader);
+
+  if (existing || cookieDone) {
+    let known: IdentifyKnownIdentity | null = existing
+      ? knownIdentityFromRow(existing, positions)
+      : null;
+
+    if (!known) {
+      const linked =
+        input.linkedApplicationId &&
+        (input.linkConfidence === "suggested" || input.linkConfidence === "confirmed")
+          ? positions.find((p) => p.id === input.linkedApplicationId) ?? null
+          : null;
+      known = {
+        applicationId: linked?.id ?? null,
+        company: linked?.company ?? "",
+        title: linked?.title ?? "",
+        freeText: "",
+        contactName: "",
+        label: linked ? `${linked.company} — ${linked.title}` : "a return visitor",
+      };
+    }
+
+    return {
+      show: true,
+      mode: "welcome",
+      visitId: input.visitId,
+      suggested: known.applicationId
+        ? positions.find((p) => p.id === known!.applicationId) ?? null
+        : null,
+      known,
+      positions,
+    };
+  }
+
+  const prior = await countPriorPublicVisits(deviceId);
+  if (prior < 2) return null;
 
   let suggested: IdentifyPosition | null = null;
   if (
@@ -108,7 +184,6 @@ export async function buildIdentifyPrompt(input: {
     suggested = positions.find((p) => p.id === input.linkedApplicationId) ?? null;
   }
 
-  // Fallback: unique prior confirmed/suggested link for this device
   if (!suggested) {
     const db = getDb();
     const priorLinks = await db
@@ -141,8 +216,10 @@ export async function buildIdentifyPrompt(input: {
 
   return {
     show: true,
+    mode: "identify",
     visitId: input.visitId,
     suggested,
+    known: null,
     positions,
   };
 }
@@ -156,18 +233,22 @@ async function upsertIdentificationRow(input: {
 }) {
   const db = getDb();
   const lead = input.lead;
-  const values = {
+  const base = {
     applicationId: input.applicationId,
     freeText: input.freeText,
     confirmedSuggested: input.confirmedSuggested,
-    contactName: lead?.name?.trim() || "",
-    contactEmail: lead?.email?.trim() || "",
-    contactPhone: lead?.phone?.trim() || "",
-    leadCompany: lead?.company?.trim() || "",
-    leadTitle: lead?.title?.trim() || "",
-    leadLocation: lead?.location?.trim() || "",
     updatedAt: new Date(),
   };
+  const leadFields = lead
+    ? {
+        contactName: lead.name?.trim() || "",
+        contactEmail: lead.email?.trim() || "",
+        contactPhone: lead.phone?.trim() || "",
+        leadCompany: lead.company?.trim() || "",
+        leadTitle: lead.title?.trim() || "",
+        leadLocation: lead.location?.trim() || "",
+      }
+    : null;
 
   const existing = await db
     .select({ id: visitorIdentifications.id })
@@ -178,12 +259,18 @@ async function upsertIdentificationRow(input: {
   if (existing.length) {
     await db
       .update(visitorIdentifications)
-      .set(values)
+      .set(leadFields ? { ...base, ...leadFields } : base)
       .where(eq(visitorIdentifications.deviceId, input.deviceId));
   } else {
     await db.insert(visitorIdentifications).values({
       deviceId: input.deviceId,
-      ...values,
+      ...base,
+      contactName: leadFields?.contactName || "",
+      contactEmail: leadFields?.contactEmail || "",
+      contactPhone: leadFields?.contactPhone || "",
+      leadCompany: leadFields?.leadCompany || "",
+      leadTitle: leadFields?.leadTitle || "",
+      leadLocation: leadFields?.leadLocation || "",
     });
   }
 }
@@ -245,6 +332,7 @@ async function notifyIdentificationOutcome(input: {
   createdLead: boolean;
   visitId?: string | null;
   lead?: VisitorLeadInput | null;
+  corrected?: boolean;
 }) {
   if (await isDeviceIgnored(input.deviceId)) return;
 
@@ -325,7 +413,7 @@ async function notifyIdentificationOutcome(input: {
     ].filter(Boolean) as string[];
 
     await notifyVisitChannels({
-      title: "Visitor matched a job",
+      title: input.corrected ? "Visitor corrected job match" : "Visitor matched a job",
       lines,
       kind: "identify",
       priority: "high",
@@ -344,12 +432,15 @@ async function notifyIdentificationOutcome(input: {
         : null,
     visitCity && !knownVisitCity
       ? "**Action:** Visit geo city is not in the map/alias DB — worth a look"
-      : "**Action:** Soft identify with no pipeline match",
+      : input.corrected
+        ? "**Action:** Corrected identity (no pipeline match)"
+        : "**Action:** Soft identify with no pipeline match",
   ].filter(Boolean) as string[];
 
   await notifyVisitChannels({
-    title:
-      visitCity && !knownVisitCity
+    title: input.corrected
+      ? "Visitor corrected identity"
+      : visitCity && !knownVisitCity
         ? "Visitor note — unknown city"
         : "Visitor note — no job match",
     lines,
@@ -385,6 +476,8 @@ export async function saveVisitorIdentification(input: {
   if (!applicationId && !freeText && !creatingLead) {
     throw new Error("Pick a position or describe what you are looking for");
   }
+
+  const alreadyIdentified = await hasVisitorIdentified(deviceId);
 
   let createdLead = false;
   if (creatingLead && lead) {
@@ -423,6 +516,7 @@ export async function saveVisitorIdentification(input: {
       createdLead,
       visitId: input.visitId,
       lead,
+      corrected: alreadyIdentified && !createdLead,
     });
   } catch (error) {
     console.error("identify notify failed", error);
