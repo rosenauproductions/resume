@@ -91,19 +91,19 @@ export function Hero() {
         </div>
 
         <motion.div
-          className="relative mx-auto w-full max-w-lg sm:max-w-xl md:col-span-6 md:-mr-4 md:max-w-none lg:-mr-8"
+          className="hero-portrait relative mx-auto w-full max-w-lg sm:max-w-xl md:col-span-6 md:-mr-4 md:max-w-none lg:-mr-8"
           initial={reduce ? false : { opacity: 0, x: 40, scale: 0.96 }}
           animate={{ opacity: 1, x: 0, scale: 1 }}
           transition={{ duration: 1, ease: [0.22, 1, 0.36, 1], delay: 0.35 }}
         >
-          <div className="relative aspect-square min-h-[280px] sm:min-h-[360px] md:min-h-[420px] lg:min-h-[480px]">
+          <div className="hero-portrait-frame relative aspect-square min-h-[280px] sm:min-h-[360px] md:min-h-[420px] lg:min-h-[480px]">
             <Image
               src={portraits.hero}
               alt={`${site.name} portrait`}
               fill
               priority
               unoptimized
-              className="object-contain object-center"
+              className="object-contain object-bottom md:object-right-bottom"
               sizes="(max-width: 768px) 95vw, 55vw"
             />
           </div>

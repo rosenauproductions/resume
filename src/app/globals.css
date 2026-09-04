@@ -219,6 +219,40 @@ body {
     color: inherit !important;
   }
 
+  /* Dark print: don’t let the full-viewport hero dominate the first page */
+  html[data-print-mode="dark"] #top,
+  html:not([data-print-mode="light"]) #top {
+    min-height: auto !important;
+    padding-top: 0.75rem !important;
+    padding-bottom: 0.5rem !important;
+  }
+
+  html[data-print-mode="dark"] #top .grid,
+  html:not([data-print-mode="light"]) #top .grid {
+    align-items: end !important;
+  }
+
+  html[data-print-mode="dark"] #top .hero-portrait,
+  html:not([data-print-mode="light"]) #top .hero-portrait {
+    max-width: 11.5rem !important;
+    margin-left: auto !important;
+    margin-right: 0 !important;
+    justify-self: end !important;
+  }
+
+  html[data-print-mode="dark"] #top .hero-portrait-frame,
+  html:not([data-print-mode="light"]) #top .hero-portrait-frame {
+    min-height: 0 !important;
+    max-height: 11.5rem !important;
+    width: 11.5rem !important;
+    aspect-ratio: 1 / 1 !important;
+  }
+
+  html[data-print-mode="dark"] #top .hero-portrait img,
+  html:not([data-print-mode="light"]) #top .hero-portrait img {
+    object-position: right bottom !important;
+  }
+
   /* Print viewport is often treated as narrow — keep work cards side-by-side */
   #work .grid {
     grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
@@ -266,7 +300,9 @@ body {
   html[data-print-mode="light"] iframe,
   html[data-print-mode="light"] .about-portrait,
   html[data-print-mode="light"] .aspect-video,
-  html[data-print-mode="light"] #top .aspect-square {
+  html[data-print-mode="light"] #top .aspect-square,
+  html[data-print-mode="light"] #top .hero-portrait,
+  html[data-print-mode="light"] #top .hero-portrait-frame {
     display: none !important;
   }
 
