@@ -186,6 +186,15 @@ body {
     text-decoration: none !important;
   }
 
+  /* Force scroll-reveal / motion content visible even if never scrolled */
+  main [data-reveal],
+  main [style*="opacity"],
+  main [style*="transform"] {
+    opacity: 1 !important;
+    transform: none !important;
+    translate: none !important;
+  }
+
   /*
    * Dark PDF: same ink palette / gradients / imagery as the live site.
    * Only strip interactive chrome (nav + Save PDF). Pagination will still
@@ -208,6 +217,15 @@ body {
   html[data-print-mode="dark"] a,
   html:not([data-print-mode="light"]) a {
     color: inherit !important;
+  }
+
+  /* Print viewport is often treated as narrow — keep work cards side-by-side */
+  #work .grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  }
+
+  #projects .grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
   }
 
   /* Print-friendly: white paper, readable ink, calmer layout */
@@ -239,6 +257,22 @@ body {
   html[data-print-mode="light"] .hero-vignette,
   html[data-print-mode="light"] .contact-glow {
     background: none !important;
+  }
+
+  /* Portraits / textures / video embeds fail on white (alpha cutouts). Text-only. */
+  html[data-print-mode="light"] img,
+  html[data-print-mode="light"] picture,
+  html[data-print-mode="light"] video,
+  html[data-print-mode="light"] iframe,
+  html[data-print-mode="light"] .about-portrait,
+  html[data-print-mode="light"] .aspect-video,
+  html[data-print-mode="light"] #top .aspect-square {
+    display: none !important;
+  }
+
+  html[data-print-mode="light"] #top .grid,
+  html[data-print-mode="light"] .about-flow {
+    display: block !important;
   }
 
   html[data-print-mode="light"] #top {

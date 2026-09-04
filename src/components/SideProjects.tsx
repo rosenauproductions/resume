@@ -20,7 +20,7 @@ export function SideProjects() {
           <ProjectNetwork />
         </Reveal>
 
-        <div className="mt-10 grid gap-6 lg:grid-cols-3">
+        <div className="mt-10 grid gap-6 lg:grid-cols-3 print:grid-cols-3">
           {projects.map((project, i) => (
             <Reveal key={project.id} delay={0.05 + i * 0.05}>
               <article className="flex h-full flex-col border border-white/10 px-5 py-6">

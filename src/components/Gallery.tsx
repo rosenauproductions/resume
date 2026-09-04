@@ -17,7 +17,7 @@ export function Gallery() {
           <p className="mt-4 max-w-2xl text-[var(--muted)]">{work.note}</p>
         </Reveal>
 
-        <div className="mt-12 grid gap-6 md:grid-cols-3">
+        <div className="mt-12 grid gap-6 md:grid-cols-3 print:grid-cols-3">
           {featured.map((item, i) => (
             <Reveal key={item.id} delay={0.06 + i * 0.04}>
               <div className="overflow-hidden border border-white/10">
@@ -65,7 +65,7 @@ export function Gallery() {
           ))}
         </div>
 
-        <div className="mt-6 grid gap-4 md:grid-cols-3">
+        <div className="mt-6 grid gap-4 md:grid-cols-3 print:grid-cols-3">
           {cases.map((item, i) => (
             <Reveal key={item.id} delay={0.08 + i * 0.04}>
               <article className="border border-white/10 px-5 py-5">
