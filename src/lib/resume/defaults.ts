@@ -16,6 +16,9 @@ import {
   isResumeThemeId,
   type ResumeContent,
   type ResumeSectionId,
+  type RoleFitMatch,
+  type RoleFitNeed,
+  type SideProject,
 } from "./types";
 
 function defaultSections(): ResumeContent["sections"] {
@@ -27,6 +30,63 @@ function defaultSections(): ResumeContent["sections"] {
     };
   }
   return sections;
+}
+
+/** Attach / repair projectId from enabled side projects by title. */
+function resolveMatchProjectId(
+  match: RoleFitMatch,
+  projects: SideProject[],
+): RoleFitMatch {
+  if (match.projectId) {
+    const byId = projects.find((p) => p.id === match.projectId);
+    if (byId) return match;
+  }
+  const byTitle = projects.find((p) => p.title === match.role);
+  if (!byTitle) {
+    const { projectId: _drop, ...rest } = match;
+    return rest;
+  }
+  return {
+    ...match,
+    company: match.company?.trim() ? match.company : "Side project",
+    projectId: byTitle.id,
+  };
+}
+
+/**
+ * Ensure seeded “Side project” matches from defaults appear on stored Fit needs
+ * (live CMS saved before this feature wouldn’t have them otherwise).
+ */
+function mergeDefaultSideProjectMatches(
+  needs: RoleFitNeed[],
+  fallbackNeeds: RoleFitNeed[],
+  projects: SideProject[],
+): RoleFitNeed[] {
+  const fallbackById = new Map(fallbackNeeds.map((n) => [n.id, n]));
+  return needs.map((need) => {
+    const fb = fallbackById.get(need.id);
+    const existing = new Set(
+      need.matches.map((m) => `${m.company.trim()}::${m.role.trim()}`),
+    );
+    const extras: RoleFitMatch[] = [];
+    if (fb) {
+      for (const m of fb.matches) {
+        if (m.company !== "Side project") continue;
+        const key = `${m.company}::${m.role}`;
+        if (existing.has(key)) continue;
+        existing.add(key);
+        extras.push({
+          role: m.role,
+          company: "Side project",
+          proof: m.proof,
+        });
+      }
+    }
+    return {
+      ...need,
+      matches: [...need.matches, ...extras].map((m) => resolveMatchProjectId(m, projects)),
+    };
+  });
 }
 
 /** Build editable CMS document from the static resume.ts seed. */
@@ -183,6 +243,49 @@ export function normalizeResumeContent(raw: unknown): ResumeContent {
     }
   }
 
+  const sideProjects = {
+    heading: o.sideProjects?.heading ?? fallback.sideProjects.heading,
+    note: o.sideProjects?.note ?? fallback.sideProjects.note,
+    projects: Array.isArray(o.sideProjects?.projects)
+      ? o.sideProjects!.projects.map((p) => ({
+          id: p.id || newId("proj"),
+          enabled: p.enabled !== false,
+          title: String(p.title ?? ""),
+          summary: String(p.summary ?? ""),
+          href: String(p.href ?? ""),
+          linkLabel: String(p.linkLabel ?? "Link"),
+          tags: Array.isArray(p.tags) ? p.tags.map(String) : [],
+        }))
+      : fallback.sideProjects.projects,
+  };
+
+  const roleFitNeeds: RoleFitNeed[] = Array.isArray(o.roleFit?.needs)
+    ? o.roleFit!.needs.map((n) => ({
+        id: n.id || newId("need"),
+        enabled: n.enabled !== false,
+        label: String(n.label ?? ""),
+        strength: String(n.strength ?? ""),
+        summary: String(n.summary ?? ""),
+        matches: Array.isArray(n.matches)
+          ? n.matches.map((m) => {
+              const projectId =
+                typeof m.projectId === "string" && m.projectId.trim()
+                  ? m.projectId.trim()
+                  : undefined;
+              return {
+                role: String(m.role ?? ""),
+                company: String(m.company ?? ""),
+                proof: String(m.proof ?? ""),
+                ...(projectId ? { projectId } : {}),
+              };
+            })
+          : [],
+      }))
+    : fallback.roleFit.needs.map((n) => ({
+        ...n,
+        matches: n.matches.map((m) => ({ ...m })),
+      }));
+
   return {
     version: 1,
     theme: isResumeThemeId(o.theme) ? o.theme : fallback.theme,
@@ -235,21 +338,7 @@ export function normalizeResumeContent(raw: unknown): ResumeContent {
           }))
         : fallback.work.cases,
     },
-    sideProjects: {
-      heading: o.sideProjects?.heading ?? fallback.sideProjects.heading,
-      note: o.sideProjects?.note ?? fallback.sideProjects.note,
-      projects: Array.isArray(o.sideProjects?.projects)
-        ? o.sideProjects!.projects.map((p) => ({
-            id: p.id || newId("proj"),
-            enabled: p.enabled !== false,
-            title: String(p.title ?? ""),
-            summary: String(p.summary ?? ""),
-            href: String(p.href ?? ""),
-            linkLabel: String(p.linkLabel ?? "Link"),
-            tags: Array.isArray(p.tags) ? p.tags.map(String) : [],
-          }))
-        : fallback.sideProjects.projects,
-    },
+    sideProjects,
     skills: {
       heading: o.skills?.heading ?? fallback.skills.heading,
       top: Array.isArray(o.skills?.top) ? o.skills!.top.map(String) : fallback.skills.top,
@@ -301,29 +390,11 @@ export function normalizeResumeContent(raw: unknown): ResumeContent {
     roleFit: {
       heading: o.roleFit?.heading ?? fallback.roleFit.heading,
       note: o.roleFit?.note ?? fallback.roleFit.note,
-      needs: Array.isArray(o.roleFit?.needs)
-        ? o.roleFit!.needs.map((n) => ({
-            id: n.id || newId("need"),
-            enabled: n.enabled !== false,
-            label: String(n.label ?? ""),
-            strength: String(n.strength ?? ""),
-            summary: String(n.summary ?? ""),
-            matches: Array.isArray(n.matches)
-              ? n.matches.map((m) => {
-                  const projectId =
-                    typeof m.projectId === "string" && m.projectId.trim()
-                      ? m.projectId.trim()
-                      : undefined;
-                  return {
-                    role: String(m.role ?? ""),
-                    company: String(m.company ?? ""),
-                    proof: String(m.proof ?? ""),
-                    ...(projectId ? { projectId } : {}),
-                  };
-                })
-              : [],
-          }))
-        : fallback.roleFit.needs,
+      needs: mergeDefaultSideProjectMatches(
+        roleFitNeeds,
+        fallback.roleFit.needs,
+        sideProjects.projects,
+      ),
     },
   };
 }

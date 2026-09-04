@@ -521,6 +521,24 @@ export const roleFit = {
           company: "Higher Ed Partners",
           proof: "Built AI avatar video systems and scalable content pipelines with Synthesia.",
         },
+        {
+          role: "Pistomp-Mobile",
+          company: "Side project",
+          proof:
+            "Shipped a TypeScript PWA with AI-assisted build/iteration for Pi-Stomp control and admin flows.",
+        },
+        {
+          role: "StepBot — Canvas LMS help bot",
+          company: "Side project",
+          proof:
+            "Canvas help bot with guided multi-step answers, session memory, and AI-assisted content tooling.",
+        },
+        {
+          role: "Interactive party games & more",
+          company: "Side project",
+          proof:
+            "Browser party games and experiments — rapid AI-assisted prototyping for multiplayer UI.",
+        },
       ],
     },
     {
@@ -550,6 +568,12 @@ export const roleFit = {
           role: "StepBot — Canvas LMS help bot",
           company: "Side project",
           proof: "JavaScript help bot with multi-step flows, theming, and LMS embedding.",
+        },
+        {
+          role: "Interactive party games & more",
+          company: "Side project",
+          proof:
+            "Projector + host + phone controllers for Family Feud / 1% Club — full-stack interactive UI.",
         },
       ],
     },
@@ -584,6 +608,12 @@ export const roleFit = {
           role: "E-Learning Designer",
           company: "Concordia University Irvine",
           proof: "Vyond + After Effects animation with narration and SRT subtitles.",
+        },
+        {
+          role: "Interactive party games & more",
+          company: "Side project",
+          proof:
+            "Interactive media experiments — projector games, host UIs, and rapid visual prototyping.",
         },
       ],
     },
