@@ -14,6 +14,8 @@ type VisitPayload = {
   screen?: string;
   timezone?: string;
   fingerprint?: string;
+  /** When true, still store the visit / identify payload, but skip Discord/ntfy. */
+  skipNotify?: boolean;
 };
 
 function pickHeader(req: NextRequest, name: string) {
@@ -174,6 +176,19 @@ export async function POST(req: NextRequest) {
       linkConfidence,
       notified: false,
       skippedNotify: "pipeline",
+      identify,
+    });
+  }
+
+  // Client already pinged this browser session — still store + return identify
+  if (payload.skipNotify) {
+    return NextResponse.json({
+      ok: true,
+      stored: Boolean(visitId),
+      visitId,
+      linkConfidence,
+      notified: false,
+      skippedNotify: "session",
       identify,
     });
   }
