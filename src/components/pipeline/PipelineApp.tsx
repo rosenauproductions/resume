@@ -29,13 +29,16 @@ import { loadSeedJobs, loadSeedMeta } from "@/lib/jobs/seed";
 import { getOrCreateDeviceId } from "@/lib/device-id";
 import { BarChart, DonutChart, DismissiblePanel, StatCard, TimelineChart } from "./PipelineCharts";
 import { TargetMap } from "./TargetMap";
+import { ResumeEditor } from "./ResumeEditor";
 import type { PipelineHomePanelId } from "@/lib/pipeline/home-panels";
+import { buildDefaultResumeContent } from "@/lib/resume/defaults";
+import type { ResumeContent } from "@/lib/resume/types";
 
 type IngestStep = "paste" | "review";
 
 const LOCAL_KEY = "pipeline-jobs-v4";
 const META_KEY = "pipeline-meta-v4";
-type ViewMode = "insights" | "board" | "list" | "visits" | "map";
+type ViewMode = "insights" | "board" | "list" | "visits" | "map" | "resume";
 type StorageMode = "local" | "blob" | "db";
 
 type VisitRow = {
@@ -178,6 +181,10 @@ export function PipelineApp() {
   const [skillsSectionEnabled, setSkillsSectionEnabled] = useState(false);
   const [dismissedPanels, setDismissedPanels] = useState<string[]>([]);
   const [settingsLoading, setSettingsLoading] = useState(false);
+  const [resumeContent, setResumeContent] = useState<ResumeContent | null>(null);
+  const [resumeLoading, setResumeLoading] = useState(false);
+  const [resumeSaving, setResumeSaving] = useState(false);
+  const [resumeNotice, setResumeNotice] = useState("");
 
   const insights = useMemo(() => computeInsights(jobs, meta), [jobs, meta]);
   const isPanelVisible = useCallback(
@@ -257,6 +264,87 @@ export function PipelineApp() {
       // ignore
     } finally {
       setSettingsLoading(false);
+    }
+  }
+
+  async function refreshResume() {
+    setResumeLoading(true);
+    setResumeNotice("");
+    try {
+      const res = await fetch("/api/pipeline/resume");
+      const data = await res.json();
+      if (res.ok && data.content) {
+        setResumeContent(data.content as ResumeContent);
+        if (typeof data.content?.sections?.skills?.enabled === "boolean") {
+          setSkillsSectionEnabled(Boolean(data.content.sections.skills.enabled));
+        }
+      } else {
+        setResumeContent(buildDefaultResumeContent());
+        setResumeNotice(data.error || "Could not load resume content — showing defaults");
+      }
+    } catch {
+      setResumeContent(buildDefaultResumeContent());
+      setResumeNotice("Network error loading resume — showing defaults");
+    } finally {
+      setResumeLoading(false);
+    }
+  }
+
+  async function saveResume() {
+    if (!resumeContent) return;
+    setResumeSaving(true);
+    setResumeNotice("");
+    try {
+      const res = await fetch("/api/pipeline/resume", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content: resumeContent }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setResumeNotice(data.error || "Could not save resume content");
+        return;
+      }
+      if (data.content) {
+        setResumeContent(data.content as ResumeContent);
+        if (typeof data.content?.sections?.skills?.enabled === "boolean") {
+          setSkillsSectionEnabled(Boolean(data.content.sections.skills.enabled));
+        }
+      }
+      setResumeNotice("Saved — public resume updated");
+    } catch {
+      setResumeNotice("Network error saving resume");
+    } finally {
+      setResumeSaving(false);
+    }
+  }
+
+  async function resetResume() {
+    if (!window.confirm("Reset resume content to the baked-in site defaults?")) return;
+    setResumeSaving(true);
+    setResumeNotice("");
+    try {
+      const res = await fetch("/api/pipeline/resume", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reset: true }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setResumeNotice(data.error || "Could not reset resume content");
+        return;
+      }
+      if (data.content) {
+        setResumeContent(data.content as ResumeContent);
+        if (typeof data.content?.sections?.skills?.enabled === "boolean") {
+          setSkillsSectionEnabled(Boolean(data.content.sections.skills.enabled));
+        }
+      }
+      setResumeNotice("Reset to defaults");
+    } catch {
+      setResumeNotice("Network error resetting resume");
+    } finally {
+      setResumeSaving(false);
     }
   }
 
@@ -953,6 +1041,7 @@ export function PipelineApp() {
               ["list", "All applications"],
               ["visits", "Visits"],
               ["map", "Target map"],
+              ["resume", "Resume CMS"],
             ] as const
           ).map(([id, label]) => (
             <button
@@ -962,6 +1051,7 @@ export function PipelineApp() {
                 if (id === "map") mapScrollPending.current = true;
                 setView(id);
                 if (id === "visits" || id === "map") void refreshVisits();
+                if (id === "resume") void refreshResume();
               }}
               className={`rounded-full px-4 py-1.5 text-sm ${
                 view === id
@@ -979,6 +1069,10 @@ export function PipelineApp() {
               placeholder="Filter company, role, match…"
               className="ml-auto min-w-[14rem] rounded-full border border-white/15 bg-black/20 px-4 py-1.5 text-sm outline-none focus:border-[var(--accent)]"
             />
+          ) : view === "resume" ? (
+            <span className="ml-auto self-center text-xs text-[var(--muted)]">
+              Edit public resume copy, section order, and visibility
+            </span>
           ) : (
             <span className="ml-auto self-center text-xs text-[var(--muted)]">
               Prior salary {money(meta?.lastSalary)} · W2 preferred · ntfy + DB dual-track
@@ -1346,6 +1440,27 @@ export function PipelineApp() {
               loading={visitsLoading}
               onRefresh={() => void refreshVisits()}
             />
+          ) : null}
+
+          {view === "resume" ? (
+            resumeLoading && !resumeContent ? (
+              <p className="rounded-xl border border-white/10 bg-black/20 px-4 py-8 text-center text-sm text-[var(--muted)]">
+                Loading resume content…
+              </p>
+            ) : resumeContent ? (
+              <ResumeEditor
+                content={resumeContent}
+                onChange={setResumeContent}
+                onSave={() => void saveResume()}
+                onReset={() => void resetResume()}
+                saving={resumeSaving || resumeLoading}
+                notice={resumeNotice}
+              />
+            ) : (
+              <p className="rounded-xl border border-white/10 bg-black/20 px-4 py-8 text-center text-sm text-[var(--muted)]">
+                {resumeNotice || "Resume content unavailable."}
+              </p>
+            )
           ) : null}
         </div>
       </div>
