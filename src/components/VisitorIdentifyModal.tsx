@@ -62,6 +62,7 @@ export function VisitorIdentifyModal({
   const titleId = useId();
   const listboxId = useId();
   const queryRef = useRef<HTMLInputElement>(null);
+  const noteRef = useRef<HTMLTextAreaElement>(null);
   const known = prompt.known;
   const knownPosition = known?.applicationId
     ? prompt.positions.find((p) => p.id === known.applicationId) ?? null
@@ -176,9 +177,17 @@ export function VisitorIdentifyModal({
     onDone();
   }
 
-  function startCorrection() {
+  function startCorrection(mode: "pick" | "own" = "pick") {
     setCorrecting(true);
     setStep("identify");
+    setHintsOpen(false);
+    if (mode === "own") {
+      setSelectedId("");
+      setQuery("");
+      setFreeText(known?.freeText ?? "");
+      requestAnimationFrame(() => noteRef.current?.focus());
+      return;
+    }
     if (knownPosition) {
       setSelectedId(knownPosition.id);
       setQuery(positionLabel(knownPosition));
@@ -187,7 +196,6 @@ export function VisitorIdentifyModal({
       setQuery("");
     }
     setFreeText(known?.freeText ?? "");
-    setHintsOpen(false);
     requestAnimationFrame(() => queryRef.current?.focus());
   }
 
@@ -285,7 +293,7 @@ export function VisitorIdentifyModal({
             </h2>
             {step === "welcome" ? (
               <p className="mt-2 text-sm leading-relaxed text-[var(--muted)]">
-                Nice to see you again. You can confirm how this site has you, or correct it.
+                Glad you&apos;re back — confirm how you&apos;re viewing, or switch if it&apos;s off.
               </p>
             ) : null}
             {step === "confirm" || (step === "identify" && !correcting) ? (
@@ -310,31 +318,37 @@ export function VisitorIdentifyModal({
           </div>
 
           {step === "welcome" && known ? (
-            <div className="space-y-3 rounded-xl border border-[var(--accent)]/25 bg-[var(--accent)]/8 px-4 py-3">
-              <p className="text-sm text-[var(--cream)]">
-                This site currently has you as{" "}
-                <strong className="text-[var(--accent)]">{known.label}</strong>
-                {known.applicationId ? " — a tracked position." : "."}
+            <div className="space-y-4 rounded-xl border border-[var(--accent)]/25 bg-[var(--accent)]/8 px-4 py-3">
+              <p className="text-sm leading-relaxed text-[var(--cream)]">
+                You&apos;re currently viewing as{" "}
+                <strong className="text-[var(--accent)]">&ldquo;{known.label}&rdquo;</strong>.
               </p>
-              {known.freeText && known.applicationId ? (
-                <p className="text-xs text-[var(--muted)]">Note on file: {known.freeText}</p>
-              ) : null}
-              <div className="flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  onClick={acceptWelcome}
-                  className="rounded-lg bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-[var(--ink)]"
-                >
-                  Yep, that&apos;s me
-                </button>
-                <button
-                  type="button"
-                  onClick={startCorrection}
-                  className="rounded-lg border border-white/15 px-4 py-2 text-sm text-[var(--cream)] hover:border-white/30"
-                >
-                  That&apos;s not right
-                </button>
+              <div className="space-y-2">
+                <p className="text-sm text-[var(--muted)]">Wrong role?</p>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => startCorrection("pick")}
+                    className="rounded-lg border border-white/15 px-4 py-2 text-sm text-[var(--cream)] hover:border-white/30"
+                  >
+                    Pick a different one
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => startCorrection("own")}
+                    className="rounded-lg border border-white/15 px-4 py-2 text-sm text-[var(--cream)] hover:border-white/30"
+                  >
+                    Add your own
+                  </button>
+                </div>
               </div>
+              <button
+                type="button"
+                onClick={acceptWelcome}
+                className="rounded-lg bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-[var(--ink)]"
+              >
+                Looks right →
+              </button>
             </div>
           ) : null}
 
@@ -447,6 +461,7 @@ export function VisitorIdentifyModal({
                 Not seeing it? That&apos;s okay — just let me know what you&apos;re looking for.
               </p>
               <textarea
+                ref={noteRef}
                 rows={3}
                 value={freeText}
                 onChange={(e) => setFreeText(e.target.value)}

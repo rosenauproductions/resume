@@ -90,12 +90,12 @@ function knownIdentityFromRow(
   const freeText = (row.freeText || "").trim();
 
   let label = "";
-  if (matched) label = `${matched.company} — ${matched.title}`;
-  else if (company && title) label = `${company} — ${title}`;
+  // Prefer role/title for the soft “viewing as …” line
+  if (title) label = title;
   else if (company) label = company;
   else if (contactName) label = contactName;
   else if (freeText) label = freeText.length > 72 ? `${freeText.slice(0, 71)}…` : freeText;
-  else label = "a previous visitor";
+  else label = "a guest";
 
   return {
     applicationId: row.applicationId,
