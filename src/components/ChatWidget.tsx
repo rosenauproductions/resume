@@ -50,14 +50,13 @@ export function ChatWidget() {
   const pathname = usePathname() || "/";
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState("");
-  const [sessionId, setSessionId] = useState("anonymous");
-  const [deviceId, setDeviceId] = useState("");
   const [showWelcome, setShowWelcome] = useState(false);
   const scrollerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    setSessionId(getOrCreateSessionId());
-    setDeviceId(getOrCreateDeviceId());
+    // Warm local visitor + chat session ids before the first send.
+    getOrCreateSessionId();
+    getOrCreateDeviceId();
   }, []);
 
   useEffect(() => {
