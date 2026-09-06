@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Figtree, Syne } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
+import { ChatWidget } from "@/components/ChatWidget";
 import { VisitNotifier } from "@/components/VisitNotifier";
 import { dbConfigured } from "@/lib/db";
 import { DEFAULT_SITE_DEPLOY, getSiteDeploySetting } from "@/lib/db/settings";
@@ -69,6 +70,7 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col font-sans">
         {children}
         <VisitNotifier />
+        <ChatWidget />
         <Analytics />
         <SpeedInsights />
       </body>

@@ -91,6 +91,7 @@ export function VisitorIdentifyModal({
   const [leadTitle, setLeadTitle] = useState("");
   const [leadLocation, setLeadLocation] = useState("");
   const [leadMessage, setLeadMessage] = useState("");
+  const [requestContact, setRequestContact] = useState(true);
 
   const hints = selectedId ? [] : matchPositions(prompt.positions, query);
 
@@ -114,6 +115,7 @@ export function VisitorIdentifyModal({
       title?: string;
       location?: string;
       message?: string;
+      requestContact?: boolean;
     } | null;
     nextStep?: Step | "done";
   }) {
@@ -312,7 +314,8 @@ export function VisitorIdentifyModal({
             ) : null}
             {step === "thanks" ? (
               <p className="mt-2 text-sm leading-relaxed text-[var(--muted)]">
-                I marked this as a website lead and will take a look soon.
+                I marked this as a website lead
+                {requestContact ? " and will follow up" : ""} — thanks for sharing.
               </p>
             ) : null}
           </div>
@@ -521,9 +524,12 @@ export function VisitorIdentifyModal({
                 />
               </label>
               <label className="block text-xs text-[var(--muted)]">
-                Company
+                Company{" "}
+                <span className="text-[var(--muted)]/70">
+                  {requestContact ? "(optional if requesting contact)" : ""}
+                </span>
                 <input
-                  required
+                  required={!requestContact}
                   value={leadCompany}
                   onChange={(e) => setLeadCompany(e.target.value)}
                   className={fieldClass}
@@ -571,6 +577,20 @@ export function VisitorIdentifyModal({
                   className={fieldClass}
                   placeholder="A sentence or two is plenty"
                 />
+              </label>
+              <label className="flex cursor-pointer items-start gap-2.5 rounded-xl border border-white/10 bg-black/20 px-3 py-3 text-sm text-[var(--cream)]">
+                <input
+                  type="checkbox"
+                  checked={requestContact}
+                  onChange={(e) => setRequestContact(e.target.checked)}
+                  className="mt-0.5 h-4 w-4 shrink-0 accent-[var(--accent)]"
+                />
+                <span>
+                  Please contact me
+                  <span className="mt-0.5 block text-xs text-[var(--muted)]">
+                    Follow up by email (or phone if provided).
+                  </span>
+                </span>
               </label>
             </div>
           ) : null}
@@ -627,7 +647,10 @@ export function VisitorIdentifyModal({
                   <button
                     type="button"
                     disabled={
-                      busy || !leadName.trim() || !leadEmail.trim() || !leadCompany.trim()
+                      busy ||
+                      !leadName.trim() ||
+                      !leadEmail.trim() ||
+                      (!requestContact && !leadCompany.trim())
                     }
                     onClick={() =>
                       void submit({
@@ -642,6 +665,7 @@ export function VisitorIdentifyModal({
                           title: leadTitle.trim(),
                           location: leadLocation.trim(),
                           message: leadMessage.trim(),
+                          requestContact,
                         },
                         nextStep: "thanks",
                       })

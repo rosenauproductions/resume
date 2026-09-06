@@ -7,7 +7,7 @@ import {
   VisitorIdentifyModal,
   wasIdentifyDismissedThisSession,
 } from "@/components/VisitorIdentifyModal";
-import { wasWelcomeDismissedThisSession } from "@/lib/identify-persistence";
+import { wasWelcomeDismissedThisSession, rememberLastVisitId } from "@/lib/identify-persistence";
 
 const SCROLL_SHOW_PX = 140;
 
@@ -67,7 +67,9 @@ export function VisitNotifier() {
       .then(async (res) => {
         const data = (await res.json().catch(() => ({}))) as {
           identify?: IdentifyPromptPayload;
+          visitId?: string | null;
         };
+        rememberLastVisitId(data.visitId);
         const identify = data.identify;
         if (!identify?.show || isPipelinePath(path)) return;
 

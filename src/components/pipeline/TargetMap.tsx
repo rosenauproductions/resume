@@ -715,6 +715,7 @@ export function TargetMap({
   const [showZero, setShowZero] = useState(true);
   const [showUnlinked, setShowUnlinked] = useState(true);
   const [showEdges, setShowEdges] = useState(true);
+  const [visitsOnly, setVisitsOnly] = useState(false);
   const [statusFilter, setStatusFilter] = useState<MapStatusFilter>("all");
   const [mapFocus, setMapFocus] = useState<MapFocus>("us");
   const [zoom, setZoom] = useState(1);
@@ -1110,18 +1111,23 @@ export function TargetMap({
     return ids;
   }, [focusGeoTargets, focusUnlinked]);
 
+  const includeZeroTargets = showZero && !visitsOnly;
   const visibleGeo = (
-    showZero ? focusGeoTargets : focusGeoTargets.filter((t) => t.hits > 0)
+    includeZeroTargets ? focusGeoTargets : focusGeoTargets.filter((t) => t.hits > 0)
   ).filter((t) => !dimNonMatch || filterPass(t));
-  const visibleRemote = (showZero ? remoteTargets : remoteTargets.filter((t) => t.hits > 0)).filter(
+  const visibleRemote = (
+    includeZeroTargets ? remoteTargets : remoteTargets.filter((t) => t.hits > 0)
+  ).filter((t) => !dimNonMatch || filterPass(t));
+  const visibleEu = (includeZeroTargets ? euTargets : euTargets.filter((t) => t.hits > 0)).filter(
     (t) => !dimNonMatch || filterPass(t),
   );
-  const visibleEu = (showZero ? euTargets : euTargets.filter((t) => t.hits > 0)).filter(
-    (t) => !dimNonMatch || filterPass(t),
-  );
-  const allGeoDraw = showZero ? focusGeoTargets : focusGeoTargets.filter((t) => t.hits > 0);
-  const allRemoteDraw = showZero ? remoteTargets : remoteTargets.filter((t) => t.hits > 0);
-  const allEuDraw = showZero ? euTargets : euTargets.filter((t) => t.hits > 0);
+  const allGeoDraw = includeZeroTargets
+    ? focusGeoTargets
+    : focusGeoTargets.filter((t) => t.hits > 0);
+  const allRemoteDraw = includeZeroTargets
+    ? remoteTargets
+    : remoteTargets.filter((t) => t.hits > 0);
+  const allEuDraw = includeZeroTargets ? euTargets : euTargets.filter((t) => t.hits > 0);
   const drawGeo = dimNonMatch ? allGeoDraw : visibleGeo;
   const drawRemote = dimNonMatch ? allRemoteDraw : visibleRemote;
   const drawEu = dimNonMatch ? allEuDraw : visibleEu;
@@ -1224,6 +1230,7 @@ export function TargetMap({
   const hovered = hoverId ? targets.find((t) => t.job.id === hoverId) : null;
   const ranked = [...targets]
     .filter((t) => filterPass(t))
+    .filter((t) => !visitsOnly || t.hits > 0)
     .sort((a, b) => b.hits - a.hits || a.job.company.localeCompare(b.job.company));
 
   const { boxW, boxH, label: remoteLabel } = remoteCluster;
@@ -1545,7 +1552,24 @@ export function TargetMap({
             Links
           </label>
           <label className="flex items-center gap-1.5 text-xs text-[var(--muted)]">
-            <input type="checkbox" checked={showZero} onChange={(e) => setShowZero(e.target.checked)} />
+            <input
+              type="checkbox"
+              checked={visitsOnly}
+              onChange={(e) => setVisitsOnly(e.target.checked)}
+            />
+            Visits only
+          </label>
+          <label
+            className={`flex items-center gap-1.5 text-xs ${
+              visitsOnly ? "text-[var(--muted)]/50" : "text-[var(--muted)]"
+            }`}
+          >
+            <input
+              type="checkbox"
+              checked={showZero}
+              disabled={visitsOnly}
+              onChange={(e) => setShowZero(e.target.checked)}
+            />
             0-hit targets
           </label>
           <label className="flex items-center gap-1.5 text-xs text-[var(--muted)]">

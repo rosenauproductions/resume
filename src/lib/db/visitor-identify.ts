@@ -26,6 +26,8 @@ export type VisitorLeadInput = {
   title?: string;
   location?: string;
   message?: string;
+  /** Visitor explicitly asks Chris to follow up. */
+  requestContact?: boolean;
 };
 
 function isPublicResumePath(path: string) {
@@ -261,12 +263,17 @@ async function createWebsiteLeadApplication(input: {
   lead: VisitorLeadInput;
   visitId?: string | null;
 }): Promise<string> {
-  const company = input.lead.company.trim() || "Website lead";
-  const title = input.lead.title?.trim() || "Opportunity (website lead)";
+  const wantsContact = Boolean(input.lead.requestContact);
+  const company =
+    input.lead.company.trim() || (wantsContact ? "Contact request" : "Website lead");
+  const title = input.lead.title?.trim() || (wantsContact ? "Please contact me" : "Opportunity (website lead)");
   const location = input.lead.location?.trim() || "";
   const lookingFor = input.freeText || input.lead.message?.trim() || "";
   const noteLines = [
-    "Website lead from resume identify prompt",
+    wantsContact
+      ? "Website contact request from resume"
+      : "Website lead from resume identify prompt",
+    wantsContact ? "Requested contact: yes" : null,
     `Name: ${input.lead.name.trim()}`,
     `Email: ${input.lead.email.trim()}`,
     input.lead.phone?.trim() ? `Phone: ${input.lead.phone.trim()}` : null,
@@ -280,12 +287,12 @@ async function createWebsiteLeadApplication(input: {
     shortName: company.slice(0, 24),
     location,
     status: "researching",
-    statusRaw: "website_lead",
-    source: "Website lead",
-    tags: ["website-lead"],
+    statusRaw: wantsContact ? "contact_request" : "website_lead",
+    source: wantsContact ? "Contact request" : "Website lead",
+    tags: wantsContact ? ["website-lead", "contact-requested"] : ["website-lead"],
     description: input.lead.message?.trim() || lookingFor || "",
     notes: noteLines.join("\n"),
-    userInterest: "inbound",
+    userInterest: wantsContact ? "contact-requested" : "inbound",
     datePrecision: "unknown",
   });
 
@@ -355,12 +362,14 @@ async function notifyIdentificationOutcome(input: {
 
   if (input.createdLead && input.lead) {
     const job = input.applicationId ? await getApplication(input.applicationId) : null;
+    const wantsContact = Boolean(input.lead.requestContact);
     const lines = [
       ...baseLines,
+      wantsContact ? "**Requested contact:** yes" : null,
       `**Name:** ${input.lead.name.trim()}`,
       `**Email:** ${input.lead.email.trim()}`,
       input.lead.phone?.trim() ? `**Phone:** ${input.lead.phone.trim()}` : null,
-      `**Company:** ${input.lead.company.trim()}`,
+      `**Company:** ${input.lead.company.trim() || (wantsContact ? "Contact request" : "—")}`,
       input.lead.title?.trim() ? `**Role:** ${input.lead.title.trim()}` : null,
       leadLocation
         ? `**Their location:** ${leadLocation}${knownLeadCity ? "" : " (not in map DB)"}`
@@ -369,11 +378,11 @@ async function notifyIdentificationOutcome(input: {
         ? `**Note:** ${input.freeText || input.lead.message?.trim()}`
         : null,
       job ? `**Pipeline job:** ${job.company} — ${job.title}` : null,
-      "**Source:** Website lead",
+      wantsContact ? "**Source:** Contact request" : "**Source:** Website lead",
     ].filter(Boolean) as string[];
 
     await notifyVisitChannels({
-      title: "Website lead created",
+      title: wantsContact ? "Contact requested" : "Website lead created",
       lines,
       kind: "lead",
       priority: "high",
@@ -447,7 +456,9 @@ export async function saveVisitorIdentification(input: {
   if (creatingLead) {
     if (!lead?.name?.trim()) throw new Error("Name is required");
     if (!lead?.email?.trim()) throw new Error("Email is required");
-    if (!lead?.company?.trim()) throw new Error("Company is required");
+    if (!lead.requestContact && !lead?.company?.trim()) {
+      throw new Error("Company is required");
+    }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(lead.email.trim())) {
       throw new Error("Enter a valid email");
     }

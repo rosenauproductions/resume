@@ -101,8 +101,18 @@ export const visitorIdentifications = pgTable("visitor_identifications", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+/** Public resume chatbot transcripts (one row per completed turn). */
+export const chatMessages = pgTable("chat_messages", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  sessionId: text("session_id").notNull().default("anonymous"),
+  visitorMessage: text("visitor_message").notNull().default(""),
+  botReply: text("bot_reply").notNull().default(""),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 export type ApplicationRow = typeof applications.$inferSelect;
 export type VisitRow = typeof visits.$inferSelect;
 export type IgnoredDeviceRow = typeof ignoredDevices.$inferSelect;
 export type SiteSettingRow = typeof siteSettings.$inferSelect;
 export type VisitorIdentificationRow = typeof visitorIdentifications.$inferSelect;
+export type ChatMessageRow = typeof chatMessages.$inferSelect;
