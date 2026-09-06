@@ -71,6 +71,8 @@ export type PipelineEnvStatus = {
   blob: boolean;
   aiGateway: boolean;
   pipelineSecret: boolean;
+  /** Live AI Gateway credit balance when the credits API is reachable. */
+  aiCredits?: import("@/lib/ai-gateway-credits").AiGatewayCreditsStatus;
 };
 
 export const FRESH_VISIT_PING_MIN_SEC = 1;
@@ -374,16 +376,25 @@ export async function resolveNtfyNotifyConfig(): Promise<{
 
 /** Public + admin snapshot used by pipeline UI. */
 export async function getPipelineSettingsSnapshot() {
-  const [visitorIdentify, pipelineHome, skillsSection, freshVisitPing, metroMap, insetMap, siteDeploy] =
-    await Promise.all([
-      getVisitorIdentifySetting(),
-      getPipelineHomeSetting(),
-      getSkillsSectionSetting(),
-      getFreshVisitPingSetting(),
-      getMetroMapSetting(),
-      getInsetMapSetting(),
-      getSiteDeploySetting(),
-    ]);
+  const [
+    visitorIdentify,
+    pipelineHome,
+    skillsSection,
+    freshVisitPing,
+    metroMap,
+    insetMap,
+    siteDeploy,
+    aiCredits,
+  ] = await Promise.all([
+    getVisitorIdentifySetting(),
+    getPipelineHomeSetting(),
+    getSkillsSectionSetting(),
+    getFreshVisitPingSetting(),
+    getMetroMapSetting(),
+    getInsetMapSetting(),
+    getSiteDeploySetting(),
+    import("@/lib/ai-gateway-credits").then((m) => m.fetchAiGatewayCredits()),
+  ]);
   return {
     visitorIdentify,
     pipelineHome,
@@ -392,6 +403,9 @@ export async function getPipelineSettingsSnapshot() {
     metroMap,
     insetMap,
     siteDeploy,
-    envStatus: getPipelineEnvStatus(),
+    envStatus: {
+      ...getPipelineEnvStatus(),
+      aiCredits,
+    },
   };
 }

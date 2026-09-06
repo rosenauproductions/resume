@@ -31,16 +31,26 @@ type Snapshot = {
   envStatus?: PipelineEnvStatus;
 };
 
-function StatusPill({ ok, label }: { ok: boolean; label: string }) {
+function StatusPill({
+  ok,
+  warn,
+  label,
+}: {
+  ok: boolean;
+  warn?: boolean;
+  label: string;
+}) {
+  const tone = warn
+    ? "border-[var(--warm)]/50 text-[var(--warm)]"
+    : ok
+      ? "border-[var(--accent)]/40 text-[var(--accent)]"
+      : "border-white/15 text-[var(--muted)]";
+  const dot = warn ? "bg-[var(--warm)]" : ok ? "bg-[var(--accent)]" : "bg-white/25";
   return (
     <span
-      className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs ${
-        ok
-          ? "border-[var(--accent)]/40 text-[var(--accent)]"
-          : "border-white/15 text-[var(--muted)]"
-      }`}
+      className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs ${tone}`}
     >
-      <span className={`h-1.5 w-1.5 rounded-full ${ok ? "bg-[var(--accent)]" : "bg-white/25"}`} />
+      <span className={`h-1.5 w-1.5 rounded-full ${dot}`} />
       {label}
     </span>
   );
@@ -362,11 +372,29 @@ export function PipelineSettings({
             <StatusPill ok={envStatus.ntfyTopicEnv} label="ntfy topic (env)" />
             <StatusPill ok={envStatus.discord} label="Discord webhook" />
             <StatusPill ok={envStatus.blob} label="Blob token" />
-            <StatusPill ok={envStatus.aiGateway} label="AI Gateway" />
+            <StatusPill ok={envStatus.aiGateway} label="AI Gateway key" />
+            {envStatus.aiCredits ? (
+              <StatusPill
+                ok={envStatus.aiCredits.level === "ok"}
+                warn={
+                  envStatus.aiCredits.level === "low" ||
+                  envStatus.aiCredits.level === "empty"
+                }
+                label={envStatus.aiCredits.label}
+              />
+            ) : null}
           </div>
         ) : (
           <p className="text-xs text-[var(--muted)]">Status unavailable</p>
         )}
+        {envStatus?.aiCredits?.level === "low" || envStatus?.aiCredits?.level === "empty" ? (
+          <p className="text-xs text-[var(--warm)]">
+            Resume chat + JD ingest will fail when credits run out. Top up in Vercel → AI Gateway.
+            {envStatus.aiCredits.totalUsed != null
+              ? ` Lifetime used: $${envStatus.aiCredits.totalUsed.toFixed(2)}.`
+              : ""}
+          </p>
+        ) : null}
       </section>
     </div>
   );

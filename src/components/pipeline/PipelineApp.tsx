@@ -285,6 +285,10 @@ export function PipelineApp({
   const [selectedVisitIds, setSelectedVisitIds] = useState<string[]>([]);
   const [thisDeviceId, setThisDeviceId] = useState("");
   const [visitorIdentifyEnabled, setVisitorIdentifyEnabled] = useState(false);
+  const [aiCreditsLevel, setAiCreditsLevel] = useState<"ok" | "low" | "empty" | "unknown" | null>(
+    null,
+  );
+  const [aiCreditsLabel, setAiCreditsLabel] = useState("");
   const [skillsSectionEnabled, setSkillsSectionEnabled] = useState(false);
   const [dismissedPanels, setDismissedPanels] = useState<string[]>([]);
   const [panelOrder, setPanelOrder] = useState<string[]>([...DEFAULT_HOME_PANEL_ORDER]);
@@ -371,6 +375,13 @@ export function PipelineApp({
             : [],
         );
         setPanelOrder(normalizeHomePanelOrder(data.settings.pipelineHome?.panelOrder));
+        const credits = data.settings.envStatus?.aiCredits as
+          | { level?: string; label?: string }
+          | undefined;
+        if (credits?.level === "ok" || credits?.level === "low" || credits?.level === "empty" || credits?.level === "unknown") {
+          setAiCreditsLevel(credits.level);
+          setAiCreditsLabel(typeof credits.label === "string" ? credits.label : "");
+        }
       }
     } catch {
       // ignore
@@ -1192,6 +1203,14 @@ export function PipelineApp({
       </header>
 
       <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6">
+        {aiCreditsLevel === "low" || aiCreditsLevel === "empty" ? (
+          <p className="mb-4 rounded-lg border border-[var(--warm)]/40 bg-[var(--warm)]/10 px-3 py-2 text-sm text-[var(--warm)]">
+            {aiCreditsLevel === "empty"
+              ? "AI Gateway credits are empty — resume chat and JD ingest will fail until you top up."
+              : "AI Gateway credits are running low — top up in Vercel → AI Gateway before chat stops working."}
+            {aiCreditsLabel ? ` (${aiCreditsLabel})` : ""}
+          </p>
+        ) : null}
         {notice ? (
           <p className="mb-4 rounded-lg border border-[var(--accent)]/30 bg-[var(--accent)]/10 px-3 py-2 text-sm text-[var(--accent)]">
             {notice}
