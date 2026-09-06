@@ -76,9 +76,13 @@ export function ChatWidget() {
     () =>
       new DefaultChatTransport({
         api: "/api/chat",
-        body: { sessionId, deviceId },
+        // Resolve IDs at send time so unlinked chats still attach to the visit device id.
+        body: () => ({
+          sessionId: getOrCreateSessionId(),
+          deviceId: getOrCreateDeviceId(),
+        }),
       }),
-    [sessionId, deviceId],
+    [],
   );
 
   const { messages, sendMessage, status, error, clearError } = useChat({

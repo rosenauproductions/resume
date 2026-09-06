@@ -180,9 +180,13 @@ export async function insertChatTurn(input: {
   botReply: string;
 }) {
   const db = getDb();
+  const deviceId = (input.deviceId || "").trim().slice(0, 128);
+  if (!deviceId) {
+    console.warn("chat turn logged without deviceId (unlinked visitor)");
+  }
   await db.insert(chatMessages).values({
     sessionId: input.sessionId.slice(0, 128) || "anonymous",
-    deviceId: (input.deviceId || "").trim().slice(0, 128),
+    deviceId,
     visitorMessage: input.visitorMessage.slice(0, 4000),
     botReply: input.botReply.slice(0, 8000),
   });

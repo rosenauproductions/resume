@@ -69,6 +69,11 @@ function isLinked(t: PipelineChatTurn) {
   return Boolean(t.visitor || t.linkedJob);
 }
 
+/** Device id counts as a visitor identity even when they never filled the identify form. */
+function hasVisitorId(t: PipelineChatTurn) {
+  return Boolean((t.deviceId || "").trim() || t.visitor || t.linkedJob || t.latestVisit);
+}
+
 type Props = {
   active: boolean;
 };
@@ -77,7 +82,7 @@ export function PipelineChatTracker({ active }: Props) {
   const [turns, setTurns] = useState<PipelineChatTurn[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [linkedOnly, setLinkedOnly] = useState(true);
+  const [linkedOnly, setLinkedOnly] = useState(false);
   const [groupByVisitor, setGroupByVisitor] = useState(true);
 
   const refresh = useCallback(async () => {
@@ -134,8 +139,8 @@ export function PipelineChatTracker({ active }: Props) {
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-3">
         <p className="text-sm text-[var(--muted)]">
-          Questions from the public resume chatbot, matched to visit device IDs and identify /
-          job links when available.
+          Questions from the public resume chatbot, keyed by visit device ID (including
+          visitors who never identified). Use the filter to hide unlinked turns.
         </p>
         <div className="ml-auto flex flex-wrap items-center gap-3">
           <label className="flex items-center gap-2 text-xs text-[var(--muted)]">
@@ -193,7 +198,11 @@ export function PipelineChatTracker({ active }: Props) {
                 </p>
                 <span className="text-xs text-[var(--muted)]">
                   {g.turns.length} turn{g.turns.length === 1 ? "" : "s"}
-                  {g.linked ? " · linked" : " · anonymous"}
+                  {g.linked
+                    ? " · identified"
+                    : hasVisitorId(g.turns[0])
+                      ? " · visitor id"
+                      : " · anonymous"}
                 </span>
                 {g.turns[0]?.linkedJob ? (
                   <span className="text-xs text-[var(--accent)]">
