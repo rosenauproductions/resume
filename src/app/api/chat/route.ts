@@ -13,7 +13,13 @@ const SYSTEM_PROMPT = readFileSync(
 );
 
 function aiConfigured() {
-  return Boolean(process.env.AI_GATEWAY_API_KEY || process.env.VERCEL_OIDC_TOKEN);
+  // AI Gateway auth: API key, local OIDC from `vercel env pull`, or Vercel runtime
+  // (production/preview inject OIDC per-request — not always as an env var).
+  return Boolean(
+    process.env.AI_GATEWAY_API_KEY?.trim() ||
+      process.env.VERCEL_OIDC_TOKEN?.trim() ||
+      process.env.VERCEL,
+  );
 }
 
 function textFromUiMessage(message: UIMessage | undefined): string {
