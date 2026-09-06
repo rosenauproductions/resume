@@ -105,6 +105,8 @@ export const visitorIdentifications = pgTable("visitor_identifications", {
 export const chatMessages = pgTable("chat_messages", {
   id: uuid("id").defaultRandom().primaryKey(),
   sessionId: text("session_id").notNull().default("anonymous"),
+  /** Same browser device id as visits.session_fingerprint / visitor_identifications.device_id */
+  deviceId: text("device_id").notNull().default(""),
   visitorMessage: text("visitor_message").notNull().default(""),
   botReply: text("bot_reply").notNull().default(""),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),

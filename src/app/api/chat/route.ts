@@ -1,8 +1,8 @@
 import { convertToModelMessages, streamText, type UIMessage } from "ai";
 import { readFileSync } from "fs";
 import path from "path";
-import { dbConfigured, getDb } from "@/lib/db";
-import { chatMessages } from "@/lib/db/schema";
+import { dbConfigured } from "@/lib/db";
+import { insertChatTurn } from "@/lib/db/chat";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -39,7 +39,7 @@ export async function POST(req: Request) {
     );
   }
 
-  let body: { messages?: UIMessage[]; sessionId?: string };
+  let body: { messages?: UIMessage[]; sessionId?: string; deviceId?: string };
   try {
     body = await req.json();
   } catch {
@@ -55,6 +55,10 @@ export async function POST(req: Request) {
     typeof body.sessionId === "string" && body.sessionId.trim()
       ? body.sessionId.trim().slice(0, 128)
       : "anonymous";
+  const deviceId =
+    typeof body.deviceId === "string" && body.deviceId.trim()
+      ? body.deviceId.trim().slice(0, 128)
+      : "";
 
   const modelMessages = await convertToModelMessages(messages);
   const lastUserText = textFromUiMessage(
@@ -69,10 +73,11 @@ export async function POST(req: Request) {
     onFinish: async ({ text }) => {
       if (!dbConfigured() || !lastUserText) return;
       try {
-        await getDb().insert(chatMessages).values({
+        await insertChatTurn({
           sessionId,
-          visitorMessage: lastUserText.slice(0, 4000),
-          botReply: (text || "").slice(0, 8000),
+          deviceId,
+          visitorMessage: lastUserText,
+          botReply: text || "",
         });
       } catch (err) {
         console.error("Failed to log chat message:", err);

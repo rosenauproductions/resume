@@ -31,6 +31,7 @@ import { BarChart, DonutChart, DismissiblePanel, StatCard, TimelineChart, VisitT
 import { TargetMap } from "./TargetMap";
 import { ResumeEditor } from "./ResumeEditor";
 import { PipelineSettings } from "./PipelineSettings";
+import { PipelineChatTracker } from "./PipelineChatTracker";
 import type { PipelineHomePanelId } from "@/lib/pipeline/home-panels";
 import {
   DEFAULT_HOME_PANEL_ORDER,
@@ -45,7 +46,7 @@ type IngestStep = "paste" | "review";
 
 const LOCAL_KEY = "pipeline-jobs-v4";
 const META_KEY = "pipeline-meta-v4";
-type ViewMode = "insights" | "board" | "list" | "visits" | "map" | "resume" | "settings";
+type ViewMode = "insights" | "board" | "list" | "visits" | "chat" | "map" | "resume" | "settings";
 type StorageMode = "local" | "blob" | "db";
 
 type VisitRow = {
@@ -1304,6 +1305,7 @@ export function PipelineApp({
               ["board", "Board"],
               ["list", "All applications"],
               ["visits", "Visits"],
+              ["chat", "Chat"],
               ["map", "Target map"],
             ] as const
           ).map(([id, label]) => (
@@ -1832,6 +1834,8 @@ export function PipelineApp({
               )}
             </div>
           ) : null}
+
+          {view === "chat" ? <PipelineChatTracker active={view === "chat"} /> : null}
 
           {view === "map" ? (
             <TargetMap

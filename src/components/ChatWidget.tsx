@@ -4,6 +4,7 @@ import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
+import { getOrCreateDeviceId } from "@/lib/device-id";
 
 const SESSION_KEY = "resume-chat-session-id";
 
@@ -44,19 +45,21 @@ export function ChatWidget() {
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState("");
   const [sessionId, setSessionId] = useState("anonymous");
+  const [deviceId, setDeviceId] = useState("");
   const scrollerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setSessionId(getOrCreateSessionId());
+    setDeviceId(getOrCreateDeviceId());
   }, []);
 
   const transport = useMemo(
     () =>
       new DefaultChatTransport({
         api: "/api/chat",
-        body: { sessionId },
+        body: { sessionId, deviceId },
       }),
-    [sessionId],
+    [sessionId, deviceId],
   );
 
   const { messages, sendMessage, status, error, clearError } = useChat({
