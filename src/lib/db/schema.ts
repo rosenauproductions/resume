@@ -109,7 +109,23 @@ export const chatMessages = pgTable("chat_messages", {
   deviceId: text("device_id").notNull().default(""),
   visitorMessage: text("visitor_message").notNull().default(""),
   botReply: text("bot_reply").notNull().default(""),
+  /** True when reply was served from chat_cache (no model call). */
+  fromCache: boolean("from_cache").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+/**
+ * Reused FAQ answers for the public chatbot — avoids repeat AI spend.
+ * Matched by normalized question text (exact) or high token overlap (fuzzy).
+ */
+export const chatCache = pgTable("chat_cache", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  questionNorm: text("question_norm").notNull().unique(),
+  questionSample: text("question_sample").notNull().default(""),
+  answer: text("answer").notNull().default(""),
+  hitCount: integer("hit_count").notNull().default(0),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
 export type ApplicationRow = typeof applications.$inferSelect;
@@ -118,3 +134,4 @@ export type IgnoredDeviceRow = typeof ignoredDevices.$inferSelect;
 export type SiteSettingRow = typeof siteSettings.$inferSelect;
 export type VisitorIdentificationRow = typeof visitorIdentifications.$inferSelect;
 export type ChatMessageRow = typeof chatMessages.$inferSelect;
+export type ChatCacheRow = typeof chatCache.$inferSelect;

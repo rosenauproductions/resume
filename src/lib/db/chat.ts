@@ -1,6 +1,7 @@
 import { desc, inArray } from "drizzle-orm";
 import { getDb } from "./index";
-import { applications, chatMessages, visitorIdentifications, visits } from "./schema";
+import { applications, chatCache, chatMessages, visitorIdentifications, visits } from "./schema";
+import { normalizeQuestion } from "@/lib/chat/cache";
 
 export type ChatTurnRow = {
   id: string;
@@ -8,6 +9,7 @@ export type ChatTurnRow = {
   deviceId: string;
   visitorMessage: string;
   botReply: string;
+  fromCache: boolean;
   createdAt: string;
   visitor: {
     contactName: string;
@@ -138,6 +140,7 @@ export async function listChatTurns(limit = 200): Promise<ChatTurnRow[]> {
       deviceId,
       visitorMessage: r.visitorMessage,
       botReply: r.botReply,
+      fromCache: Boolean(r.fromCache),
       createdAt: iso(r.createdAt),
       visitor: ident
         ? {
@@ -178,6 +181,7 @@ export async function insertChatTurn(input: {
   deviceId: string;
   visitorMessage: string;
   botReply: string;
+  fromCache?: boolean;
 }) {
   const db = getDb();
   const deviceId = (input.deviceId || "").trim().slice(0, 128);
@@ -189,5 +193,39 @@ export async function insertChatTurn(input: {
     deviceId,
     visitorMessage: input.visitorMessage.slice(0, 4000),
     botReply: input.botReply.slice(0, 8000),
+    fromCache: Boolean(input.fromCache),
   });
+}
+
+/** Delete chat turns and matching FAQ cache rows so garbage is not reused. */
+export async function deleteChatTurns(ids: string[]): Promise<string[]> {
+  const unique = [...new Set(ids.map((s) => s.trim()).filter(Boolean))];
+  if (!unique.length) return [];
+  const db = getDb();
+
+  const rows = await db
+    .select({
+      id: chatMessages.id,
+      visitorMessage: chatMessages.visitorMessage,
+    })
+    .from(chatMessages)
+    .where(inArray(chatMessages.id, unique));
+
+  const norms = [
+    ...new Set(
+      rows
+        .map((r) => normalizeQuestion(r.visitorMessage || ""))
+        .filter(Boolean),
+    ),
+  ];
+
+  if (norms.length) {
+    await db.delete(chatCache).where(inArray(chatCache.questionNorm, norms));
+  }
+
+  const deleted = await db
+    .delete(chatMessages)
+    .where(inArray(chatMessages.id, unique))
+    .returning({ id: chatMessages.id });
+  return deleted.map((r) => r.id);
 }

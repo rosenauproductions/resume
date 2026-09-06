@@ -1,8 +1,19 @@
-import { convertToModelMessages, streamText, type UIMessage } from "ai";
+import {
+  convertToModelMessages,
+  createUIMessageStream,
+  createUIMessageStreamResponse,
+  streamText,
+  type UIMessage,
+} from "ai";
 import { readFileSync } from "fs";
 import path from "path";
 import { dbConfigured } from "@/lib/db";
 import { insertChatTurn } from "@/lib/db/chat";
+import {
+  findCachedAnswer,
+  recordCacheHit,
+  upsertCachedAnswer,
+} from "@/lib/chat/cache";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -13,8 +24,6 @@ const SYSTEM_PROMPT = readFileSync(
 );
 
 function aiConfigured() {
-  // AI Gateway auth: API key, local OIDC from `vercel env pull`, or Vercel runtime
-  // (production/preview inject OIDC per-request — not always as an env var).
   return Boolean(
     process.env.AI_GATEWAY_API_KEY?.trim() ||
       process.env.VERCEL_OIDC_TOKEN?.trim() ||
@@ -29,6 +38,25 @@ function textFromUiMessage(message: UIMessage | undefined): string {
     .map((p) => p.text)
     .join("")
     .trim();
+}
+
+function countUserMessages(messages: UIMessage[]) {
+  return messages.filter((m) => m.role === "user").length;
+}
+
+function cachedAnswerResponse(answer: string) {
+  const stream = createUIMessageStream({
+    execute: ({ writer }) => {
+      writer.write({ type: "start" });
+      writer.write({ type: "start-step" });
+      writer.write({ type: "text-start", id: "0" });
+      writer.write({ type: "text-delta", id: "0", delta: answer });
+      writer.write({ type: "text-end", id: "0" });
+      writer.write({ type: "finish-step" });
+      writer.write({ type: "finish" });
+    },
+  });
+  return createUIMessageStreamResponse({ stream });
 }
 
 export async function POST(req: Request) {
@@ -60,10 +88,35 @@ export async function POST(req: Request) {
       ? body.deviceId.trim().slice(0, 128)
       : "";
 
-  const modelMessages = await convertToModelMessages(messages);
   const lastUserText = textFromUiMessage(
     [...messages].reverse().find((m) => m.role === "user"),
   );
+  const userTurns = countUserMessages(messages);
+  // Fuzzy reuse only on the first question — follow-ups need conversation context.
+  const allowFuzzy = userTurns <= 1;
+
+  if (dbConfigured() && lastUserText) {
+    try {
+      const hit = await findCachedAnswer(lastUserText, { allowFuzzy });
+      // Exact matches are safe any turn; fuzzy only on first turn (allowFuzzy gate above).
+      if (hit && (hit.match === "exact" || allowFuzzy)) {
+        const answer = hit.answer.trim();
+        await recordCacheHit(hit);
+        await insertChatTurn({
+          sessionId,
+          deviceId,
+          visitorMessage: lastUserText,
+          botReply: answer,
+          fromCache: true,
+        });
+        return cachedAnswerResponse(answer);
+      }
+    } catch (err) {
+      console.error("chat cache lookup failed:", err);
+    }
+  }
+
+  const modelMessages = await convertToModelMessages(messages);
 
   const result = streamText({
     model: process.env.RESUME_CHAT_MODEL || "google/gemini-2.5-flash",
@@ -72,15 +125,24 @@ export async function POST(req: Request) {
     maxOutputTokens: 500,
     onFinish: async ({ text }) => {
       if (!dbConfigured() || !lastUserText) return;
+      const reply = (text || "").trim();
       try {
         await insertChatTurn({
           sessionId,
           deviceId,
           visitorMessage: lastUserText,
-          botReply: text || "",
+          botReply: reply,
+          fromCache: false,
         });
       } catch (err) {
         console.error("Failed to log chat message:", err);
+      }
+      if (reply) {
+        try {
+          await upsertCachedAnswer({ question: lastUserText, answer: reply });
+        } catch (err) {
+          console.error("Failed to upsert chat cache:", err);
+        }
       }
     },
   });
