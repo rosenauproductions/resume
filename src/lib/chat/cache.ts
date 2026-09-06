@@ -91,10 +91,18 @@ export function jaccardTokens(a: string, b: string): number {
   return inter / (A.size + B.size - inter);
 }
 
-/** Skip caching personal / contact-capture prompts. */
+/** Skip caching personal / contact-capture prompts (and contact-intent FAQ). */
+export function isContactIntent(question: string): boolean {
+  const q = question.toLowerCase();
+  return /\b(contact|get in touch|reach (out|you|him|chris)|email (chris|you|him)|call (chris|you|him)|phone|talk to (chris|you)|hire (chris|you)|leave (my )?info|who (are|is) (you|this))\b/.test(
+    q,
+  );
+}
+
 export function shouldSkipCache(question: string): boolean {
   const q = question.toLowerCase();
   if (question.trim().length < 8) return true;
+  if (isContactIntent(question)) return true;
   if (/[^\s@]+@[^\s@]+\.[^\s@]+/.test(q)) return true;
   if (/\b\d{3}[-.\s]?\d{3}[-.\s]?\d{4}\b/.test(q)) return true;
   if (
@@ -105,6 +113,19 @@ export function shouldSkipCache(question: string): boolean {
     return true;
   }
   return false;
+}
+
+/** Remove bad cached dumps that only list Chris's email/phone. */
+export async function purgeContactDumpCache() {
+  const db = getDb();
+  await db.delete(chatCache).where(
+    sql`lower(${chatCache.answer}) like '%rosenauproductions@gmail.com%'
+      or lower(${chatCache.answer}) like '%945-217-2211%'
+      or lower(${chatCache.questionNorm}) like '%contact%'
+      or lower(${chatCache.questionNorm}) like '%email%'
+      or lower(${chatCache.questionNorm}) like '%reach%'
+      or lower(${chatCache.questionNorm}) like '%phone%'`,
+  );
 }
 
 function scorePair(
