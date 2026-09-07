@@ -267,6 +267,7 @@ export type VisitTimelinePoint = {
   occurredAt: string;
   path: string;
   locationLabel?: string;
+  referrer?: string;
 };
 
 /** Horizontal click timeline for one visitor’s visits. */
@@ -314,7 +315,7 @@ export function VisitTimelineChart({
               key={p.id}
               className="absolute top-1/2 z-[1] -translate-x-1/2 -translate-y-1/2"
               style={{ left: `calc(0.5rem + (100% - 1rem) * ${pct / 100})` }}
-              title={`${fmt(p.occurredAt)} · ${p.path}`}
+              title={`${fmt(p.occurredAt)} · ${p.path}${p.referrer ? ` · ${p.referrer}` : ""}`}
             >
               <span
                 className={`block h-3.5 w-3.5 rounded-full border-2 ${
@@ -349,6 +350,7 @@ export function VisitTimelineChart({
               <p className="truncate text-xs text-[var(--muted)]">
                 {p.path}
                 {p.locationLabel ? ` · ${p.locationLabel}` : ""}
+                {p.referrer ? ` · via ${p.referrer}` : ""}
               </p>
             </div>
             <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-[var(--accent)]" aria-hidden />

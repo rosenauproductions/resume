@@ -57,6 +57,7 @@ type VisitRow = {
   region: string;
   country: string;
   device: string;
+  referrer: string;
   sessionFingerprint: string;
   locationLabel: string;
   linkConfidence: string;
@@ -99,6 +100,18 @@ function formatVisitCt(iso: string, style: "full" | "short" = "full") {
     dateStyle: "medium",
     timeStyle: "short",
   });
+}
+
+/** Compact referrer for visits list — hostname when possible. */
+function formatVisitReferrer(raw: string | undefined | null): string {
+  const s = (raw || "").trim();
+  if (!s) return "direct";
+  try {
+    const u = new URL(s);
+    return u.hostname.replace(/^www\./, "") || s;
+  } catch {
+    return s.length > 48 ? `${s.slice(0, 47)}…` : s;
+  }
 }
 
 function buildVisitGroups(visits: VisitRow[]): VisitVisitorGroup[] {
@@ -1696,6 +1709,8 @@ export function PipelineApp({
                             {g.fingerprint ? ` · ${g.fingerprint.slice(0, 10)}…` : ""}
                             {" · "}
                             latest {formatVisitCt(v.occurredAt)} CT
+                            {" · "}
+                            via {formatVisitReferrer(v.referrer)}
                           </p>
                           <p className="flex flex-wrap gap-x-2 gap-y-1 text-xs tabular-nums text-[var(--cream)]/85">
                             {shown.map((t) => (
@@ -1767,6 +1782,8 @@ export function PipelineApp({
                         </p>
                         <p className="text-xs text-[var(--muted)]">
                           {formatVisitCt(v.occurredAt)} CT · {v.device || "Unknown"} · {v.path}
+                          {" · via "}
+                          {formatVisitReferrer(v.referrer)}
                         </p>
                         {v.linkConfidence === "suggested" || v.linkConfidence === "confirmed" ? (
                           <p className="text-sm text-[var(--accent)]">
@@ -1996,6 +2013,10 @@ export function PipelineApp({
           <div className="space-y-4 text-sm">
             <MetaRow label="Device" value={visitTimelineGroup.device} />
             <MetaRow
+              label="Latest referrer"
+              value={formatVisitReferrer(visitTimelineGroup.latest.referrer)}
+            />
+            <MetaRow
               label="Visitor"
               value={
                 visitTimelineGroup.fingerprint
@@ -2019,6 +2040,7 @@ export function PipelineApp({
                 occurredAt: v.occurredAt,
                 path: v.path,
                 locationLabel: v.locationLabel,
+                referrer: formatVisitReferrer(v.referrer),
               }))}
             />
           </div>
