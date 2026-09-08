@@ -2246,54 +2246,125 @@ function Board({
   onSelect: (job: JobApplication) => void;
   onStatus: (id: string, status: JobStatus) => void;
 }) {
+  const BOARD_FONT_KEY = "pipeline-board-font-scale";
+  const MIN = 0.7;
+  const MAX = 1.15;
+  const STEP = 0.05;
+  const DEFAULT = 0.85;
+
+  const [scale, setScale] = useState(DEFAULT);
+
+  useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem(BOARD_FONT_KEY);
+      const n = raw != null ? Number(raw) : NaN;
+      if (Number.isFinite(n) && n >= MIN && n <= MAX) setScale(n);
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(BOARD_FONT_KEY, String(scale));
+    } catch {
+      // ignore
+    }
+  }, [scale]);
+
+  function bump(delta: number) {
+    setScale((s) => {
+      const next = Math.round((s + delta) * 100) / 100;
+      return Math.min(MAX, Math.max(MIN, next));
+    });
+  }
+
   return (
-    <div className="flex gap-3 overflow-x-auto pb-4">
-      {BOARD_COLUMNS.map((status) => {
-        const col = jobs.filter((j) => j.status === status);
-        return (
-          <section
-            key={status}
-            className="w-64 shrink-0 rounded-2xl border border-white/10 bg-[var(--panel)]/80"
-            onDragOver={(e) => e.preventDefault()}
-            onDrop={(e) => {
-              const id = e.dataTransfer.getData("text/job-id");
-              if (id) onStatus(id, status);
-            }}
+    <div className="space-y-2">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-xs text-[var(--muted)]">Board size</span>
+        <button
+          type="button"
+          onClick={() => bump(-STEP)}
+          disabled={scale <= MIN}
+          className="rounded-lg border border-white/15 px-2.5 py-1 text-sm leading-none hover:border-[var(--accent)] disabled:opacity-40"
+          aria-label="Decrease board font size"
+        >
+          −
+        </button>
+        <span className="min-w-[2.75rem] text-center text-xs tabular-nums text-[var(--cream)]">
+          {Math.round(scale * 100)}%
+        </span>
+        <button
+          type="button"
+          onClick={() => bump(STEP)}
+          disabled={scale >= MAX}
+          className="rounded-lg border border-white/15 px-2.5 py-1 text-sm leading-none hover:border-[var(--accent)] disabled:opacity-40"
+          aria-label="Increase board font size"
+        >
+          +
+        </button>
+        {scale !== DEFAULT ? (
+          <button
+            type="button"
+            onClick={() => setScale(DEFAULT)}
+            className="rounded-lg border border-white/15 px-2 py-1 text-[11px] text-[var(--muted)] hover:border-[var(--accent)] hover:text-[var(--cream)]"
           >
-            <header className="flex items-center justify-between border-b border-white/10 px-3 py-2">
-              <h3 className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">
-                {STATUS_LABELS[status]}
-              </h3>
-              <span className="text-xs text-[var(--accent)]">{col.length}</span>
-            </header>
-            <div className="space-y-2 p-2">
-              {col.map((job) => (
-                <button
-                  key={job.id}
-                  type="button"
-                  draggable
-                  onDragStart={(e) => e.dataTransfer.setData("text/job-id", job.id)}
-                  onClick={() => onSelect(job)}
-                  className="w-full rounded-xl border border-white/10 bg-black/25 p-3 text-left transition hover:border-[var(--accent)]/50"
-                >
-                  <p className="text-sm font-medium">{job.title}</p>
-                  <p className="mt-1 text-xs text-[var(--muted)]">{job.company}</p>
-                  <div className="mt-2 flex flex-wrap gap-2 text-[10px]">
-                    {job.matchScore != null ? (
-                      <span className="text-[var(--accent)]">{job.matchScore}/10</span>
-                    ) : null}
-                    {job.isTarget ? <span className="text-[var(--warm)]">Target</span> : null}
-                    {job.rate ? <span className="text-[var(--muted)]">{job.rate}</span> : null}
-                  </div>
-                </button>
-              ))}
-              {!col.length ? (
-                <p className="px-2 py-6 text-center text-xs text-[var(--muted)]/70">Empty</p>
-              ) : null}
-            </div>
-          </section>
-        );
-      })}
+            Reset
+          </button>
+        ) : null}
+      </div>
+
+      <div className="origin-top-left" style={{ zoom: scale }}>
+        <div className="flex gap-3 overflow-x-auto pb-4">
+          {BOARD_COLUMNS.map((status) => {
+            const col = jobs.filter((j) => j.status === status);
+            return (
+              <section
+                key={status}
+                className="w-64 shrink-0 rounded-2xl border border-white/10 bg-[var(--panel)]/80"
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={(e) => {
+                  const id = e.dataTransfer.getData("text/job-id");
+                  if (id) onStatus(id, status);
+                }}
+              >
+                <header className="flex items-center justify-between border-b border-white/10 px-3 py-2">
+                  <h3 className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">
+                    {STATUS_LABELS[status]}
+                  </h3>
+                  <span className="text-xs text-[var(--accent)]">{col.length}</span>
+                </header>
+                <div className="space-y-2 p-2">
+                  {col.map((job) => (
+                    <button
+                      key={job.id}
+                      type="button"
+                      draggable
+                      onDragStart={(e) => e.dataTransfer.setData("text/job-id", job.id)}
+                      onClick={() => onSelect(job)}
+                      className="w-full rounded-xl border border-white/10 bg-black/25 p-3 text-left transition hover:border-[var(--accent)]/50"
+                    >
+                      <p className="text-sm font-medium">{job.title}</p>
+                      <p className="mt-1 text-xs text-[var(--muted)]">{job.company}</p>
+                      <div className="mt-2 flex flex-wrap gap-2 text-[10px]">
+                        {job.matchScore != null ? (
+                          <span className="text-[var(--accent)]">{job.matchScore}/10</span>
+                        ) : null}
+                        {job.isTarget ? <span className="text-[var(--warm)]">Target</span> : null}
+                        {job.rate ? <span className="text-[var(--muted)]">{job.rate}</span> : null}
+                      </div>
+                    </button>
+                  ))}
+                  {!col.length ? (
+                    <p className="px-2 py-6 text-center text-xs text-[var(--muted)]/70">Empty</p>
+                  ) : null}
+                </div>
+              </section>
+            );
+          })}
+        </div>
+      </div>
     </div>
   );
 }
