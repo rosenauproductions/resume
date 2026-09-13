@@ -205,7 +205,7 @@ export function buildAiResumeContent(mediaBase?: ResumeContent): ResumeContent {
 
   ai.sideProjects = {
     heading: "Shipped builds",
-    note: "Coding and AI-assisted products — LMS bots, PWAs, portals, and this pipeline. (BPMon and experiment toys omitted.)",
+    note: "Coding and AI-assisted products — LMS bots, PWAs, portals, and this pipeline.",
     projects,
   };
 
@@ -257,7 +257,7 @@ export function buildAiResumeContent(mediaBase?: ResumeContent): ResumeContent {
 
   ai.roleFit = {
     heading: "Role fit",
-    note: "Select what you’re hiring for — mapped to LMS platform, AI, and shipped code.",
+    note: "Select what you’re hiring for — AI/systems first, plus instructional design and media craft.",
     needs: [
       {
         id: "lms-platform",
@@ -354,6 +354,96 @@ export function buildAiResumeContent(mediaBase?: ResumeContent): ResumeContent {
             company: "Higher Ed Partners",
             proof: "Pioneered Synthesia avatar templates across courses.",
           },
+          {
+            role: "Instructional Design Specialist (Media)",
+            company: "Medical Sales College",
+            proof: "AI-assisted learning video production with Claude, ChatGPT, and Grok.",
+          },
+        ],
+      },
+      {
+        id: "instructional-design",
+        enabled: true,
+        label: "Instructional design",
+        strength: "Expert",
+        summary:
+          "End-to-end course design with ADDIE, SME collaboration, assessments, and learner-centered media.",
+        matches: [
+          {
+            role: "Instructional Design Specialist (Media)",
+            company: "Medical Sales College",
+            proof:
+              "Hybrid migration, Rise/Storyline modules, scenario video, and Canvas support for instructors.",
+          },
+          {
+            role: "Contractor — Instructional Designer",
+            company: "iCode / Intuit",
+            proof:
+              "Managed scope, ADDIE workflow, Storyline templates, CBT modules, and instructor materials.",
+          },
+        ],
+      },
+      {
+        id: "elearning",
+        enabled: true,
+        label: "eLearning development",
+        strength: "Expert",
+        summary:
+          "Interactive web modules, storyboards, and media-rich courses built for LMS delivery.",
+        matches: [
+          {
+            role: "Multimedia Director & LMS Platform Design",
+            company: "Higher Ed Partners",
+            proof:
+              "Rise-on-AWS remote updates, Canvas UX enhancements, and scalable multimedia systems.",
+          },
+          {
+            role: "E-Learning Designer",
+            company: "Concordia University Irvine",
+            proof:
+              "Storyline courses with Q&A, flow control, and a 9-week animated history series.",
+          },
+        ],
+      },
+      {
+        id: "articulate",
+        enabled: true,
+        label: "Articulate Rise / Storyline",
+        strength: "Expert",
+        summary:
+          "Rise for modular cloud content; Storyline for branching, assessments, and templates.",
+        matches: [
+          {
+            role: "Instructional Design Specialist (Media)",
+            company: "Medical Sales College",
+            proof: "Interactive Rise & Storyline courses converted from decks and PDFs.",
+          },
+          {
+            role: "Multimedia Director & LMS Platform Design",
+            company: "Higher Ed Partners",
+            proof: "Centralized Rise content hosting with Canvas iframe delivery.",
+          },
+        ],
+      },
+      {
+        id: "video-multimedia",
+        enabled: true,
+        label: "Video / multimedia production",
+        strength: "Expert",
+        summary:
+          "End-to-end training video, motion graphics, and brand media — also on the Media lens.",
+        matches: [
+          {
+            role: "Video Editor, Graphic Artist & E-Learning Designer",
+            company: "ProPricer",
+            proof:
+              "Owned media projects end to end: storyboarding, effects, post-production, and delivery.",
+          },
+          {
+            role: "E-Learning Designer",
+            company: "Concordia University Irvine",
+            proof: "Animated course graphics and a 9-week series with custom character rigging.",
+          },
         ],
       },
     ],
@@ -400,6 +490,33 @@ export function buildDefaultResumeDocument(): ResumeDocument {
   return { version: 2, lenses: { media, ai } };
 }
 
+/** Patch live AI CMS docs: drop BPMon note, ensure ID/media fit buttons exist. */
+function repairAiLensContent(ai: ResumeContent, media: ResumeContent): ResumeContent {
+  const seeded = buildAiResumeContent(media);
+  let note = ai.sideProjects.note || "";
+  if (/BPMon|experiment toys omitted/i.test(note)) {
+    note = seeded.sideProjects.note;
+  }
+
+  const have = new Set(ai.roleFit.needs.map((n) => n.id));
+  const extras = seeded.roleFit.needs.filter((n) => !have.has(n.id));
+  const needs =
+    extras.length > 0 ? [...ai.roleFit.needs, ...extras] : ai.roleFit.needs;
+
+  return {
+    ...ai,
+    sideProjects: { ...ai.sideProjects, note },
+    roleFit: {
+      ...ai.roleFit,
+      note:
+        /instructional design and media/i.test(ai.roleFit.note || "")
+          ? ai.roleFit.note
+          : seeded.roleFit.note,
+      needs,
+    },
+  };
+}
+
 export function normalizeResumeDocument(raw: unknown): ResumeDocument {
   const fallback = buildDefaultResumeDocument();
   if (!raw || typeof raw !== "object") return fallback;
@@ -410,14 +527,12 @@ export function normalizeResumeDocument(raw: unknown): ResumeDocument {
     const lenses = o.lenses as Record<string, unknown>;
     const media = normalizeResumeContent(lenses.media ?? fallback.lenses.media);
     let ai = normalizeResumeContent(lenses.ai ?? fallback.lenses.ai);
-    // If AI looks like an empty/identical stub missing AI title, reseed once
     if (!lenses.ai || (ai.site.title === media.site.title && ai.theme === media.theme)) {
-      // Only reseed when ai payload missing; if present and intentionally similar, keep
       if (!lenses.ai) {
         ai = syncSharedIdentity(media, buildAiResumeContent(media));
       }
     }
-    ai = syncSharedIdentity(media, ai);
+    ai = repairAiLensContent(syncSharedIdentity(media, ai), media);
     return { version: 2, lenses: { media, ai } };
   }
 
