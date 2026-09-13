@@ -34,7 +34,7 @@ const DEFAULT_NAV_LABEL: Partial<Record<ResumeSectionId, string>> = {
 };
 
 const LENS_HINT: Record<ResumeLensId, string> = {
-  ai: "Coding · LMS · AI",
+  ai: "Coding · LMS · AI systems",
   media: "Video · design · eLearning",
 };
 
@@ -54,13 +54,13 @@ export function LensToggle({
     <div className="flex items-center gap-2">
       {showLabel ? (
         <span className="hidden text-[10px] font-semibold uppercase tracking-[0.2em] text-[var(--muted)] sm:inline">
-          View
+          Skillset
         </span>
       ) : null}
       <div
         className="inline-flex rounded-full border-2 border-[var(--accent)]/45 bg-black/40 p-1 shadow-[0_0_0_1px_rgba(255,255,255,0.06)]"
         role="group"
-        aria-label="Resume view: Media or AI"
+        aria-label="Toggle skillset: AI or Media"
       >
         {(["ai", "media"] as const).map((id) => {
           const active = lens === id;
@@ -77,7 +77,7 @@ export function LensToggle({
                   : "text-[var(--muted)] hover:bg-white/5 hover:text-[var(--cream)]"
               }`}
               aria-pressed={active}
-              title={LENS_HINT[id]}
+              title={`Show ${RESUME_LENS_LABELS[id]} skillset — ${LENS_HINT[id]}`}
             >
               {RESUME_LENS_LABELS[id]}
             </button>
@@ -162,7 +162,9 @@ export function Nav() {
         <div className="hidden min-w-0 flex-1 justify-center md:flex">
           <div className="flex flex-col items-center gap-1">
             <LensToggle lens={lens} onChange={setLens} size="lg" />
-            <p className="text-[10px] text-[var(--muted)]">{LENS_HINT[lens]}</p>
+            <p className="text-[10px] text-[var(--muted)]">
+              Switch skillset · {LENS_HINT[lens]}
+            </p>
           </div>
         </div>
 
@@ -180,7 +182,10 @@ export function Nav() {
         </ul>
 
         <div className="flex items-center gap-2 sm:gap-3">
-          <div className="md:hidden">
+          <div className="flex flex-col items-end gap-0.5 md:hidden">
+            <span className="text-[9px] font-semibold uppercase tracking-[0.16em] text-[var(--muted)]">
+              Skillset
+            </span>
             <LensToggle lens={lens} onChange={setLens} showLabel={false} />
           </div>
           <PrintResumeMenu compact className="hidden sm:block" />
@@ -222,8 +227,11 @@ export function Nav() {
             className="border-t border-white/10 bg-[var(--ink)] px-5 py-6 xl:hidden"
           >
             <div className="mb-5 rounded-2xl border border-[var(--accent)]/30 bg-[var(--accent)]/8 px-4 py-3">
-              <p className="mb-2 text-xs uppercase tracking-[0.18em] text-[var(--muted)]">
-                Resume view
+              <p className="mb-1 text-xs uppercase tracking-[0.18em] text-[var(--muted)]">
+                Skillset
+              </p>
+              <p className="mb-2 text-xs text-[var(--cream)]/80">
+                Toggle which side of my work to emphasize
               </p>
               <LensToggle lens={lens} onChange={setLens} size="lg" showLabel={false} />
               <p className="mt-2 text-xs text-[var(--muted)]">{LENS_HINT[lens]}</p>
