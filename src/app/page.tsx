@@ -1,4 +1,4 @@
-import { Fragment } from "react";
+import { Fragment, Suspense } from "react";
 import { About } from "@/components/About";
 import { Contact } from "@/components/Contact";
 import { Experience } from "@/components/Experience";
@@ -11,9 +11,9 @@ import { Skills } from "@/components/Skills";
 import { ResumeProvider } from "@/components/resume/ResumeProvider";
 import { ResumeThemeApplier } from "@/components/resume/ResumeThemeApplier";
 import { dbConfigured } from "@/lib/db";
-import { getResumeContent } from "@/lib/db/resume-content";
-import { buildDefaultResumeContent } from "@/lib/resume/defaults";
-import type { ResumeContent, ResumeSectionId } from "@/lib/resume/types";
+import { getResumeDocument } from "@/lib/db/resume-content";
+import { buildDefaultResumeDocument, materializeResume, resolveLens } from "@/lib/resume/lens";
+import type { ResumeSectionId } from "@/lib/resume/types";
 
 export const dynamic = "force-dynamic";
 
@@ -27,13 +27,21 @@ const SECTION_RENDER: Record<Exclude<ResumeSectionId, "hero">, () => React.React
   contact: () => <Contact />,
 };
 
-export default async function Home() {
-  let content: ResumeContent = buildDefaultResumeContent();
+export default async function Home({
+  searchParams,
+}: {
+  searchParams: Promise<{ lens?: string | string[] }>;
+}) {
+  const params = await searchParams;
+  const lens = resolveLens(params.lens);
+
+  let content = materializeResume(buildDefaultResumeDocument(), lens);
   if (dbConfigured()) {
     try {
-      content = await getResumeContent();
+      const doc = await getResumeDocument();
+      content = materializeResume(doc, lens);
     } catch {
-      // keep defaults — identical to current static site
+      // keep defaults
     }
   }
 
@@ -43,9 +51,11 @@ export default async function Home() {
   );
 
   return (
-    <ResumeProvider content={content}>
+    <ResumeProvider content={content} lens={lens}>
       <ResumeThemeApplier theme={content.theme ?? "dark"} />
-      <Nav />
+      <Suspense fallback={null}>
+        <Nav />
+      </Suspense>
       <main className="flex-1">
         {content.sections.hero?.enabled !== false ? <Hero /> : null}
         {bodySections.map((id) => (

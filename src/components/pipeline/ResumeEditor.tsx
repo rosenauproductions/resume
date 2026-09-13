@@ -3,9 +3,11 @@
 import { useState, type ReactNode } from "react";
 import {
   newId,
+  RESUME_LENS_LABELS,
   RESUME_SECTION_LABELS,
   type ExperienceJob,
   type ResumeContent,
+  type ResumeLensId,
   type ResumeSectionId,
   type ResumeSite,
   type RoleFitNeed,
@@ -26,6 +28,8 @@ const btnAccent =
 type Props = {
   content: ResumeContent;
   onChange: (next: ResumeContent) => void;
+  editingLens: ResumeLensId;
+  onLensChange: (lens: ResumeLensId) => void;
   onSave: () => void;
   onReset: () => void;
   onClose?: () => void;
@@ -808,7 +812,17 @@ function FitEditor({
   );
 }
 
-export function ResumeEditor({ content, onChange, onSave, onReset, onClose, saving, notice }: Props) {
+export function ResumeEditor({
+  content,
+  onChange,
+  editingLens,
+  onLensChange,
+  onSave,
+  onReset,
+  onClose,
+  saving,
+  notice,
+}: Props) {
   const [expanded, setExpanded] = useState<Partial<Record<ResumeSectionId, boolean>>>({});
 
   const setSite = (patch: Partial<ResumeSite>) => onChange({ ...content, site: { ...content.site, ...patch } });
@@ -901,6 +915,38 @@ export function ResumeEditor({ content, onChange, onSave, onReset, onClose, savi
             {saving ? "Saving…" : "Save"}
           </button>
         </div>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-3 rounded-xl border border-white/10 bg-black/20 px-4 py-3">
+        <p className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">Editing lens</p>
+        <div className="inline-flex rounded-full border border-white/15 bg-black/30 p-0.5 text-xs">
+          {(["media", "ai"] as const).map((id) => (
+            <button
+              key={id}
+              type="button"
+              onClick={() => onLensChange(id)}
+              className={`rounded-full px-3 py-1.5 font-semibold transition ${
+                editingLens === id
+                  ? id === "ai"
+                    ? "bg-sky-400/25 text-sky-200"
+                    : "bg-[var(--accent)]/25 text-[var(--accent)]"
+                  : "text-[var(--muted)] hover:text-[var(--cream)]"
+              }`}
+              aria-pressed={editingLens === id}
+            >
+              {RESUME_LENS_LABELS[id]}
+            </button>
+          ))}
+        </div>
+        <p className="text-xs text-[var(--muted)]">
+          {editingLens === "ai"
+            ? "AI view — coding / LMS / builds. Name & contact sync with Media."
+            : "Media view — multimedia default. Name & contact sync to AI on save."}{" "}
+          Public:{" "}
+          <code className="text-[var(--cream)]">
+            {editingLens === "ai" ? "/?lens=ai" : "/"}
+          </code>
+        </p>
       </div>
 
       <div className="space-y-3">

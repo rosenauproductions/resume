@@ -2,9 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { dbConfigured } from "@/lib/db";
 import {
-  getResumeContent,
+  getResumeDocument,
   resetResumeContent,
-  saveResumeContent,
+  saveResumeDocument,
 } from "@/lib/db/resume-content";
 import { authError, requirePipelineAuth } from "@/lib/jobs/require-auth";
 
@@ -17,8 +17,8 @@ export async function GET() {
     return NextResponse.json({ error: "Database not configured" }, { status: 503 });
   }
   try {
-    const content = await getResumeContent();
-    return NextResponse.json({ ok: true, content });
+    const document = await getResumeDocument();
+    return NextResponse.json({ ok: true, document, content: document });
   } catch (error) {
     console.error("resume get failed", error);
     return NextResponse.json({ error: "Failed to load resume content" }, { status: 500 });
@@ -32,7 +32,7 @@ export async function PUT(req: NextRequest) {
     return NextResponse.json({ error: "Database not configured" }, { status: 503 });
   }
 
-  let body: { content?: unknown; reset?: boolean } = {};
+  let body: { content?: unknown; document?: unknown; reset?: boolean } = {};
   try {
     body = (await req.json()) as typeof body;
   } catch {
@@ -40,11 +40,11 @@ export async function PUT(req: NextRequest) {
   }
 
   try {
-    const content = body.reset
+    const document = body.reset
       ? await resetResumeContent()
-      : await saveResumeContent(body.content);
+      : await saveResumeDocument(body.document ?? body.content);
     revalidatePath("/");
-    return NextResponse.json({ ok: true, content });
+    return NextResponse.json({ ok: true, document, content: document });
   } catch (error) {
     console.error("resume save failed", error);
     return NextResponse.json({ error: "Failed to save resume content" }, { status: 500 });

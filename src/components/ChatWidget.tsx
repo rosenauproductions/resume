@@ -3,19 +3,25 @@
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { getOrCreateDeviceId } from "@/lib/device-id";
 import { readLastVisitId } from "@/lib/identify-persistence";
 import { VisitorIdentifyModal } from "@/components/VisitorIdentifyModal";
 import type { IdentifyPromptPayload } from "@/lib/visit-identify-types";
+import { resolveLens } from "@/lib/resume/lens";
 
 const SESSION_KEY = "resume-chat-session-id";
 const WELCOME_DISMISS_KEY = "resume-chat-welcome-dismissed";
+const LINK_CTA_DISMISS_KEY = "resume-chat-link-cta-dismissed";
 
-const WELCOME_PEEK =
+const WELCOME_PEEK_MEDIA =
   "Hi — I’m Chris’s portfolio assistant. Ask me about his experience, skills, or projects.";
-const WELCOME_PANEL =
+const WELCOME_PANEL_MEDIA =
   "Hi! I’m here if you want the short version of Chris’s background — experience, Canvas/LMS work, video, or side projects. What are you curious about?";
+const WELCOME_PEEK_AI =
+  "Hi — AI-focused view. Ask about Chris’s coding, Canvas/AWS systems, LLMs, or shipped builds.";
+const WELCOME_PANEL_AI =
+  "Hi! This is the AI lens — LMS platform work, TypeScript builds, LLM workflows, and bots. What do you want to dig into?";
 
 function getOrCreateSessionId(): string {
   if (typeof window === "undefined") return "anonymous";
@@ -55,19 +61,36 @@ function looksLikeContactIntent(text: string) {
   );
 }
 
+function looksLikeHiringIntent(text: string) {
+  return /\b(hiring|recruiter|recruiting|talent|for (our|a|this) (role|position|opening)|looking (at|for).{0,40}(chris|you|candidate)|considering (chris|you)|interview|job (req|opening|posting)|we('re| are) hiring)\b/i.test(
+    text,
+  );
+}
+
 export function ChatWidget() {
   const pathname = usePathname() || "/";
+  const searchParams = useSearchParams();
+  const lens = resolveLens(searchParams.get("lens"));
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState("");
   const [showWelcome, setShowWelcome] = useState(false);
   const [identifyPrompt, setIdentifyPrompt] = useState<IdentifyPromptPayload | null>(null);
   const [fingerprint, setFingerprint] = useState("");
   const [identifyBusy, setIdentifyBusy] = useState(false);
+  const [needsLink, setNeedsLink] = useState(false);
+  const [suggestedLabel, setSuggestedLabel] = useState<string | null>(null);
+  const [linkCtaDismissed, setLinkCtaDismissed] = useState(false);
   const scrollerRef = useRef<HTMLDivElement>(null);
+  const linkStatusFetched = useRef(false);
 
   useEffect(() => {
     getOrCreateSessionId();
     setFingerprint(getOrCreateDeviceId());
+    try {
+      setLinkCtaDismissed(sessionStorage.getItem(LINK_CTA_DISMISS_KEY) === "1");
+    } catch {
+      // ignore
+    }
   }, []);
 
   useEffect(() => {
@@ -90,9 +113,10 @@ export function ChatWidget() {
           sessionId: getOrCreateSessionId(),
           deviceId: getOrCreateDeviceId(),
           visitId: readLastVisitId(),
+          lens,
         }),
       }),
-    [],
+    [lens],
   );
 
   const { messages, sendMessage, status, error, clearError } = useChat({
@@ -101,10 +125,23 @@ export function ChatWidget() {
 
   const busy = status === "submitted" || status === "streaming";
 
+  const userTurnCount = useMemo(
+    () => messages.filter((m) => m.role === "user").length,
+    [messages],
+  );
+
   const showContactCta = useMemo(() => {
     const recent = messages.slice(-4);
     return recent.some((m) => looksLikeContactIntent(messageText(m.parts)));
   }, [messages]);
+
+  const showHiringCta = useMemo(() => {
+    if (!needsLink || linkCtaDismissed) return false;
+    const recent = messages.slice(-6);
+    const hiring = recent.some((m) => looksLikeHiringIntent(messageText(m.parts)));
+    const softNudge = userTurnCount >= 2;
+    return hiring || softNudge;
+  }, [messages, needsLink, linkCtaDismissed, userTurnCount]);
 
   useEffect(() => {
     const el = scrollerRef.current;
@@ -112,10 +149,46 @@ export function ChatWidget() {
     el.scrollTop = el.scrollHeight;
   }, [messages, open, status]);
 
+  async function refreshLinkStatus() {
+    try {
+      const fp = getOrCreateDeviceId();
+      setFingerprint(fp);
+      const res = await fetch("/api/visit/identify-context", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ fingerprint: fp, visitId: readLastVisitId() }),
+      });
+      if (!res.ok) return;
+      const data = (await res.json().catch(() => ({}))) as {
+        needsLink?: boolean;
+        suggestedLabel?: string | null;
+      };
+      setNeedsLink(Boolean(data.needsLink));
+      setSuggestedLabel(data.suggestedLabel?.trim() || null);
+    } catch {
+      // ignore — CTA stays off
+    }
+  }
+
+  useEffect(() => {
+    if (!open || linkStatusFetched.current || isPrivatePath(pathname)) return;
+    linkStatusFetched.current = true;
+    void refreshLinkStatus();
+  }, [open, pathname]);
+
   function dismissWelcome() {
     setShowWelcome(false);
     try {
       sessionStorage.setItem(WELCOME_DISMISS_KEY, "1");
+    } catch {
+      // ignore
+    }
+  }
+
+  function dismissLinkCta() {
+    setLinkCtaDismissed(true);
+    try {
+      sessionStorage.setItem(LINK_CTA_DISMISS_KEY, "1");
     } catch {
       // ignore
     }
@@ -138,11 +211,18 @@ export function ChatWidget() {
       });
       const data = (await res.json().catch(() => ({}))) as {
         prompt?: IdentifyPromptPayload;
+        needsLink?: boolean;
+        suggestedLabel?: string | null;
         error?: string;
       };
+      if (typeof data.needsLink === "boolean") setNeedsLink(data.needsLink);
+      if (data.suggestedLabel !== undefined) {
+        setSuggestedLabel(data.suggestedLabel?.trim() || null);
+      }
       if (res.ok && data.prompt) {
         setIdentifyPrompt(data.prompt);
         setOpen(false);
+        dismissLinkCta();
       }
     } finally {
       setIdentifyBusy(false);
@@ -160,6 +240,10 @@ export function ChatWidget() {
     await sendMessage({ text });
   }
 
+  const linkCtaLabel = suggestedLabel
+    ? `Is this you — ${suggestedLabel}? Confirm / link →`
+    : "Looking at Chris for a role? Link this visit to the job →";
+
   return (
     <>
       <div className="no-print fixed right-4 bottom-4 z-50 flex flex-col items-end gap-3 md:right-6 md:bottom-6">
@@ -174,7 +258,7 @@ export function ChatWidget() {
                 onClick={openChat}
                 className="min-w-0 flex-1 text-left text-sm leading-relaxed text-[var(--cream)]"
               >
-                {WELCOME_PEEK}
+                {lens === "ai" ? WELCOME_PEEK_AI : WELCOME_PEEK_MEDIA}
                 <span className="mt-1.5 block text-xs font-semibold text-[var(--accent)]">
                   Tap to chat →
                 </span>
@@ -222,7 +306,7 @@ export function ChatWidget() {
             >
               {messages.length === 0 ? (
                 <div className="mr-auto max-w-[92%] rounded-2xl bg-white/6 px-3 py-2 text-sm leading-relaxed text-[var(--cream)]">
-                  {WELCOME_PANEL}
+                  {lens === "ai" ? WELCOME_PANEL_AI : WELCOME_PANEL_MEDIA}
                 </div>
               ) : null}
               {messages.map((m) => {
@@ -264,7 +348,26 @@ export function ChatWidget() {
                   </button>
                 </div>
               ) : null}
-              {!busy && !error && showContactCta ? (
+              {!busy && !error && showHiringCta ? (
+                <div className="mr-auto flex max-w-[95%] flex-col gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => void openIdentifyFallback()}
+                    disabled={identifyBusy}
+                    className="rounded-xl border border-[var(--accent)]/35 bg-[color-mix(in_oklab,var(--accent)_12%,transparent)] px-3 py-2 text-left text-xs font-semibold text-[var(--accent)] transition hover:border-[var(--accent)] disabled:opacity-50"
+                  >
+                    {identifyBusy ? "Opening form…" : linkCtaLabel}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={dismissLinkCta}
+                    className="self-start px-1 text-[11px] text-[var(--muted)] hover:text-[var(--cream)]"
+                  >
+                    Not hiring — dismiss
+                  </button>
+                </div>
+              ) : null}
+              {!busy && !error && showContactCta && !showHiringCta ? (
                 <button
                   type="button"
                   onClick={() => void openIdentifyFallback()}
@@ -320,7 +423,11 @@ export function ChatWidget() {
         <VisitorIdentifyModal
           prompt={identifyPrompt}
           fingerprint={fingerprint}
-          onDone={() => setIdentifyPrompt(null)}
+          onDone={() => {
+            setIdentifyPrompt(null);
+            setNeedsLink(false);
+            void refreshLinkStatus();
+          }}
         />
       ) : null}
     </>

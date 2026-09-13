@@ -31,10 +31,11 @@ export type VisitorLeadInput = {
 };
 
 function isPublicResumePath(path: string) {
-  if (!path || path === "/") return true;
-  if (path === "/pipeline" || path.startsWith("/pipeline/")) return false;
-  if (path === "/head-count" || path.startsWith("/head-count/")) return false;
-  return true;
+  const base = (path || "").split("?")[0] || "/";
+  if (!base || base === "/") return true;
+  if (base === "/pipeline" || base.startsWith("/pipeline/")) return false;
+  if (base === "/head-count" || base.startsWith("/head-count/")) return false;
+  return false;
 }
 
 export async function hasVisitorIdentified(deviceId: string): Promise<boolean> {
@@ -257,6 +258,39 @@ async function upsertIdentificationRow(input: {
   }
 }
 
+/** Prefer an existing open pipeline job when company (and optional title) match. */
+export async function findOpenApplicationForLead(input: {
+  company?: string | null;
+  title?: string | null;
+}): Promise<{ id: string; company: string; title: string } | null> {
+  const company = (input.company || "").trim().toLowerCase();
+  if (!company || company === "contact request" || company === "website lead") {
+    return null;
+  }
+  const title = (input.title || "").trim().toLowerCase();
+  const apps = await listOpenApplicationsForAssociation();
+  if (!apps.length) return null;
+
+  const scored = apps
+    .map((a) => {
+      const c = a.company.trim().toLowerCase();
+      const t = a.title.trim().toLowerCase();
+      let score = 0;
+      if (c === company) score += 4;
+      else if (c.includes(company) || company.includes(c)) score += 2;
+      if (title) {
+        if (t === title) score += 3;
+        else if (t.includes(title) || title.includes(t)) score += 1;
+      }
+      return { a, score };
+    })
+    .filter((x) => x.score >= 2)
+    .sort((x, y) => y.score - x.score);
+
+  const best = scored[0]?.a;
+  return best ? { id: best.id, company: best.company, title: best.title } : null;
+}
+
 async function createWebsiteLeadApplication(input: {
   deviceId: string;
   freeText: string;
@@ -305,6 +339,64 @@ async function createWebsiteLeadApplication(input: {
   }
 
   return job.id;
+}
+
+/**
+ * Identify/lead prompt for chat — always available (unlike scroll welcome).
+ * `needsLink` is true when this visit/device is not already tied to a pipeline job.
+ */
+export async function buildChatIdentifyContext(input: {
+  deviceId: string;
+  visitId?: string | null;
+}): Promise<{
+  prompt: IdentifyPromptPayload;
+  needsLink: boolean;
+  suggestedLabel: string | null;
+}> {
+  const deviceId = (input.deviceId || "").trim();
+  const visitId = (input.visitId || "").trim() || null;
+
+  const apps = await listOpenApplicationsForAssociation();
+  const positions: IdentifyPosition[] = apps.map((a) => ({
+    id: a.id,
+    company: a.company,
+    title: a.title,
+  }));
+
+  const existing = await getVisitorIdentification(deviceId);
+  const visit = visitId ? await getVisit(visitId) : null;
+
+  let suggested: IdentifyPosition | null = null;
+  if (
+    visit?.linkedApplicationId &&
+    (visit.linkConfidence === "suggested" || visit.linkConfidence === "confirmed")
+  ) {
+    suggested = positions.find((p) => p.id === visit.linkedApplicationId) ?? null;
+  }
+  if (!suggested && existing?.applicationId) {
+    suggested = positions.find((p) => p.id === existing.applicationId) ?? null;
+  }
+
+  const known = existing ? knownIdentityFromRow(existing, positions) : null;
+  const visitConfirmed =
+    Boolean(visit?.linkedApplicationId) && visit?.linkConfidence === "confirmed";
+  const hasJobIdentity = Boolean(existing?.applicationId);
+  const needsLink = !visitConfirmed && !hasJobIdentity;
+
+  const prompt: IdentifyPromptPayload = {
+    show: true,
+    mode: existing ? "welcome" : "identify",
+    visitId,
+    suggested,
+    known,
+    positions,
+  };
+
+  const suggestedLabel = suggested
+    ? `${suggested.company} — ${suggested.title}`
+    : null;
+
+  return { prompt, needsLink, suggestedLabel };
 }
 
 function locationLabel(city: string, region: string, country: string) {
@@ -383,6 +475,35 @@ async function notifyIdentificationOutcome(input: {
 
     await notifyVisitChannels({
       title: wantsContact ? "Contact requested" : "Website lead created",
+      lines,
+      kind: "lead",
+      priority: "high",
+    });
+    return;
+  }
+
+  // Chat/identify left contact but matched an existing open application (no duplicate job)
+  if (input.lead && input.applicationId) {
+    const job = await getApplication(input.applicationId);
+    const wantsContact = Boolean(input.lead.requestContact);
+    const lines = [
+      ...baseLines,
+      wantsContact ? "**Requested contact:** yes" : null,
+      `**Name:** ${input.lead.name.trim()}`,
+      `**Email:** ${input.lead.email.trim()}`,
+      input.lead.phone?.trim() ? `**Phone:** ${input.lead.phone.trim()}` : null,
+      `**Company:** ${input.lead.company.trim() || "—"}`,
+      input.lead.title?.trim() ? `**Role:** ${input.lead.title.trim()}` : null,
+      input.freeText || input.lead.message?.trim()
+        ? `**Note:** ${input.freeText || input.lead.message?.trim()}`
+        : null,
+      job
+        ? `**Linked existing job:** ${job.company} — ${job.title}`
+        : `**Linked job id:** ${input.applicationId}`,
+    ].filter(Boolean) as string[];
+
+    await notifyVisitChannels({
+      title: "Visitor linked to existing job",
       lines,
       kind: "lead",
       priority: "high",
@@ -472,13 +593,29 @@ export async function saveVisitorIdentification(input: {
 
   let createdLead = false;
   if (creatingLead && lead) {
-    applicationId = await createWebsiteLeadApplication({
-      deviceId,
-      freeText,
-      lead,
-      visitId: input.visitId,
+    const existingJob = await findOpenApplicationForLead({
+      company: lead.company,
+      title: lead.title,
     });
-    createdLead = true;
+    if (existingJob) {
+      applicationId = existingJob.id;
+      // Attach lead contact to identification + link visit; do not create a duplicate job
+      if (input.visitId) {
+        try {
+          await linkVisit(input.visitId, "link", existingJob.id);
+        } catch (error) {
+          console.error("lead→existing job visit link failed", error);
+        }
+      }
+    } else {
+      applicationId = await createWebsiteLeadApplication({
+        deviceId,
+        freeText,
+        lead,
+        visitId: input.visitId,
+      });
+      createdLead = true;
+    }
   }
 
   await upsertIdentificationRow({

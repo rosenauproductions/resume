@@ -2,12 +2,13 @@
 
 import Image from "next/image";
 import { motion, useReducedMotion } from "motion/react";
-import { useResume } from "@/components/resume/ResumeProvider";
+import { useResume, useResumeLens } from "@/components/resume/ResumeProvider";
 import { PrintResumeMenu } from "@/components/PrintResume";
 
 export function Hero() {
   const reduce = useReducedMotion();
   const resume = useResume();
+  const lens = useResumeLens();
   const { site, portraits } = resume;
 
   return (
@@ -44,6 +45,11 @@ export function Hero() {
             transition={{ duration: 0.6, delay: 0.1 }}
           >
             {site.location}
+            {lens === "ai" ? (
+              <span className="mt-1.5 block tracking-[0.22em] text-sky-300/90">
+                AI-focused view
+              </span>
+            ) : null}
           </motion.p>
 
           <motion.h1
@@ -73,10 +79,10 @@ export function Hero() {
             transition={{ duration: 0.65, delay: 0.55 }}
           >
             <a
-              href="#experience"
+              href={lens === "ai" ? "#projects" : "#experience"}
               className="rounded-full bg-[var(--cream)] px-6 py-3 text-sm font-semibold text-[var(--ink)] transition-transform hover:scale-[1.03] sm:px-7 sm:py-3.5"
             >
-              View experience
+              {lens === "ai" ? "View builds" : "View experience"}
             </a>
             <a
               href={site.linkedin}

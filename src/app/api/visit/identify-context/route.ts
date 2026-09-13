@@ -1,14 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { dbConfigured } from "@/lib/db";
-import { listOpenApplicationsForAssociation } from "@/lib/db/applications";
-import { getVisitorIdentification } from "@/lib/db/visitor-identify";
-import type { IdentifyPromptPayload } from "@/lib/visit-identify-types";
+import { buildChatIdentifyContext } from "@/lib/db/visitor-identify";
 
 export const runtime = "nodejs";
 
 /**
- * Always-available identify/lead prompt for chat fallback
- * ("mind if I let Chris know who you are?").
+ * Always-available identify/lead prompt for chat
+ * (contact fallback + link-this-visit-to-a-job).
  */
 export async function POST(req: NextRequest) {
   if (!dbConfigured()) {
@@ -28,35 +26,15 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const apps = await listOpenApplicationsForAssociation();
-    const positions = apps.map((a) => ({
-      id: a.id,
-      company: a.company,
-      title: a.title,
-    }));
-    const existing = await getVisitorIdentification(fingerprint);
-    const prompt: IdentifyPromptPayload = {
-      show: true,
-      mode: existing ? "welcome" : "identify",
+    const ctx = await buildChatIdentifyContext({
+      deviceId: fingerprint,
       visitId: body.visitId?.trim() || null,
-      suggested: null,
-      known: existing
-        ? {
-            applicationId: existing.applicationId,
-            company: existing.leadCompany || "",
-            title: existing.leadTitle || "",
-            freeText: existing.freeText || "",
-            contactName: existing.contactName || "",
-            label:
-              existing.contactName ||
-              existing.leadCompany ||
-              existing.leadTitle ||
-              "a guest",
-          }
-        : null,
-      positions,
-    };
-    return NextResponse.json({ prompt });
+    });
+    return NextResponse.json({
+      prompt: ctx.prompt,
+      needsLink: ctx.needsLink,
+      suggestedLabel: ctx.suggestedLabel,
+    });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Failed to load";
     return NextResponse.json({ error: message }, { status: 500 });

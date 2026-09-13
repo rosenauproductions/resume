@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { Figtree, Syne } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
@@ -69,8 +70,12 @@ export default function RootLayout({
     <html lang="en" className={`${display.variable} ${body.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col font-sans">
         {children}
-        <VisitNotifier />
-        <ChatWidget />
+        <Suspense fallback={null}>
+          <VisitNotifier />
+        </Suspense>
+        <Suspense fallback={null}>
+          <ChatWidget />
+        </Suspense>
         <Analytics />
         <SpeedInsights />
       </body>

@@ -4,7 +4,7 @@
 
 import { resolveNtfyNotifyConfig } from "@/lib/db/settings";
 
-export type VisitNotifyKind = "visit" | "pipeline" | "identify" | "lead";
+export type VisitNotifyKind = "visit" | "visit_ai" | "pipeline" | "identify" | "lead";
 
 function tagsFor(kind: VisitNotifyKind) {
   switch (kind) {
@@ -14,6 +14,8 @@ function tagsFor(kind: VisitNotifyKind) {
       return "star,briefcase";
     case "identify":
       return "speech_balloon,bust_in_silhouette";
+    case "visit_ai":
+      return "robot,globe_with_meridians";
     default:
       return "eyes,globe_with_meridians";
   }
@@ -27,6 +29,8 @@ function colorFor(kind: VisitNotifyKind) {
       return 0xf0c14a;
     case "identify":
       return 0x7cb8ff;
+    case "visit_ai":
+      return 0x6c8cff;
     default:
       return 0x3fd0c9;
   }

@@ -99,10 +99,19 @@ export function isContactIntent(question: string): boolean {
   );
 }
 
+/** Hiring / role-evaluation language — prefer live reply + link CTA. */
+export function isHiringIntent(question: string): boolean {
+  const q = question.toLowerCase();
+  return /\b(hiring|recruiter|recruiting|talent (partner|acquisition)|for (our|a|this) (role|position|opening|req)|looking (at|for).{0,40}(chris|you|candidate)|considering (chris|you)|interview|job (req|opening|posting)|we('re| are) hiring)\b/.test(
+    q,
+  );
+}
+
 export function shouldSkipCache(question: string): boolean {
   const q = question.toLowerCase();
   if (question.trim().length < 8) return true;
   if (isContactIntent(question)) return true;
+  if (isHiringIntent(question)) return true;
   if (/[^\s@]+@[^\s@]+\.[^\s@]+/.test(q)) return true;
   if (/\b\d{3}[-.\s]?\d{3}[-.\s]?\d{4}\b/.test(q)) return true;
   if (

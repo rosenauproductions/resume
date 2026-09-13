@@ -15,6 +15,7 @@ import { insertChatTurn } from "@/lib/db/chat";
 import {
   findCachedAnswer,
   isContactIntent,
+  isHiringIntent,
   purgeContactDumpCache,
   recordCacheHit,
   upsertCachedAnswer,
@@ -26,6 +27,10 @@ export const maxDuration = 60;
 
 const SYSTEM_PROMPT = readFileSync(
   path.join(process.cwd(), "system-prompt.md"),
+  "utf-8",
+);
+const SYSTEM_PROMPT_AI = readFileSync(
+  path.join(process.cwd(), "system-prompt-ai.md"),
   "utf-8",
 );
 
@@ -78,6 +83,7 @@ export async function POST(req: Request) {
     sessionId?: string;
     deviceId?: string;
     visitId?: string | null;
+    lens?: string;
   };
   try {
     body = await req.json();
@@ -102,6 +108,8 @@ export async function POST(req: Request) {
     typeof body.visitId === "string" && body.visitId.trim()
       ? body.visitId.trim()
       : null;
+  const lens = body.lens === "ai" ? "ai" : "media";
+  const systemPrompt = lens === "ai" ? SYSTEM_PROMPT_AI : SYSTEM_PROMPT;
 
   const lastUserText = textFromUiMessage(
     [...messages].reverse().find((m) => m.role === "user"),
@@ -109,6 +117,7 @@ export async function POST(req: Request) {
   const userTurns = countUserMessages(messages);
   const allowFuzzy = userTurns <= 1;
   const contactIntent = lastUserText ? isContactIntent(lastUserText) : false;
+  const hiringIntent = lastUserText ? isHiringIntent(lastUserText) : false;
 
   if (dbConfigured() && contactIntent) {
     try {
@@ -118,7 +127,7 @@ export async function POST(req: Request) {
     }
   }
 
-  if (dbConfigured() && lastUserText && !contactIntent) {
+  if (dbConfigured() && lastUserText && !contactIntent && !hiringIntent) {
     try {
       const hit = await findCachedAnswer(lastUserText, { allowFuzzy });
       if (hit && (hit.match === "exact" || allowFuzzy)) {
@@ -188,9 +197,14 @@ export async function POST(req: Request) {
                 return {
                   ok: true as const,
                   createdLead: result.createdLead,
-                  message: input.requestContact
-                    ? "Saved — Chris will see that they asked to be contacted."
-                    : "Saved their info for Chris.",
+                  linkedExisting: !result.createdLead && Boolean(result.applicationId),
+                  message: result.createdLead
+                    ? input.requestContact
+                      ? "Saved — Chris will see that they asked to be contacted."
+                      : "Saved their info for Chris."
+                    : result.applicationId
+                      ? "Linked this visitor to an existing pipeline job and saved their contact."
+                      : "Saved their info for Chris.",
                 };
               } catch (error) {
                 return {
@@ -205,7 +219,7 @@ export async function POST(req: Request) {
 
   const result = streamText({
     model: process.env.RESUME_CHAT_MODEL || "google/gemini-2.5-flash",
-    system: SYSTEM_PROMPT,
+    system: systemPrompt,
     messages: modelMessages,
     maxOutputTokens: 500,
     tools,
@@ -224,7 +238,7 @@ export async function POST(req: Request) {
       } catch (err) {
         console.error("Failed to log chat message:", err);
       }
-      if (reply && !contactIntent && !isContactIntent(reply)) {
+      if (reply && !contactIntent && !hiringIntent && !isContactIntent(reply) && !isHiringIntent(reply)) {
         try {
           await upsertCachedAnswer({ question: lastUserText, answer: reply });
         } catch (err) {

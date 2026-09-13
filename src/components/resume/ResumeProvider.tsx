@@ -2,22 +2,35 @@
 
 import { createContext, useContext, useMemo } from "react";
 import { buildDefaultResumeContent } from "@/lib/resume/defaults";
-import type { ResumeContent } from "@/lib/resume/types";
+import type { ResumeContent, ResumeLensId } from "@/lib/resume/types";
 
-const ResumeContext = createContext<ResumeContent | null>(null);
+type ResumeContextValue = {
+  content: ResumeContent;
+  lens: ResumeLensId;
+};
+
+const ResumeContext = createContext<ResumeContextValue | null>(null);
 
 export function ResumeProvider({
   content,
+  lens = "media",
   children,
 }: {
   content: ResumeContent;
+  lens?: ResumeLensId;
   children: React.ReactNode;
 }) {
-  return <ResumeContext.Provider value={content}>{children}</ResumeContext.Provider>;
+  const value = useMemo(() => ({ content, lens }), [content, lens]);
+  return <ResumeContext.Provider value={value}>{children}</ResumeContext.Provider>;
 }
 
 /** Always returns content — falls back to static defaults so layout never breaks. */
 export function useResume(): ResumeContent {
   const ctx = useContext(ResumeContext);
-  return useMemo(() => ctx ?? buildDefaultResumeContent(), [ctx]);
+  return useMemo(() => ctx?.content ?? buildDefaultResumeContent(), [ctx]);
+}
+
+export function useResumeLens(): ResumeLensId {
+  const ctx = useContext(ResumeContext);
+  return ctx?.lens ?? "media";
 }

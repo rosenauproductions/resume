@@ -39,8 +39,9 @@ import {
   moveHomePanelId,
   normalizeHomePanelOrder,
 } from "@/lib/pipeline/home-panels";
-import { buildDefaultResumeContent } from "@/lib/resume/defaults";
-import type { ResumeContent } from "@/lib/resume/types";
+import { buildDefaultResumeDocument, commitLensEdit, normalizeResumeDocument } from "@/lib/resume/lens";
+import type { ResumeDocument, ResumeLensId } from "@/lib/resume/types";
+import { resumeLensFromPath, resumeLensLabel } from "@/lib/resume/visit-lens";
 
 type IngestStep = "paste" | "review";
 
@@ -107,11 +108,75 @@ function formatVisitReferrer(raw: string | undefined | null): string {
   const s = (raw || "").trim();
   if (!s) return "direct";
   try {
-    const u = new URL(s);
+    const u = new URL(s.includes("://") ? s : `https://${s}`);
     return u.hostname.replace(/^www\./, "") || s;
   } catch {
     return s.length > 48 ? `${s.slice(0, 47)}…` : s;
   }
+}
+
+function VisitLensBadge({ path }: { path: string }) {
+  const lens = resumeLensFromPath(path);
+  if (!lens) return null;
+  const label = resumeLensLabel(lens);
+  return (
+    <span
+      className={`rounded border px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] ${
+        lens === "ai"
+          ? "border-sky-400/40 text-sky-300"
+          : "border-[var(--accent)]/35 text-[var(--accent)]"
+      }`}
+      title={lens === "ai" ? "AI resume lens" : "Media resume lens"}
+    >
+      {label}
+    </span>
+  );
+}
+
+function visitReferrerHref(raw: string | undefined | null): string | null {
+  const s = (raw || "").trim();
+  if (!s) return null;
+  try {
+    const u = new URL(s.includes("://") ? s : `https://${s}`);
+    if (u.protocol !== "http:" && u.protocol !== "https:") return null;
+    return u.href;
+  } catch {
+    return null;
+  }
+}
+
+function VisitReferrer({
+  raw,
+  className = "",
+  prefix = "",
+}: {
+  raw: string | undefined | null;
+  className?: string;
+  prefix?: string;
+}) {
+  const label = formatVisitReferrer(raw);
+  const href = visitReferrerHref(raw);
+  if (!href) {
+    return (
+      <span className={className || "text-[var(--muted)]"}>
+        {prefix}
+        {label}
+      </span>
+    );
+  }
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noreferrer"
+      onClick={(e) => e.stopPropagation()}
+      className={`text-[var(--accent)] underline-offset-2 hover:underline ${className}`}
+      title={href}
+    >
+      {prefix}
+      {label}
+    </a>
+  );
 }
 
 function buildVisitGroups(visits: VisitRow[]): VisitVisitorGroup[] {
@@ -307,7 +372,8 @@ export function PipelineApp({
   const [panelOrder, setPanelOrder] = useState<string[]>([...DEFAULT_HOME_PANEL_ORDER]);
   const [draggingPanelId, setDraggingPanelId] = useState<string | null>(null);
   const [settingsLoading, setSettingsLoading] = useState(false);
-  const [resumeContent, setResumeContent] = useState<ResumeContent | null>(null);
+  const [resumeDoc, setResumeDoc] = useState<ResumeDocument | null>(null);
+  const [resumeEditLens, setResumeEditLens] = useState<ResumeLensId>("media");
   const [resumeLoading, setResumeLoading] = useState(false);
   const [resumeSaving, setResumeSaving] = useState(false);
   const [resumeNotice, setResumeNotice] = useState("");
@@ -409,17 +475,16 @@ export function PipelineApp({
     try {
       const res = await fetch("/api/pipeline/resume");
       const data = await res.json();
-      if (res.ok && data.content) {
-        setResumeContent(data.content as ResumeContent);
-        if (typeof data.content?.sections?.skills?.enabled === "boolean") {
-          setSkillsSectionEnabled(Boolean(data.content.sections.skills.enabled));
-        }
+      if (res.ok && (data.document || data.content)) {
+        const doc = normalizeResumeDocument(data.document ?? data.content);
+        setResumeDoc(doc);
+        setSkillsSectionEnabled(Boolean(doc.lenses.media.sections.skills.enabled));
       } else {
-        setResumeContent(buildDefaultResumeContent());
+        setResumeDoc(buildDefaultResumeDocument());
         setResumeNotice(data.error || "Could not load resume content — showing defaults");
       }
     } catch {
-      setResumeContent(buildDefaultResumeContent());
+      setResumeDoc(buildDefaultResumeDocument());
       setResumeNotice("Network error loading resume — showing defaults");
     } finally {
       setResumeLoading(false);
@@ -427,27 +492,26 @@ export function PipelineApp({
   }
 
   async function saveResume() {
-    if (!resumeContent) return;
+    if (!resumeDoc) return;
     setResumeSaving(true);
     setResumeNotice("");
     try {
       const res = await fetch("/api/pipeline/resume", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ content: resumeContent }),
+        body: JSON.stringify({ document: resumeDoc }),
       });
       const data = await res.json();
       if (!res.ok) {
         setResumeNotice(data.error || "Could not save resume content");
         return;
       }
-      if (data.content) {
-        setResumeContent(data.content as ResumeContent);
-        if (typeof data.content?.sections?.skills?.enabled === "boolean") {
-          setSkillsSectionEnabled(Boolean(data.content.sections.skills.enabled));
-        }
+      if (data.document || data.content) {
+        const doc = normalizeResumeDocument(data.document ?? data.content);
+        setResumeDoc(doc);
+        setSkillsSectionEnabled(Boolean(doc.lenses.media.sections.skills.enabled));
       }
-      setResumeNotice("Saved — public resume updated");
+      setResumeNotice("Saved — public Media + AI resume updated");
     } catch {
       setResumeNotice("Network error saving resume");
     } finally {
@@ -456,7 +520,7 @@ export function PipelineApp({
   }
 
   async function resetResume() {
-    if (!window.confirm("Reset resume content to the baked-in site defaults?")) return;
+    if (!window.confirm("Reset both Media and AI resume lenses to baked-in defaults?")) return;
     setResumeSaving(true);
     setResumeNotice("");
     try {
@@ -470,13 +534,12 @@ export function PipelineApp({
         setResumeNotice(data.error || "Could not reset resume content");
         return;
       }
-      if (data.content) {
-        setResumeContent(data.content as ResumeContent);
-        if (typeof data.content?.sections?.skills?.enabled === "boolean") {
-          setSkillsSectionEnabled(Boolean(data.content.sections.skills.enabled));
-        }
+      if (data.document || data.content) {
+        const doc = normalizeResumeDocument(data.document ?? data.content);
+        setResumeDoc(doc);
+        setSkillsSectionEnabled(Boolean(doc.lenses.media.sections.skills.enabled));
       }
-      setResumeNotice("Reset to defaults");
+      setResumeNotice("Reset both lenses to defaults");
     } catch {
       setResumeNotice("Network error resetting resume");
     } finally {
@@ -1693,15 +1756,19 @@ export function PipelineApp({
                               aria-label={`Select ${g.visits.length} visits from ${g.locationLabel}`}
                             />
                           </label>
+                          <div className="min-w-0 flex-1 space-y-1">
                           <button
                             type="button"
                             onClick={() => setVisitTimelineGroup(g)}
-                            className="min-w-0 flex-1 space-y-1 rounded-lg text-left hover:bg-white/[0.03]"
+                            className="w-full space-y-1 rounded-lg text-left hover:bg-white/[0.03]"
                           >
                           <p className="font-[family-name:var(--font-display)] text-[var(--cream)]">
                             {g.locationLabel}
                             <span className="ml-2 text-sm font-sans text-[var(--accent)]">
                               {g.visits.length} visit{g.visits.length === 1 ? "" : "s"}
+                            </span>
+                            <span className="ml-2 inline-flex align-middle">
+                              <VisitLensBadge path={v.path} />
                             </span>
                           </p>
                           <p className="text-xs text-[var(--muted)]">
@@ -1709,8 +1776,6 @@ export function PipelineApp({
                             {g.fingerprint ? ` · ${g.fingerprint.slice(0, 10)}…` : ""}
                             {" · "}
                             latest {formatVisitCt(v.occurredAt)} CT
-                            {" · "}
-                            via {formatVisitReferrer(v.referrer)}
                           </p>
                           <p className="flex flex-wrap gap-x-2 gap-y-1 text-xs tabular-nums text-[var(--cream)]/85">
                             {shown.map((t) => (
@@ -1724,6 +1789,10 @@ export function PipelineApp({
                           </p>
                           <p className="text-[11px] text-[var(--accent)]/90">Click for visit timeline →</p>
                           </button>
+                          <p className="text-xs text-[var(--muted)]">
+                            <VisitReferrer raw={v.referrer} prefix="via " />
+                          </p>
+                          </div>
                         </div>
                         <div
                           className="flex shrink-0 flex-wrap items-center gap-2"
@@ -1779,11 +1848,14 @@ export function PipelineApp({
                         <div className="min-w-0 space-y-1">
                         <p className="font-[family-name:var(--font-display)] text-[var(--cream)]">
                           {v.locationLabel}
+                          <span className="ml-2 inline-flex align-middle">
+                            <VisitLensBadge path={v.path} />
+                          </span>
                         </p>
                         <p className="text-xs text-[var(--muted)]">
                           {formatVisitCt(v.occurredAt)} CT · {v.device || "Unknown"} · {v.path}
-                          {" · via "}
-                          {formatVisitReferrer(v.referrer)}
+                          {" · "}
+                          <VisitReferrer raw={v.referrer} prefix="via " />
                         </p>
                         {v.linkConfidence === "suggested" || v.linkConfidence === "confirmed" ? (
                           <p className="text-sm text-[var(--accent)]">
@@ -1884,14 +1956,16 @@ export function PipelineApp({
           ) : null}
 
           {view === "resume" ? (
-            resumeLoading && !resumeContent ? (
+            resumeLoading && !resumeDoc ? (
               <p className="rounded-xl border border-white/10 bg-black/20 px-4 py-8 text-center text-sm text-[var(--muted)]">
                 Loading resume content…
               </p>
-            ) : resumeContent ? (
+            ) : resumeDoc ? (
               <ResumeEditor
-                content={resumeContent}
-                onChange={setResumeContent}
+                content={resumeDoc.lenses[resumeEditLens]}
+                editingLens={resumeEditLens}
+                onLensChange={setResumeEditLens}
+                onChange={(next) => setResumeDoc((prev) => (prev ? commitLensEdit(prev, resumeEditLens, next) : prev))}
                 onSave={() => void saveResume()}
                 onReset={() => void resetResume()}
                 onClose={() => setView("insights")}
@@ -2013,8 +2087,16 @@ export function PipelineApp({
           <div className="space-y-4 text-sm">
             <MetaRow label="Device" value={visitTimelineGroup.device} />
             <MetaRow
+              label="Latest lens"
+              value={
+                resumeLensFromPath(visitTimelineGroup.latest.path)
+                  ? resumeLensLabel(resumeLensFromPath(visitTimelineGroup.latest.path)!)
+                  : visitTimelineGroup.latest.path
+              }
+            />
+            <MetaRow
               label="Latest referrer"
-              value={formatVisitReferrer(visitTimelineGroup.latest.referrer)}
+              value={<VisitReferrer raw={visitTimelineGroup.latest.referrer} />}
             />
             <MetaRow
               label="Visitor"
@@ -2041,6 +2123,7 @@ export function PipelineApp({
                 path: v.path,
                 locationLabel: v.locationLabel,
                 referrer: formatVisitReferrer(v.referrer),
+                referrerHref: visitReferrerHref(v.referrer),
               }))}
             />
           </div>
@@ -2203,11 +2286,11 @@ function RankList({
   );
 }
 
-function MetaRow({ label, value }: { label: string; value: string }) {
+function MetaRow({ label, value }: { label: string; value: ReactNode }) {
   return (
     <div className="flex gap-3 border-b border-white/5 pb-2">
       <span className="w-24 shrink-0 text-xs uppercase tracking-[0.18em] text-[var(--muted)]">{label}</span>
-      <span>{value}</span>
+      <span className="min-w-0">{value}</span>
     </div>
   );
 }

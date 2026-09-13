@@ -197,7 +197,7 @@ export async function suggestAssociation(input: {
   path: string;
   city: string;
 }): Promise<{ applicationId: string | null; reason: string; confidence: LinkConfidence }> {
-  const path = input.path || "/";
+  const path = (input.path || "/").split("?")[0] || "/";
   if (path === "/pipeline" || path.startsWith("/pipeline/")) {
     return { applicationId: null, reason: "pipeline self-visit", confidence: "none" };
   }

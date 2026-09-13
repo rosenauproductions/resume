@@ -3,7 +3,8 @@ import { dbConfigured } from "@/lib/db";
 import { isDeviceIgnored, recordVisit } from "@/lib/db/visits";
 import { buildIdentifyPrompt } from "@/lib/db/visitor-identify";
 import type { IdentifyPromptPayload } from "@/lib/visit-identify-types";
-import { notifyVisitChannels } from "@/lib/visit-notify";
+import { notifyVisitChannels, type VisitNotifyKind } from "@/lib/visit-notify";
+import { resumeLensFromPath, visitNotifyTitleForPath } from "@/lib/resume/visit-lens";
 
 export const runtime = "nodejs";
 
@@ -16,6 +17,8 @@ type VisitPayload = {
   fingerprint?: string;
   /** When true, still store the visit / identify payload, but skip Discord/ntfy. */
   skipNotify?: boolean;
+  /** Explicit lens from client (`media` | `ai`); falls back to parsing path. */
+  lens?: string;
 };
 
 function pickHeader(req: NextRequest, name: string) {
@@ -32,15 +35,19 @@ function summarizeUa(ua: string) {
   return "Desktop / other";
 }
 
-function titleForPath(path: string) {
-  if (path === "/pipeline" || path.startsWith("/pipeline/")) {
-    return "Pipeline visited";
-  }
-  return "Resume site visit";
+function normalizeVisitPath(path: string, lensHint?: string): string {
+  const raw = (path || "/").trim() || "/";
+  const base = raw.split("?")[0] || "/";
+  if (base === "/pipeline" || base.startsWith("/pipeline/")) return base;
+  if (base === "/head-count" || base.startsWith("/head-count/")) return base;
+
+  const fromPath = resumeLensFromPath(raw);
+  const hint = lensHint === "ai" || lensHint === "media" ? lensHint : null;
+  const lens = hint ?? fromPath ?? "media";
+  return lens === "ai" ? "/?lens=ai" : "/";
 }
 
 export async function POST(req: NextRequest) {
-
   let payload: VisitPayload = {};
   try {
     payload = (await req.json()) as VisitPayload;
@@ -62,13 +69,12 @@ export async function POST(req: NextRequest) {
     [decodeURIComponent(city || ""), region, country].filter(Boolean).join(", ") ||
     "Unknown location";
 
-  const path = payload.path || "/";
+  const path = normalizeVisitPath(payload.path || "/", payload.lens);
+  const lens = resumeLensFromPath(path);
   const device = summarizeUa(ua);
   const fingerprint = (payload.fingerprint || "").trim();
-  const isPipeline =
-    path === "/pipeline" || path.startsWith("/pipeline/");
+  const isPipeline = path === "/pipeline" || path.startsWith("/pipeline/");
 
-  // Env VISIT_IGNORE_DEVICE_IDS still works; DB ignored_devices enables runtime button
   let deviceIgnored = false;
   if (fingerprint) {
     if (dbConfigured()) {
@@ -76,7 +82,6 @@ export async function POST(req: NextRequest) {
         deviceIgnored = await isDeviceIgnored(fingerprint);
       } catch (error) {
         console.error("visit ignore-list check failed", error);
-        // Fall back to env-only if DB check fails
         const raw = process.env.VISIT_IGNORE_DEVICE_IDS || "";
         deviceIgnored = raw
           .split(",")
@@ -94,10 +99,18 @@ export async function POST(req: NextRequest) {
     }
   }
 
+  const lensLine =
+    lens === "ai"
+      ? "**Resume lens:** AI (coding / systems view)"
+      : lens === "media"
+        ? "**Resume lens:** Media (multimedia view)"
+        : null;
+
   const lines = [
     `**When:** ${when} (Central)`,
     `**Where:** ${location}`,
     `**Device:** ${device}`,
+    lensLine,
     `**Page:** ${path}`,
     payload.referrer ? `**From:** ${payload.referrer}` : null,
     payload.timezone ? `**Visitor TZ:** ${payload.timezone}` : null,
@@ -105,9 +118,10 @@ export async function POST(req: NextRequest) {
     payload.screen ? `**Screen:** ${payload.screen}` : null,
   ].filter(Boolean) as string[];
 
-  const title = titleForPath(path);
+  const title = visitNotifyTitleForPath(path);
+  const notifyKind: VisitNotifyKind =
+    lens === "ai" ? "visit_ai" : isPipeline ? "pipeline" : "visit";
 
-  // Ignored devices: no ntfy/Discord and no visit DB / identify tracking
   if (deviceIgnored) {
     return NextResponse.json({
       ok: true,
@@ -126,7 +140,6 @@ export async function POST(req: NextRequest) {
   let linkedApplicationId: string | null = null;
   let identify: IdentifyPromptPayload | null = null;
 
-  // Dual-track: persist detailed visit even if notifications are off
   if (dbConfigured()) {
     try {
       const visit = await recordVisit({
@@ -168,7 +181,6 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // Never ntfy/Discord for your own pipeline sessions
   if (isPipeline) {
     return NextResponse.json({
       ok: true,
@@ -181,7 +193,6 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  // Client already pinged this browser session — still store + return identify
   if (payload.skipNotify) {
     return NextResponse.json({
       ok: true,
@@ -191,6 +202,7 @@ export async function POST(req: NextRequest) {
       notified: false,
       skippedNotify: "session",
       identify,
+      lens,
     });
   }
 
@@ -198,7 +210,7 @@ export async function POST(req: NextRequest) {
     const notified = await notifyVisitChannels({
       title,
       lines,
-      kind: isPipeline ? "pipeline" : "visit",
+      kind: notifyKind,
     });
     return NextResponse.json({
       ok: true,
@@ -207,6 +219,7 @@ export async function POST(req: NextRequest) {
       linkConfidence,
       notified,
       identify,
+      lens,
     });
   } catch (error) {
     console.error("visit notify failed", error);
