@@ -43,8 +43,8 @@ function normalizeVisitPath(path: string, lensHint?: string): string {
 
   const fromPath = resumeLensFromPath(raw);
   const hint = lensHint === "ai" || lensHint === "media" ? lensHint : null;
-  const lens = hint ?? fromPath ?? "media";
-  return lens === "ai" ? "/?lens=ai" : "/";
+  const lens = hint ?? fromPath ?? "ai";
+  return lens === "media" ? "/?lens=media" : "/";
 }
 
 export async function POST(req: NextRequest) {

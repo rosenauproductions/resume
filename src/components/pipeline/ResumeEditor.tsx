@@ -944,7 +944,7 @@ export function ResumeEditor({
             : "Media view — multimedia default. Name & contact sync to AI on save."}{" "}
           Public:{" "}
           <code className="text-[var(--cream)]">
-            {editingLens === "ai" ? "/?lens=ai" : "/"}
+            {editingLens === "ai" ? "/" : "/?lens=media"}
           </code>
         </p>
       </div>

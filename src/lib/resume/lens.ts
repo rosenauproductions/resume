@@ -33,7 +33,7 @@ export function syncSharedIdentity(from: ResumeContent, to: ResumeContent): Resu
 
 export function resolveLens(raw: string | string[] | undefined | null): ResumeLensId {
   const v = Array.isArray(raw) ? raw[0] : raw;
-  return isResumeLensId(v) ? v : "media";
+  return isResumeLensId(v) ? v : "ai";
 }
 
 export function materializeResume(doc: ResumeDocument, lens: ResumeLensId): ResumeContent {

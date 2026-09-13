@@ -373,7 +373,7 @@ export function PipelineApp({
   const [draggingPanelId, setDraggingPanelId] = useState<string | null>(null);
   const [settingsLoading, setSettingsLoading] = useState(false);
   const [resumeDoc, setResumeDoc] = useState<ResumeDocument | null>(null);
-  const [resumeEditLens, setResumeEditLens] = useState<ResumeLensId>("media");
+  const [resumeEditLens, setResumeEditLens] = useState<ResumeLensId>("ai");
   const [resumeLoading, setResumeLoading] = useState(false);
   const [resumeSaving, setResumeSaving] = useState(false);
   const [resumeNotice, setResumeNotice] = useState("");

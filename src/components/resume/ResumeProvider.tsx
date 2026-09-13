@@ -13,7 +13,7 @@ const ResumeContext = createContext<ResumeContextValue | null>(null);
 
 export function ResumeProvider({
   content,
-  lens = "media",
+  lens = "ai",
   children,
 }: {
   content: ResumeContent;
@@ -32,5 +32,5 @@ export function useResume(): ResumeContent {
 
 export function useResumeLens(): ResumeLensId {
   const ctx = useContext(ResumeContext);
-  return ctx?.lens ?? "media";
+  return ctx?.lens ?? "ai";
 }

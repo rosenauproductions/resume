@@ -10,9 +10,8 @@ import {
   type ResumeLensId,
   type ResumeSectionId,
 } from "@/lib/resume/types";
+import { LENS_SESSION_KEY, persistLensPreference, navigateToLens } from "@/lib/resume/lens-intent";
 import { PrintResumeMenu } from "@/components/PrintResume";
-
-const LENS_SESSION_KEY = "resume-lens-preference";
 
 const NAV_HREF: Partial<Record<ResumeSectionId, string>> = {
   about: "#about",
@@ -34,43 +33,57 @@ const DEFAULT_NAV_LABEL: Partial<Record<ResumeSectionId, string>> = {
   contact: "Contact",
 };
 
-function LensToggle({
+const LENS_HINT: Record<ResumeLensId, string> = {
+  ai: "Coding · LMS · AI",
+  media: "Video · design · eLearning",
+};
+
+export function LensToggle({
   lens,
   onChange,
-  compact,
+  size = "md",
+  showLabel = true,
 }: {
   lens: ResumeLensId;
   onChange: (next: ResumeLensId) => void;
-  compact?: boolean;
+  size?: "md" | "lg";
+  showLabel?: boolean;
 }) {
+  const pad = size === "lg" ? "px-3.5 py-2 text-sm" : "px-3 py-1.5 text-xs sm:text-sm";
   return (
-    <div
-      className={`inline-flex rounded-full border border-white/15 bg-black/25 p-0.5 ${
-        compact ? "text-[11px]" : "text-xs"
-      }`}
-      role="group"
-      aria-label="Resume focus"
-    >
-      {(["media", "ai"] as const).map((id) => {
-        const active = lens === id;
-        return (
-          <button
-            key={id}
-            type="button"
-            onClick={() => onChange(id)}
-            className={`rounded-full px-2.5 py-1 font-semibold transition ${
-              active
-                ? id === "ai"
-                  ? "bg-sky-400/25 text-sky-200"
-                  : "bg-[var(--accent)]/25 text-[var(--accent)]"
-                : "text-[var(--muted)] hover:text-[var(--cream)]"
-            }`}
-            aria-pressed={active}
-          >
-            {RESUME_LENS_LABELS[id]}
-          </button>
-        );
-      })}
+    <div className="flex items-center gap-2">
+      {showLabel ? (
+        <span className="hidden text-[10px] font-semibold uppercase tracking-[0.2em] text-[var(--muted)] sm:inline">
+          View
+        </span>
+      ) : null}
+      <div
+        className="inline-flex rounded-full border-2 border-[var(--accent)]/45 bg-black/40 p-1 shadow-[0_0_0_1px_rgba(255,255,255,0.06)]"
+        role="group"
+        aria-label="Resume view: Media or AI"
+      >
+        {(["ai", "media"] as const).map((id) => {
+          const active = lens === id;
+          return (
+            <button
+              key={id}
+              type="button"
+              onClick={() => onChange(id)}
+              className={`rounded-full ${pad} font-semibold transition ${
+                active
+                  ? id === "ai"
+                    ? "bg-sky-400 text-[var(--ink)] shadow-sm"
+                    : "bg-[var(--accent)] text-[var(--ink)] shadow-sm"
+                  : "text-[var(--muted)] hover:bg-white/5 hover:text-[var(--cream)]"
+              }`}
+              aria-pressed={active}
+              title={LENS_HINT[id]}
+            >
+              {RESUME_LENS_LABELS[id]}
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -105,20 +118,16 @@ export function Nav() {
     };
   }, [open]);
 
-  // Soft default: if URL has no lens, remember last choice for this tab
+  // Soft default: if URL has no lens, restore Media preference when set
   useEffect(() => {
     if (searchParams.has("lens")) {
-      try {
-        sessionStorage.setItem(LENS_SESSION_KEY, lens);
-      } catch {
-        // ignore
-      }
+      persistLensPreference(lens);
       return;
     }
     try {
       const pref = sessionStorage.getItem(LENS_SESSION_KEY);
-      if (pref === "ai") {
-        router.replace("/?lens=ai");
+      if (pref === "media") {
+        router.replace("/?lens=media");
       }
     } catch {
       // ignore
@@ -126,13 +135,7 @@ export function Nav() {
   }, [searchParams, lens, router]);
 
   function setLens(next: ResumeLensId) {
-    try {
-      sessionStorage.setItem(LENS_SESSION_KEY, next);
-    } catch {
-      // ignore
-    }
-    const url = next === "ai" ? "/?lens=ai" : "/";
-    router.replace(url);
+    navigateToLens(router, next);
     setOpen(false);
   }
 
@@ -147,7 +150,7 @@ export function Nav() {
           : "bg-transparent"
       }`}
     >
-      <nav className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-5 py-4 sm:px-6">
+      <nav className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-5 py-3 sm:px-6 sm:py-4">
         <a
           href="#top"
           className="shrink-0 font-[family-name:var(--font-display)] text-base tracking-tight text-[var(--cream)] sm:text-lg"
@@ -156,7 +159,14 @@ export function Nav() {
           {resume.site.name}
         </a>
 
-        <ul className="hidden items-center gap-6 text-sm text-[var(--muted)] lg:flex xl:gap-8">
+        <div className="hidden min-w-0 flex-1 justify-center md:flex">
+          <div className="flex flex-col items-center gap-1">
+            <LensToggle lens={lens} onChange={setLens} size="lg" />
+            <p className="text-[10px] text-[var(--muted)]">{LENS_HINT[lens]}</p>
+          </div>
+        </div>
+
+        <ul className="hidden items-center gap-5 text-sm text-[var(--muted)] xl:flex">
           {links.map((link) => (
             <li key={link.href}>
               <a
@@ -170,11 +180,13 @@ export function Nav() {
         </ul>
 
         <div className="flex items-center gap-2 sm:gap-3">
-          <LensToggle lens={lens} onChange={setLens} compact />
+          <div className="md:hidden">
+            <LensToggle lens={lens} onChange={setLens} showLabel={false} />
+          </div>
           <PrintResumeMenu compact className="hidden sm:block" />
           <a
             href="#contact"
-            className="hidden rounded-full border border-[var(--accent)]/40 px-4 py-2 text-sm text-[var(--accent)] transition-colors hover:bg-[var(--accent)] hover:text-[var(--ink)] md:inline-flex"
+            className="hidden rounded-full border border-[var(--accent)]/40 px-4 py-2 text-sm text-[var(--accent)] transition-colors hover:bg-[var(--accent)] hover:text-[var(--ink)] lg:inline-flex"
             onClick={() => setOpen(false)}
           >
             Let’s talk
@@ -182,7 +194,7 @@ export function Nav() {
 
           <button
             type="button"
-            className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/15 text-[var(--cream)] lg:hidden"
+            className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/15 text-[var(--cream)] xl:hidden"
             aria-label={open ? "Close menu" : "Open menu"}
             aria-expanded={open}
             onClick={() => setOpen((v) => !v)}
@@ -207,13 +219,14 @@ export function Nav() {
             initial={{ opacity: 0, y: -8 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }}
-            className="border-t border-white/10 bg-[var(--ink)] px-5 py-6 lg:hidden"
+            className="border-t border-white/10 bg-[var(--ink)] px-5 py-6 xl:hidden"
           >
-            <div className="mb-4">
+            <div className="mb-5 rounded-2xl border border-[var(--accent)]/30 bg-[var(--accent)]/8 px-4 py-3">
               <p className="mb-2 text-xs uppercase tracking-[0.18em] text-[var(--muted)]">
-                Focus
+                Resume view
               </p>
-              <LensToggle lens={lens} onChange={setLens} />
+              <LensToggle lens={lens} onChange={setLens} size="lg" showLabel={false} />
+              <p className="mt-2 text-xs text-[var(--muted)]">{LENS_HINT[lens]}</p>
             </div>
             <ul className="flex flex-col gap-4 text-lg text-[var(--cream)]">
               {links.map((link) => (

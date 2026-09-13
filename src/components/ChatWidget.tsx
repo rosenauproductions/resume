@@ -3,25 +3,27 @@
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { usePathname, useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { getOrCreateDeviceId } from "@/lib/device-id";
 import { readLastVisitId } from "@/lib/identify-persistence";
 import { VisitorIdentifyModal } from "@/components/VisitorIdentifyModal";
 import type { IdentifyPromptPayload } from "@/lib/visit-identify-types";
 import { resolveLens } from "@/lib/resume/lens";
+import { navigateToLens, suggestLensFromText } from "@/lib/resume/lens-intent";
+import type { ResumeLensId } from "@/lib/resume/types";
 
 const SESSION_KEY = "resume-chat-session-id";
 const WELCOME_DISMISS_KEY = "resume-chat-welcome-dismissed";
 const LINK_CTA_DISMISS_KEY = "resume-chat-link-cta-dismissed";
 
 const WELCOME_PEEK_MEDIA =
-  "Hi — I’m Chris’s portfolio assistant. Ask me about his experience, skills, or projects.";
+  "Hi — Media view. Ask about Chris’s video, design, or eLearning work — or switch to AI in the nav.";
 const WELCOME_PANEL_MEDIA =
-  "Hi! I’m here if you want the short version of Chris’s background — experience, Canvas/LMS work, video, or side projects. What are you curious about?";
+  "Hi! You’re on the Media lens (video, design, eLearning). For coding, Canvas/AWS systems, or LLM builds, switch to AI in the top nav — or just ask and I’ll flip the page for you.";
 const WELCOME_PEEK_AI =
-  "Hi — AI-focused view. Ask about Chris’s coding, Canvas/AWS systems, LLMs, or shipped builds.";
+  "Hi — AI view. Ask about coding, Canvas/AWS, LLMs, or builds — Media is one tap away in the nav.";
 const WELCOME_PANEL_AI =
-  "Hi! This is the AI lens — LMS platform work, TypeScript builds, LLM workflows, and bots. What do you want to dig into?";
+  "Hi! You’re on the AI lens (coding, LMS systems, bots). For classic multimedia / video craft, use Media in the top nav — or ask about video and I’ll switch automatically.";
 
 function getOrCreateSessionId(): string {
   if (typeof window === "undefined") return "anonymous";
@@ -70,6 +72,7 @@ function looksLikeHiringIntent(text: string) {
 export function ChatWidget() {
   const pathname = usePathname() || "/";
   const searchParams = useSearchParams();
+  const router = useRouter();
   const lens = resolveLens(searchParams.get("lens"));
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState("");
@@ -80,8 +83,11 @@ export function ChatWidget() {
   const [needsLink, setNeedsLink] = useState(false);
   const [suggestedLabel, setSuggestedLabel] = useState<string | null>(null);
   const [linkCtaDismissed, setLinkCtaDismissed] = useState(false);
+  const [lensNotice, setLensNotice] = useState<string | null>(null);
+  const [pendingLensSuggest, setPendingLensSuggest] = useState<ResumeLensId | null>(null);
   const scrollerRef = useRef<HTMLDivElement>(null);
   const linkStatusFetched = useRef(false);
+  const lastAutoLensKey = useRef("");
 
   useEffect(() => {
     getOrCreateSessionId();
@@ -122,6 +128,49 @@ export function ChatWidget() {
   const { messages, sendMessage, status, error, clearError } = useChat({
     transport,
   });
+
+  function applyLensSwitch(next: ResumeLensId, reason: "auto" | "manual") {
+    if (next === lens) {
+      setPendingLensSuggest(null);
+      return;
+    }
+    navigateToLens(router, next);
+    const label = next === "ai" ? "AI (coding / systems)" : "Media (video / design)";
+    setLensNotice(
+      reason === "auto"
+        ? `Switched to ${label} to match your question.`
+        : `Switched to ${label}.`,
+    );
+    setPendingLensSuggest(null);
+  }
+
+  // Auto-switch or suggest when a user message clearly fits the other lens
+  useEffect(() => {
+    const lastUser = [...messages].reverse().find((m) => m.role === "user");
+    if (!lastUser) return;
+    const text = messageText(lastUser.parts);
+    if (!text) return;
+    const key = `${lastUser.id}:${lens}`;
+    if (lastAutoLensKey.current === key) return;
+    const suggested = suggestLensFromText(text);
+    if (!suggested || suggested === lens) return;
+    lastAutoLensKey.current = key;
+    const strong =
+      (suggested === "media" &&
+        /\b(video|premiere|after\s*effects|multimedia|vyond|animation)\b/i.test(text)) ||
+      (suggested === "ai" &&
+        /\b(typescript|coding|programmer|llm|github|stepbot|javascript)\b/i.test(text));
+    if (strong) {
+      applyLensSwitch(suggested, "auto");
+    } else {
+      setPendingLensSuggest(suggested);
+      setLensNotice(
+        suggested === "ai"
+          ? "This sounds like coding / systems — switch to the AI view?"
+          : "This sounds like multimedia / video — switch to the Media view?",
+      );
+    }
+  }, [messages, lens, router]);
 
   const busy = status === "submitted" || status === "streaming";
 
@@ -287,7 +336,7 @@ export function ChatWidget() {
                   Ask about Chris
                 </p>
                 <p className="text-xs text-[var(--muted)]">
-                  Portfolio assistant — not Chris himself
+                  {lens === "ai" ? "AI view" : "Media view"} · not Chris himself
                 </p>
               </div>
               <button
@@ -307,6 +356,45 @@ export function ChatWidget() {
               {messages.length === 0 ? (
                 <div className="mr-auto max-w-[92%] rounded-2xl bg-white/6 px-3 py-2 text-sm leading-relaxed text-[var(--cream)]">
                   {lens === "ai" ? WELCOME_PANEL_AI : WELCOME_PANEL_MEDIA}
+                </div>
+              ) : null}
+              {lensNotice ? (
+                <div
+                  className="rounded-xl border border-sky-400/35 bg-sky-400/10 px-3 py-2 text-xs leading-relaxed text-sky-100"
+                  role="status"
+                >
+                  <p>{lensNotice}</p>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {pendingLensSuggest ? (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => applyLensSwitch(pendingLensSuggest, "manual")}
+                          className="rounded-lg bg-sky-400 px-2.5 py-1 font-semibold text-[var(--ink)]"
+                        >
+                          Switch to {pendingLensSuggest === "ai" ? "AI" : "Media"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setPendingLensSuggest(null);
+                            setLensNotice(null);
+                          }}
+                          className="rounded-lg border border-white/15 px-2.5 py-1 text-[var(--muted)]"
+                        >
+                          Keep {lens === "ai" ? "AI" : "Media"}
+                        </button>
+                      </>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => setLensNotice(null)}
+                        className="rounded-lg border border-white/15 px-2.5 py-1 text-[var(--muted)]"
+                      >
+                        Dismiss
+                      </button>
+                    )}
+                  </div>
                 </div>
               ) : null}
               {messages.map((m) => {

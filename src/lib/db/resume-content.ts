@@ -35,7 +35,7 @@ export async function getResumeDocument(): Promise<ResumeDocument> {
 }
 
 /** Materialized single-lens content for the public site. */
-export async function getResumeContent(lens: ResumeLensId = "media"): Promise<ResumeContent> {
+export async function getResumeContent(lens: ResumeLensId = "ai"): Promise<ResumeContent> {
   const doc = await getResumeDocument();
   return materializeResume(doc, lens);
 }

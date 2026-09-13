@@ -108,7 +108,7 @@ export async function POST(req: Request) {
     typeof body.visitId === "string" && body.visitId.trim()
       ? body.visitId.trim()
       : null;
-  const lens = body.lens === "ai" ? "ai" : "media";
+  const lens = body.lens === "media" ? "media" : "ai";
   const systemPrompt = lens === "ai" ? SYSTEM_PROMPT_AI : SYSTEM_PROMPT;
 
   const lastUserText = textFromUiMessage(
