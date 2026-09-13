@@ -350,6 +350,14 @@ export const sideProjects = {
   note: "Beyond institutional work I build tools for learners, instructors, and musicians. These projects keep programming, UX, and systems skills sharp.",
   projects: [
     {
+      title: "GoodWork",
+      summary:
+        "TypeScript + React church youth service exchange — job requests, volunteer assignment, parent approval, family profiles, and fundraising milestones. Live: goodwork-two.vercel.app",
+      href: "https://github.com/rosenauproductions/goodwork",
+      linkLabel: "GitHub",
+      tags: ["TypeScript", "React", "Vite", "Product UI"],
+    },
+    {
       title: "Pistomp-Mobile",
       summary:
         "Mobile-first companion web app for the open-source Pi-Stomp multi-effects platform. TypeScript + Vite PWA for pedalboard control, effect bypass, A/B snapshots, gain, and per-effect parameters over the MOD-UI API — optimized for phone use on the Pi’s Wi-Fi hotspot, with install and admin features.",
@@ -557,6 +565,12 @@ export const roleFit = {
           role: "Instructional Design Specialist (Media)",
           company: "Medical Sales College",
           proof: "Custom Canvas programming enhancements, troubleshooting, and faculty support.",
+        },
+        {
+          role: "GoodWork",
+          company: "Side project",
+          proof:
+            "React/TypeScript church youth service exchange — jobs, volunteers, parent approval, fundraising.",
         },
         {
           role: "Pistomp-Mobile",

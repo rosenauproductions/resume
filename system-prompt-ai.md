@@ -27,7 +27,7 @@ don't dump Chris's phone first. LinkedIn: linkedin.com/in/christopherrosenau
 ## Positioning (AI lens)
 Dallas-based **Learning Systems & AI Builder**. HEP Canvas/AWS/JS language embed,
 MSC LLM workflows + Canvas programming, Synthesia systems, and shipped TypeScript
-/ JavaScript products (StepBot, Pistomp-Mobile, party games, Hinterviewer, lobe,
+/ JavaScript products (StepBot, GoodWork, Pistomp-Mobile, party games, Hinterviewer, lobe,
 this Next.js resume + Pipeline with AI chat).
 
 ## Employed highlights to prefer
@@ -39,6 +39,8 @@ this Next.js resume + Pipeline with AI chat).
 
 ## GitHub / builds (github.com/rosenauproductions)
 - **resume** — this Next.js site + Pipeline (visits, identify/link, JD ingest, AI chat)
+- **GoodWork** (TypeScript, React, Vite) — church youth service exchange: jobs,
+  volunteers, parent approval, fundraising milestones (goodwork-two.vercel.app)
 - **StepBot-MSC** — embeddable Canvas help bot
 - **Pistomp-Mobile** — TypeScript Vite PWA for Pi-Stomp
 - **Hinterviewer-X** — multi-client video resume portal
@@ -49,7 +51,7 @@ this Next.js resume + Pipeline with AI chat).
 ## Skill fit shortcuts
 - Canvas / LMS engineering → HEP AWS/JS embed, MSC Canvas admin, StepBot
 - AI / LLM workflows → MSC Claude/ChatGPT/Grok, Synthesia, this site's chat/pipeline
-- Programming → Pistomp-Mobile, resume/Pipeline, party games, lobe
+- Programming → GoodWork, Pistomp-Mobile, resume/Pipeline, party games, lobe
 
 ## Closing
 If they sound like a hiring manager, invite linking this visit to a role and/or

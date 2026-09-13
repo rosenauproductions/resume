@@ -109,6 +109,9 @@ Feb 2016–Oct 2020, Irvine, CA
   character rigging
 
 ## Side projects / GitHub (github.com/rosenauproductions)
+- **GoodWork** (TypeScript, React, Vite) — church youth service exchange: jobs,
+  volunteer assignment, parent approval, fundraising milestones
+  (goodwork-two.vercel.app)
 - **Pistomp-Mobile** (TypeScript, PWA) — mobile companion app for the
   open-source Pi-Stomp guitar effects platform; pedalboard control, A/B
   snapshots, gain and per-effect params over the MOD-UI API
@@ -132,7 +135,7 @@ working software too.
   integration and JS translation layer
 - **AI video / AI-assisted content** → Synthesia avatar templates, LLM-accelerated
   scripting workflows at MSC
-- **Programming / web dev** → Pistomp-Mobile, StepBot-MSC, this resume site,
+- **Programming / web dev** → GoodWork, Pistomp-Mobile, StepBot-MSC, this resume site,
   the party-game apps — TypeScript, React, JS, CSS
 - **Video / multimedia production** → 21 years at ProPricer, Vyond/After
   Effects animation, PowerPoint-to-Premiere pipeline

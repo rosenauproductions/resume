@@ -60,7 +60,7 @@ export function buildAiResumeContent(mediaBase?: ResumeContent): ResumeContent {
     paragraphs: [
       "At Higher Ed Partners I treated Canvas as a delivery platform: AWS-hosted Rise content, CSS that fixed iframe UX, and a JavaScript language-embed layer so learners could switch languages inside the LMS. That stack — Canvas, AWS, CSS, and JS — is the systems work I want hiring teams to see first.",
       "At Medical Sales College I ran Canvas administration with custom programming, and accelerated production with LLM workflows (Claude, ChatGPT, Grok) for scripting and iteration. Synthesia avatar systems at HEP scaled AI video without traditional film cycles.",
-      "Independently I build TypeScript and JavaScript products: StepBot (Canvas help bot), Pistomp-Mobile (PWA), multiplayer party games, Hinterviewer, lobe (macOS proximity radar), and this Next.js resume + Pipeline app with visit tracking, job linking, and an on-site AI chat. I’m open to roles in learning systems, AI-assisted product work, LMS engineering, and hands-on web development.",
+      "Independently I build TypeScript and JavaScript products: StepBot (Canvas help bot), GoodWork (church youth service exchange), Pistomp-Mobile (PWA), multiplayer party games, Hinterviewer, lobe (macOS proximity radar), and this Next.js resume + Pipeline app with visit tracking, job linking, and an on-site AI chat. I’m open to roles in learning systems, AI-assisted product work, LMS engineering, and hands-on web development.",
     ],
   };
 
@@ -150,6 +150,16 @@ export function buildAiResumeContent(mediaBase?: ResumeContent): ResumeContent {
       href: "https://github.com/rosenauproductions/resume",
       linkLabel: "GitHub",
       tags: ["Next.js", "TypeScript", "AI chat", "Neon"],
+    },
+    {
+      id: newId("proj"),
+      enabled: true,
+      title: "GoodWork",
+      summary:
+        "TypeScript + React + Vite app for a church youth service exchange — job requests, volunteer assignment, parent approval flow, family profiles, and fundraising milestones toward community goals. Demo: goodwork-two.vercel.app",
+      href: "https://github.com/rosenauproductions/goodwork",
+      linkLabel: "GitHub",
+      tags: ["TypeScript", "React", "Vite", "Product UI"],
     },
     {
       id: newId("proj"),
@@ -316,6 +326,13 @@ export function buildAiResumeContent(mediaBase?: ResumeContent): ResumeContent {
         strength: "Advanced",
         summary: "TypeScript/JS products — PWAs, multiplayer UI, portals, and full resume apps.",
         matches: [
+          {
+            role: "GoodWork",
+            company: "Side project",
+            proof:
+              "React/TypeScript service-exchange UI — jobs, parent approval, volunteers, and fundraising progress.",
+            projectId: byTitle("GoodWork")?.id,
+          },
           {
             role: "Pistomp-Mobile",
             company: "Side project",
@@ -490,7 +507,7 @@ export function buildDefaultResumeDocument(): ResumeDocument {
   return { version: 2, lenses: { media, ai } };
 }
 
-/** Patch live AI CMS docs: drop BPMon note, ensure ID/media fit buttons exist. */
+/** Patch live AI CMS docs: drop BPMon note, ensure ID/media fit + GoodWork exist. */
 function repairAiLensContent(ai: ResumeContent, media: ResumeContent): ResumeContent {
   const seeded = buildAiResumeContent(media);
   let note = ai.sideProjects.note || "";
@@ -498,14 +515,60 @@ function repairAiLensContent(ai: ResumeContent, media: ResumeContent): ResumeCon
     note = seeded.sideProjects.note;
   }
 
+  const haveProjects = new Set(
+    ai.sideProjects.projects.map((p) => p.title.trim().toLowerCase()),
+  );
+  const extraProjects = seeded.sideProjects.projects.filter(
+    (p) => !haveProjects.has(p.title.trim().toLowerCase()),
+  );
+  // Prefer inserting GoodWork near the top if newly added
+  const projects =
+    extraProjects.length > 0
+      ? (() => {
+          const gw = extraProjects.filter((p) => p.title === "GoodWork");
+          const rest = extraProjects.filter((p) => p.title !== "GoodWork");
+          if (!gw.length) return [...ai.sideProjects.projects, ...extraProjects];
+          const resumeIdx = ai.sideProjects.projects.findIndex((p) =>
+            /resume/i.test(p.title),
+          );
+          const base = [...ai.sideProjects.projects];
+          const at = resumeIdx >= 0 ? resumeIdx + 1 : 0;
+          base.splice(at, 0, ...gw);
+          return [...base, ...rest];
+        })()
+      : ai.sideProjects.projects;
+
   const have = new Set(ai.roleFit.needs.map((n) => n.id));
   const extras = seeded.roleFit.needs.filter((n) => !have.has(n.id));
-  const needs =
-    extras.length > 0 ? [...ai.roleFit.needs, ...extras] : ai.roleFit.needs;
+  let needs = extras.length > 0 ? [...ai.roleFit.needs, ...extras] : ai.roleFit.needs;
+
+  // Ensure Programming fit cites GoodWork when the project exists
+  const goodwork = projects.find((p) => p.title === "GoodWork");
+  if (goodwork) {
+    needs = needs.map((need) => {
+      if (need.id !== "programming") return need;
+      if (need.matches.some((m) => m.role === "GoodWork" || m.projectId === goodwork.id)) {
+        return need;
+      }
+      return {
+        ...need,
+        matches: [
+          {
+            role: "GoodWork",
+            company: "Side project",
+            proof:
+              "React/TypeScript service-exchange UI — jobs, parent approval, volunteers, and fundraising progress.",
+            projectId: goodwork.id,
+          },
+          ...need.matches,
+        ],
+      };
+    });
+  }
 
   return {
     ...ai,
-    sideProjects: { ...ai.sideProjects, note },
+    sideProjects: { ...ai.sideProjects, note, projects },
     roleFit: {
       ...ai.roleFit,
       note:
@@ -533,13 +596,42 @@ export function normalizeResumeDocument(raw: unknown): ResumeDocument {
       }
     }
     ai = repairAiLensContent(syncSharedIdentity(media, ai), media);
-    return { version: 2, lenses: { media, ai } };
+    const mediaRepaired = repairMediaSideProjects(media);
+    return {
+      version: 2,
+      lenses: {
+        media: mediaRepaired,
+        ai: syncSharedIdentity(mediaRepaired, ai),
+      },
+    };
   }
 
   // v1 flat ResumeContent → dual document
-  const media = normalizeResumeContent(raw);
+  const media = repairMediaSideProjects(normalizeResumeContent(raw));
   const ai = syncSharedIdentity(media, buildAiResumeContent(media));
   return { version: 2, lenses: { media, ai } };
+}
+
+function repairMediaSideProjects(media: ResumeContent): ResumeContent {
+  const have = new Set(media.sideProjects.projects.map((p) => p.title.trim().toLowerCase()));
+  if (have.has("goodwork")) return media;
+  const goodwork = {
+    id: newId("proj"),
+    enabled: true,
+    title: "GoodWork",
+    summary:
+      "TypeScript + React church youth service exchange — job requests, volunteer assignment, parent approval, family profiles, and fundraising milestones. Live: goodwork-two.vercel.app",
+    href: "https://github.com/rosenauproductions/goodwork",
+    linkLabel: "GitHub",
+    tags: ["TypeScript", "React", "Vite", "Product UI"],
+  };
+  return {
+    ...media,
+    sideProjects: {
+      ...media.sideProjects,
+      projects: [goodwork, ...media.sideProjects.projects],
+    },
+  };
 }
 
 /** After editing one lens, keep contact/portraits aligned across both. */
