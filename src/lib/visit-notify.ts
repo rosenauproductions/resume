@@ -1,5 +1,5 @@
 /**
- * Shared Discord / ntfy helpers for visit + identify events.
+ * Shared Discord / ntfy / email helpers for visit + identify events.
  */
 
 import { resolveNtfyNotifyConfig } from "@/lib/db/settings";
@@ -88,6 +88,50 @@ async function notifyNtfy(
   }
 }
 
+/** Turns our `**Label:** value` line format into a simple HTML block for email. */
+function linesToHtml(lines: string[]): string {
+  const rows = lines
+    .map((line) => {
+      const escaped = line
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;");
+      // Restore bold markers after escaping, then convert **label:** → <strong>
+      const withBold = escaped.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
+      return `<p style="margin:0 0 8px 0;">${withBold}</p>`;
+    })
+    .join("\n");
+  return `<div style="font-family:-apple-system,Segoe UI,Roboto,sans-serif;font-size:14px;color:#1a1a1a;">${rows}</div>`;
+}
+
+async function notifyEmail(
+  apiKey: string,
+  from: string,
+  to: string,
+  title: string,
+  lines: string[],
+) {
+  const res = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      from,
+      to: [to],
+      subject: `Resume site — ${title}`,
+      html: linesToHtml(lines),
+      text: lines.map((l) => l.replace(/\*\*/g, "")).join("\n"),
+    }),
+  });
+
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(`resend ${res.status}: ${text}`);
+  }
+}
+
 export async function notifyVisitChannels(input: {
   title: string;
   lines: string[];
@@ -96,9 +140,17 @@ export async function notifyVisitChannels(input: {
 }): Promise<boolean> {
   const discordWebhook = process.env.VISIT_NOTIFY_DISCORD_WEBHOOK;
   const { topic: ntfyTopic, server: ntfyServer } = await resolveNtfyNotifyConfig();
-  if (!discordWebhook && !ntfyTopic) return false;
 
   const kind = input.kind ?? "visit";
+
+  // Email only fires for real leads (contact form submissions) — visits/identify
+  // pings stay on Discord/ntfy so the inbox doesn't fill up with page-view noise.
+  const resendApiKey = kind === "lead" ? process.env.RESEND_API_KEY?.trim() : undefined;
+  const emailTo = process.env.VISIT_NOTIFY_EMAIL_TO?.trim() || "rosenauproductions@gmail.com";
+  const emailFrom = process.env.VISIT_NOTIFY_EMAIL_FROM?.trim() || "Resume Leads <onboarding@resend.dev>";
+
+  if (!discordWebhook && !ntfyTopic && !resendApiKey) return false;
+
   const plain = input.lines.map((l) => l.replace(/\*\*/g, "")).join("\n");
   const jobs: Promise<unknown>[] = [];
   if (discordWebhook) {
@@ -108,6 +160,9 @@ export async function notifyVisitChannels(input: {
     jobs.push(
       notifyNtfy(ntfyServer, ntfyTopic, input.title, plain, kind, input.priority ?? "default"),
     );
+  }
+  if (resendApiKey) {
+    jobs.push(notifyEmail(resendApiKey, emailFrom, emailTo, input.title, input.lines));
   }
   await Promise.all(jobs);
   return true;

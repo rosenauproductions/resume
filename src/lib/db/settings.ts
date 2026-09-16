@@ -68,6 +68,7 @@ export type PipelineEnvStatus = {
   ntfyTopicEnv: boolean;
   ntfyToken: boolean;
   discord: boolean;
+  email: boolean;
   blob: boolean;
   aiGateway: boolean;
   pipelineSecret: boolean;
@@ -173,6 +174,7 @@ export function getPipelineEnvStatus(): PipelineEnvStatus {
     ntfyTopicEnv: Boolean(process.env.VISIT_NOTIFY_NTFY_TOPIC?.trim()),
     ntfyToken: Boolean(process.env.VISIT_NOTIFY_NTFY_TOKEN?.trim()),
     discord: Boolean(process.env.VISIT_NOTIFY_DISCORD_WEBHOOK?.trim()),
+    email: Boolean(process.env.RESEND_API_KEY?.trim()),
     blob: Boolean(process.env.BLOB_READ_WRITE_TOKEN?.trim()),
     aiGateway: Boolean(
       process.env.AI_GATEWAY_API_KEY?.trim() || process.env.VERCEL_OIDC_TOKEN?.trim(),

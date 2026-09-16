@@ -371,6 +371,7 @@ export function PipelineSettings({
             <StatusPill ok={envStatus.ntfyToken} label="ntfy token" />
             <StatusPill ok={envStatus.ntfyTopicEnv} label="ntfy topic (env)" />
             <StatusPill ok={envStatus.discord} label="Discord webhook" />
+            <StatusPill ok={envStatus.email} label="Email (Resend)" />
             <StatusPill ok={envStatus.blob} label="Blob token" />
             <StatusPill ok={envStatus.aiGateway} label="AI Gateway key" />
             {envStatus.aiCredits ? (

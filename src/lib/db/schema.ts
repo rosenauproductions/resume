@@ -128,6 +128,17 @@ export const chatCache = pgTable("chat_cache", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+/** Web Push (VAPID) subscriptions — one row per browser/device that enabled pipeline notifications. */
+export const pushSubscriptions = pgTable("push_subscriptions", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  endpoint: text("endpoint").notNull().unique(),
+  p256dh: text("p256dh").notNull(),
+  auth: text("auth").notNull(),
+  userAgent: text("user_agent").notNull().default(""),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  lastSeenAt: timestamp("last_seen_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 export type ApplicationRow = typeof applications.$inferSelect;
 export type VisitRow = typeof visits.$inferSelect;
 export type IgnoredDeviceRow = typeof ignoredDevices.$inferSelect;
@@ -135,3 +146,4 @@ export type SiteSettingRow = typeof siteSettings.$inferSelect;
 export type VisitorIdentificationRow = typeof visitorIdentifications.$inferSelect;
 export type ChatMessageRow = typeof chatMessages.$inferSelect;
 export type ChatCacheRow = typeof chatCache.$inferSelect;
+export type PushSubscriptionRow = typeof pushSubscriptions.$inferSelect;

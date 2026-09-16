@@ -31,6 +31,7 @@ import { BarChart, DonutChart, DismissiblePanel, StatCard, TimelineChart, VisitT
 import { TargetMap } from "./TargetMap";
 import { ResumeEditor } from "./ResumeEditor";
 import { PipelineSettings } from "./PipelineSettings";
+import { PushNotifications } from "./PushNotifications";
 import { PipelineChatTracker } from "./PipelineChatTracker";
 import type { PipelineHomePanelId } from "@/lib/pipeline/home-panels";
 import {
@@ -1980,13 +1981,16 @@ export function PipelineApp({
           ) : null}
 
           {view === "settings" ? (
-            <PipelineSettings
-              onNotice={setNotice}
-              onSynced={({ visitorIdentifyEnabled: vi, skillsSectionEnabled: sk }) => {
-                setVisitorIdentifyEnabled(vi);
-                setSkillsSectionEnabled(sk);
-              }}
-            />
+            <div className="space-y-4">
+              <PipelineSettings
+                onNotice={setNotice}
+                onSynced={({ visitorIdentifyEnabled: vi, skillsSectionEnabled: sk }) => {
+                  setVisitorIdentifyEnabled(vi);
+                  setSkillsSectionEnabled(sk);
+                }}
+              />
+              <PushNotifications />
+            </div>
           ) : null}
         </div>
       </div>

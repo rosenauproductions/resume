@@ -58,8 +58,17 @@ export async function generateMetadata(): Promise<Metadata> {
       description: deploy.metaDescription,
       images: ["/images/og-preview.jpg"],
     },
+    manifest: "/manifest.json",
+    icons: {
+      icon: ["/icon-192.png", "/icon-512.png"],
+      apple: "/icon-192.png",
+    },
   };
 }
+
+export const viewport = {
+  themeColor: "#071018",
+};
 
 export default function RootLayout({
   children,
