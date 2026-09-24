@@ -34,9 +34,9 @@ live at https://resume-rho-taupe.vercel.app/
   the whole object back. Never send a partial job object.
 - **GoodWork**: a sub-project referenced in resume builds/role-fit/chat
   prompts (see commit `b509fa4`) — not yet documented in depth here; check
-  that commit and surrounding files if it comes up. **Pending deletion** —
-  Chris mentioned deleting the `goodwork` Vercel project; not yet actioned,
-  needs his explicit go-ahead first (it's permanent).
+  that commit and surrounding files if it comes up. The standalone
+  `goodwork` Vercel project (`goodwork-two.vercel.app`) was **deleted
+  2026-09-16** at Chris's request — it no longer exists.
 - **Email-sync bot mailbox**: a Gmail draft ("🗒️ Email Assistant Log — DO
   NOT SEND", draftId `r-2547586641898269704`) is a shared, append-only
   notes channel between Chris/Claude and the hourly bot. Write a
@@ -45,24 +45,51 @@ live at https://resume-rho-taupe.vercel.app/
   fires. Read with Gmail `get_draft`, write with `update_draft` (full-body
   replace — always append to the existing text, never overwrite history).
 
-- **Push notification addon**: Web Push (VAPID) support so the hourly bot
-  can alert Chris's phone directly, not just via email/mailbox. New DB
-  table `push_subscriptions` (`src/lib/db/schema.ts`). Client opt-in lives
-  on the password-gated `/pipeline` page
+- **Push notification addon — LIVE and verified end-to-end
+  (2026-09-16)**: Web Push (VAPID) support so the hourly bot can alert
+  Chris's phone directly, not just via email/mailbox. DB table
+  `push_subscriptions` (`src/lib/db/schema.ts`). Client opt-in on the
+  password-gated `/pipeline` page → Settings tab
   (`src/components/pipeline/PushNotifications.tsx`) — add the site to
   your phone's homescreen (`public/manifest.json`, `public/sw.js`,
-  `public/icon-192.png` / `icon-512.png`), then hit "Enable
-  notifications" there. Server side: `src/lib/push/subscriptions.ts` (DB
-  CRUD), `src/lib/push/send.ts` (sends via `web-push`, auto-prunes dead
+  `public/icon-192.png` / `icon-512.png`), then "Enable notifications"
+  there. Server side: `src/lib/push/subscriptions.ts` (DB CRUD),
+  `src/lib/push/send.ts` (sends via `web-push`, auto-prunes dead
   subscriptions on 404/410). Two API routes, both gated by the same
   `requirePipelineAuth()` as the jobs API: `POST /api/push/subscribe`
   (browser calls this after granting permission), `POST /api/push/send`
   (bot/anyone with the pipeline cookie calls this — body
   `{title, body, url?}` — to push a notification to every enabled
-  device). VAPID keys are in `.env.local` — **still need to be added to
-  Vercel's env vars for production**, see status log below. Full API
-  contract for the bot: `claude/notify-bot-handoff.md` in the claude.ai
-  project.
+  device). VAPID keys are set in Vercel (Production + Preview). STEP 4b
+  in the hourly bot's trigger prompt calls this when something's worth
+  an immediate alert. Full API contract: `claude/notify-bot-handoff.md`
+  in the claude.ai project.
+- **Pipeline Copilot (added 2026-09-24)**: `/pipeline` → Copilot tab
+  (`src/components/pipeline/PipelineCopilot.tsx`). New `copilot_items` DB
+  table (`src/lib/db/schema.ts`, helper `src/lib/db/copilot.ts`) is a
+  unified feed of `kind: "flag"` rows (things the hourly bot noticed, one
+  per email in the From Trisha / Job search / Boy Scouts / Events
+  categories, plus one aggregate row per run for everything-else) and
+  `kind: "request"` rows (instructions queued for the bot's next run,
+  either typed in the copilot chat or a bot self-suggestion — currently
+  `calendar_add` or `general`). API: `GET/POST /api/pipeline/copilot/items`,
+  `PATCH /api/pipeline/copilot/items/[id]` (mark handled / done / blocked).
+  The copilot chat itself is `POST /api/pipeline/copilot/chat` — a
+  streaming `ai` SDK route (same Vercel AI Gateway pattern as the public
+  resume chatbot) with a `queueRequest` tool the model calls only after
+  Chris has clearly confirmed — never proactively. Push notifications
+  (`src/lib/push/send.ts`, `/api/push/send`) now accept an optional
+  `itemId`: when set, `public/sw.js` shows "Mark handled" / "View" action
+  buttons on the notification itself (mark_handled PATCHes the item
+  without opening the app — works because the service worker's fetch
+  carries the httpOnly `pipeline_session` cookie automatically for
+  same-origin requests, no extra auth wiring needed). The hourly bot's
+  trigger prompt got a new **Step 0b** (checks
+  `GET /api/pipeline/copilot/items?kind=request&status=pending`, creates
+  Google Calendar events via its already-connected Calendar connector for
+  `calendar_add` requests, then PATCHes each to done/blocked) and a new
+  **Step 4b** (writes a flag row for every category item so the feed has
+  something to show, before Step 4c sends the push).
 
 Key files:
 | Area | File |
@@ -78,6 +105,51 @@ Key files:
 ---
 
 ## Status log (most recent first)
+
+### 2026-09-24 — Built the pipeline Copilot (feed + chat + richer push)
+Chris asked to enhance the pipeline into more of a copilot. Added: a
+`copilot_items` DB table unifying bot-flagged items and queued requests;
+a new Copilot tab on `/pipeline` with a category feed (mark handled) and
+a chat box that can answer questions and queue instructions for the
+hourly bot — including "add this to my calendar" (Chris confirmed he
+wants the copilot to be conversational, still alert him proactively via
+push, and be able to offer calendar adds); richer push notifications with
+Mark handled / View action buttons wired to a specific feed item; and a
+rewrite of the hourly bot's trigger prompt (new Step 0b resolves queued
+copilot requests using its existing Google Calendar connector, new Step
+4b writes a flag row per email so the feed has something to show). No new
+env vars or OAuth needed — reused the bot's existing Gmail/Calendar/
+pipeline connections and the site's existing AI Gateway wiring. `tsc
+--noEmit` clean; eslint shows only pre-existing, already-deployed
+`react-hooks/set-state-in-effect` findings unrelated to this change (same
+pattern already lives in `PipelineChatTracker.tsx`).
+
+### 2026-09-24 — Hourly bot expanded to full-inbox categorization
+Chris asked for the bot to summarize all his email, not just job search,
+organized around what matters to him. Rewrote the trigger prompt's
+classification (categories: From Trisha, Job search, Boy Scouts, Events,
+everything-else), push criteria (now covers Trisha/Scouts/Events too,
+bundled into one push per run when multiple items are urgent), and
+final-summary structure (organized under category headers). Prompt-only
+change, effective immediately on the next hourly run.
+
+### 2026-09-16 — Deleted the unused `goodwork` Vercel project
+Chris confirmed the go-ahead ("delete `goodwork-two.vercel.app`"); deleted
+via Vercel's dashboard (typed the two required confirmation strings —
+project name and "delete my project" — and submitted). Verified: the
+project no longer appears in the `rosenau-productions` team project list.
+Closes out the last item from the push-notification build's task backlog.
+
+### 2026-09-16 — Push notification addon fully verified end-to-end
+Chris added the four VAPID env vars to Vercel, Claude committed + pushed
+the code (commit `3cdeb7b`), Vercel deployed clean, Chris added the site
+to his phone's homescreen and enabled notifications, and a real test push
+(`POST /api/push/send`, sent directly from Claude) landed on his phone —
+confirmed working. STEP 4b (push-on-something-worth-knowing) is now
+wired into the live hourly bot trigger, not just documented. Walked
+through one confirmed step at a time (env vars → deploy → homescreen/
+enable → test push) per Chris's request to get explicit go/no-go on each
+step rather than batching them.
 
 ### 2026-09-16 — Push notification addon built (Web Push / VAPID)
 Added a full Web Push pipeline so the hourly email bot (or Chris/Claude
@@ -119,7 +191,7 @@ allowed domains**. Now allowlisted: `resume-rho-taupe.vercel.app`,
 `family-wall-calendar.vercel.app`, `www.ashurose.com`, `ashurose.com`,
 `ashurose.vercel.app`, `hinterviewer-x.vercel.app`,
 `family-feud-9paz.onrender.com`, `the-1-percent-club.onrender.com`
-(everything except `goodwork`, pending deletion). Verified working again
+(everything except `goodwork`, which has since been deleted). Verified working again
 via direct curl and by re-firing the hourly bot. **Takeaway: any new
 personal domain needs to be added here before Claude sessions can reach
 it** — otherwise it looks like a server-side rejection but isn't. The
@@ -228,3 +300,38 @@ elsewhere.
   importing `@neondatabase/serverless`. Match existing column conventions
   (e.g. `gen_random_uuid()` default on uuid PKs) by querying
   `information_schema.columns` on a sibling table first.
+- Vercel's deployments list page defaults to whatever filter chips were
+  last clicked (e.g. a stale "Status: Error" filter can hide the
+  deployment you're actually looking for) — clear/toggle filter chips
+  before concluding a deploy is missing or failed.
+- The device_bash shell has no stored git credentials of its own
+  (isolated VM, separate from Chris's Mac keychain) — `git push` from
+  there fails with "could not read Username". `git commit` works fine
+  (just needs `git config user.name`/`user.email` set once per repo,
+  matching Chris's usual GitHub identity — check another of his repos'
+  commit history via the GitHub API if unsure). For the actual push,
+  hand it to Chris to run from his real Mac Terminal.
+- Chris wants outstanding action items handed to him **one at a time**,
+  waiting for his confirmation (or a reported issue) before giving the
+  next one — not a batched list. Use the TaskCreate/TaskUpdate task list
+  to track the full backlog, but only surface one item at a time in chat.
+- Vercel's "Delete Project" confirmation dialog needs both fields typed
+  *exactly*: the project name, then the literal phrase "delete my
+  project" in the field mislabeled "Verification Code" (not an emailed
+  code). A mismatched/stale value shows a red "does not match" alert
+  under each field and the submit silently no-ops — re-check both fields
+  (`form_input` is more reliable than coordinate-click-and-type when the
+  browser pane is hidden) before clicking submit again.
+- Push notification action buttons (Mark handled / View) work without any
+  extra auth plumbing: a service worker's `fetch()` sends same-origin
+  cookies by default, so `public/sw.js`'s `notificationclick` handler can
+  PATCH `/api/pipeline/copilot/items/[id]` even though the app tab isn't
+  open — it rides on whatever `pipeline_session` cookie is already in the
+  browser (14-day TTL). If that cookie has expired, the mark_handled tap
+  silently no-ops (caught, not surfaced) — the item just stays pending in
+  the feed until Chris re-logs into `/pipeline`.
+- The copilot chat's `queueRequest` tool is confirmation-gated by its
+  system prompt only (it's told to never call the tool until Chris has
+  clearly said yes), not by a separate UI confirm step — keep that in
+  mind if the model ever seems to queue something too eagerly; tightening
+  the system prompt is the fix, not adding new plumbing.

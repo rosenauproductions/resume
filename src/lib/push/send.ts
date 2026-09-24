@@ -6,6 +6,13 @@ export type PushPayload = {
   body: string;
   url?: string;
   tag?: string;
+  /**
+   * When set, the notification gets "Mark handled" and "View" action
+   * buttons wired to this copilot_items row (see public/sw.js). Omit for
+   * a plain notification (e.g. a combined multi-item push) with no
+   * per-item actions — tapping it still opens `url`.
+   */
+  itemId?: string;
 };
 
 let vapidConfigured = false;
@@ -40,11 +47,13 @@ export async function sendPushToAll(payload: PushPayload) {
     return { ok: true as const, sent: 0, failed: 0, pruned: 0, note: "No devices subscribed yet" };
   }
 
+  const url = payload.url || "/pipeline";
   const body = JSON.stringify({
     title: payload.title,
     body: payload.body,
-    url: payload.url || "/pipeline",
+    url,
     tag: payload.tag || "resume-pipeline",
+    itemId: payload.itemId || undefined,
   });
 
   let sent = 0;

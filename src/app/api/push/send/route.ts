@@ -8,6 +8,7 @@ type SendBody = {
   body?: string;
   url?: string;
   tag?: string;
+  itemId?: string;
 };
 
 /**
@@ -49,6 +50,7 @@ export async function POST(request: Request) {
     body: body.body,
     url: body.url,
     tag: body.tag,
+    itemId: body.itemId,
   });
 
   return NextResponse.json(result);

@@ -139,6 +139,35 @@ export const pushSubscriptions = pgTable("push_subscriptions", {
   lastSeenAt: timestamp("last_seen_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+/**
+ * Unified feed for the pipeline "copilot": both "flag" rows (things the
+ * hourly bot noticed — From Trisha / Job search / Boy Scouts / Events /
+ * everything-else) and "request" rows (instructions queued for the bot's
+ * next run, either typed in chat or from a bot suggestion — e.g. adding
+ * something to Google Calendar). One table, discriminated by `kind`.
+ */
+export const copilotItems = pgTable("copilot_items", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  kind: text("kind").notNull(), // "flag" | "request"
+  category: text("category").notNull().default("other"), // "trisha" | "job_search" | "boy_scouts" | "events" | "other" | "system"
+  title: text("title").notNull(),
+  body: text("body").notNull().default(""),
+  sourceLink: text("source_link").notNull().default(""),
+  status: text("status").notNull().default("pending"), // "pending" | "handled" | "done" | "blocked"
+  requestType: text("request_type").notNull().default(""), // "" | "calendar_add" | "general"
+  calendarEvent: jsonb("calendar_event").$type<{
+    title: string;
+    date: string;
+    time: string;
+    location: string;
+    notes: string;
+  } | null>(),
+  resultNote: text("result_note").notNull().default(""),
+  createdBy: text("created_by").notNull().default(""), // "bot" | "copilot" | "chris"
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 export type ApplicationRow = typeof applications.$inferSelect;
 export type VisitRow = typeof visits.$inferSelect;
 export type IgnoredDeviceRow = typeof ignoredDevices.$inferSelect;
@@ -147,3 +176,4 @@ export type VisitorIdentificationRow = typeof visitorIdentifications.$inferSelec
 export type ChatMessageRow = typeof chatMessages.$inferSelect;
 export type ChatCacheRow = typeof chatCache.$inferSelect;
 export type PushSubscriptionRow = typeof pushSubscriptions.$inferSelect;
+export type CopilotItemRow = typeof copilotItems.$inferSelect;

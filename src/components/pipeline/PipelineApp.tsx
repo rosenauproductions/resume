@@ -33,6 +33,7 @@ import { ResumeEditor } from "./ResumeEditor";
 import { PipelineSettings } from "./PipelineSettings";
 import { PushNotifications } from "./PushNotifications";
 import { PipelineChatTracker } from "./PipelineChatTracker";
+import { PipelineCopilot } from "./PipelineCopilot";
 import type { PipelineHomePanelId } from "@/lib/pipeline/home-panels";
 import {
   DEFAULT_HOME_PANEL_ORDER,
@@ -48,7 +49,16 @@ type IngestStep = "paste" | "review";
 
 const LOCAL_KEY = "pipeline-jobs-v4";
 const META_KEY = "pipeline-meta-v4";
-type ViewMode = "insights" | "board" | "list" | "visits" | "chat" | "map" | "resume" | "settings";
+type ViewMode =
+  | "insights"
+  | "board"
+  | "list"
+  | "visits"
+  | "chat"
+  | "copilot"
+  | "map"
+  | "resume"
+  | "settings";
 type StorageMode = "local" | "blob" | "db";
 
 type VisitRow = {
@@ -1396,6 +1406,7 @@ export function PipelineApp({
           {(
             [
               ["settings", "Settings"],
+              ["copilot", "Copilot"],
               ["resume", "Resume CMS"],
               ["insights", "Charts & trends"],
               ["board", "Board"],
@@ -1945,6 +1956,8 @@ export function PipelineApp({
           ) : null}
 
           {view === "chat" ? <PipelineChatTracker active={view === "chat"} /> : null}
+
+          {view === "copilot" ? <PipelineCopilot active={view === "copilot"} /> : null}
 
           {view === "map" ? (
             <TargetMap
