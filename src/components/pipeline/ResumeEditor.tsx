@@ -920,7 +920,7 @@ export function ResumeEditor({
       <div className="flex flex-wrap items-center gap-3 rounded-xl border border-white/10 bg-black/20 px-4 py-3">
         <p className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">Editing lens</p>
         <div className="inline-flex rounded-full border border-white/15 bg-black/30 p-0.5 text-xs">
-          {(["media", "ai"] as const).map((id) => (
+          {(["media", "ai", "ui"] as const).map((id) => (
             <button
               key={id}
               type="button"
@@ -929,7 +929,9 @@ export function ResumeEditor({
                 editingLens === id
                   ? id === "ai"
                     ? "bg-sky-400/25 text-sky-200"
-                    : "bg-[var(--accent)]/25 text-[var(--accent)]"
+                    : id === "ui"
+                      ? "bg-violet-400/25 text-violet-200"
+                      : "bg-[var(--accent)]/25 text-[var(--accent)]"
                   : "text-[var(--muted)] hover:text-[var(--cream)]"
               }`}
               aria-pressed={editingLens === id}
@@ -941,10 +943,12 @@ export function ResumeEditor({
         <p className="text-xs text-[var(--muted)]">
           {editingLens === "ai"
             ? "AI view — coding / LMS / builds. Name & contact sync with Media."
-            : "Media view — multimedia default. Name & contact sync to AI on save."}{" "}
+            : editingLens === "ui"
+              ? "UI view — visual design / layout / critique. Name & contact sync with Media."
+              : "Media view — multimedia default. Name & contact sync to AI and UI on save."}{" "}
           Public:{" "}
           <code className="text-[var(--cream)]">
-            {editingLens === "ai" ? "/" : "/?lens=media"}
+            {editingLens === "ai" ? "/" : editingLens === "ui" ? "/?lens=ui" : "/?lens=media"}
           </code>
         </p>
       </div>

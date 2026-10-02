@@ -12,8 +12,20 @@ live at https://resume-rho-taupe.vercel.app/
 
 ## Architecture quick reference
 
-- **Dual "lens" resume**: `/` = AI lens (default), `/?lens=media` = Media/ID
-  lens. Content model is `ResumeDocument v2` with `lenses.ai` / `lenses.media`.
+- **Triple "lens" resume**: `/` = AI lens (default), `/?lens=media` = Media/ID
+  lens, `/?lens=ui` = UI/visual-design lens (added 2026-10-02). Content model
+  is `ResumeDocument v2` with `lenses.ai` / `lenses.media` / `lenses.ui`, each
+  a full `ResumeContent`. The UI lens is built by `buildUiResumeContent()` in
+  `src/lib/resume/lens.ts` as a total content refocus of the media base (same
+  pattern as `buildAiResumeContent()`) — positions Chris as a visual/UI
+  design specialist who evaluates and directs design work (including
+  AI-assisted output), not just produces it. Its flagship proof point is the
+  "Light Cycle Arena" side project (an AI-agent-directed Tron-inspired game).
+  All three lenses stay wired through `types.ts` (`RESUME_LENS_IDS`),
+  `visit-lens.ts` (path/label/notify-title), `Nav.tsx` (`LensToggle`, now 3
+  pills), `ChatWidget.tsx` + `system-prompt-ui.md` (lens-aware chat), and
+  `ResumeEditor.tsx` (3-way CMS tab). When adding a 4th lens later, grep for
+  `RESUME_LENS_IDS` usages and `(["ai","media"]`-style literals first.
 - **Stack**: Next.js 16 App Router (has breaking changes vs. training data —
   read `node_modules/next/dist/docs` before writing App Router code),
   Vercel hosting, Neon Postgres + Drizzle ORM, Vercel AI Gateway for chat.
@@ -22,8 +34,8 @@ live at https://resume-rho-taupe.vercel.app/
   or links a pipeline "website lead" application → fires
   `notifyVisitChannels()` (`src/lib/visit-notify.ts`) for
   Discord/ntfy/email. Notification `kind` values:
-  `"visit" | "visit_ai" | "pipeline" | "identify" | "lead"` — email only
-  fires on `kind === "lead"`.
+  `"visit" | "visit_ai" | "visit_ui" | "pipeline" | "identify" | "lead"` —
+  email only fires on `kind === "lead"`.
 - **Pipeline admin**: password-gated `/pipeline` (cookie session via
   `POST /api/pipeline/login`, password stored only in the trigger prompt —
   see below). Full CRUD at `/api/pipeline/jobs` (GET/POST/PUT/DELETE).
@@ -105,6 +117,44 @@ Key files:
 ---
 
 ## Status log (most recent first)
+
+### 2026-10-02 — Added a third "UI" resume lens
+Chris wanted a toggle for a UI-designer-focused presentation, seeded from
+resume feedback he got on a DataAnnotation "Mobile UI Designer" application
+(a new visual-design-forward summary, 3 specific before/after bullet
+rewrites for Medical Sales College / Higher Ed Partners / ProPricer, and
+keywords: visual hierarchy, layout, typography, AI-assisted outputs, user
+flow). He also had me add his "Light Cycle Arena" project (a Tron-inspired
+game he directed two AI coding agents to build) as the flagship side
+project for this lens — strong proof of directing + evaluating AI design
+output, not just prompting.
+
+Built `buildUiResumeContent()` in `src/lib/resume/lens.ts` (mirrors
+`buildAiResumeContent()`'s total-refocus pattern: new theme `"slate"`,
+summary/about, per-company experience rewrites, a `sideProjects` list led
+by Light Cycle Arena, visual-design-focused `skills`, 7 `roleFit` needs,
+and `work.cases`). Wired `"ui"` through: `types.ts` (`ResumeLensId`,
+`RESUME_LENS_IDS`, `RESUME_LENS_LABELS`), `buildDefaultResumeDocument` /
+`normalizeResumeDocument` (+ new `repairUiLensContent`) /
+`commitLensEdit` in `lens.ts`, `visit-lens.ts` (path `/?lens=ui`, label,
+notify title), `visit-notify.ts` (new `"visit_ui"` kind, violet color),
+`api/visit/route.ts` (lens line + notify kind), `Nav.tsx` (3rd toggle pill,
+violet active color, `LENS_HINT`), `Hero.tsx` (CTA text/href), `ChatWidget.tsx`
+(3-way welcome/label text, `suggestLensFromText` UI cues, auto-switch),
+`lens-intent.ts` (added `UI_CUES` regex, 3-way scoring), `ResumeEditor.tsx`
+(3rd CMS tab), `PipelineApp.tsx` (visit badge, reset/save copy), and a new
+`system-prompt-ui.md` for the on-site chat bot (`api/chat/route.ts` now
+picks AI/Media/UI system prompt by `body.lens`).
+
+Verified with `npx tsc --noEmit` (clean) and `npx eslint` (only
+pre-existing, unrelated lint debt — confirmed via `git diff` that none of
+the flagged lines were touched). Also round-trip tested
+`buildDefaultResumeDocument()` → `normalizeResumeDocument()` →
+`commitLensEdit()` → `materializeResume()` directly with `npx tsx` to
+confirm the UI lens builds, survives a normalize round-trip, and
+identity-syncs correctly across all three lenses.
+
+Public URLs: `/` = AI, `/?lens=media` = Media, `/?lens=ui` = UI.
 
 ### 2026-09-24 — Built the pipeline Copilot (feed + chat + richer push)
 Chris asked to enhance the pipeline into more of a copilot. Added: a

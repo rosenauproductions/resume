@@ -26,6 +26,7 @@ function isHeadCountPath(path: string) {
 function notifySessionKey(path: string, lens: ResumeLensId | null) {
   if (isPipelinePath(path)) return "pipeline-visit-notified";
   if (lens === "ai") return "resume-visit-notified-ai";
+  if (lens === "ui") return "resume-visit-notified-ui";
   return "resume-visit-notified-media";
 }
 

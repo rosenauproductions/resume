@@ -17,7 +17,7 @@ type VisitPayload = {
   fingerprint?: string;
   /** When true, still store the visit / identify payload, but skip Discord/ntfy. */
   skipNotify?: boolean;
-  /** Explicit lens from client (`media` | `ai`); falls back to parsing path. */
+  /** Explicit lens from client (`media` | `ai` | `ui`); falls back to parsing path. */
   lens?: string;
 };
 
@@ -42,9 +42,12 @@ function normalizeVisitPath(path: string, lensHint?: string): string {
   if (base === "/head-count" || base.startsWith("/head-count/")) return base;
 
   const fromPath = resumeLensFromPath(raw);
-  const hint = lensHint === "ai" || lensHint === "media" ? lensHint : null;
+  const hint =
+    lensHint === "ai" || lensHint === "media" || lensHint === "ui" ? lensHint : null;
   const lens = hint ?? fromPath ?? "ai";
-  return lens === "media" ? "/?lens=media" : "/";
+  if (lens === "media") return "/?lens=media";
+  if (lens === "ui") return "/?lens=ui";
+  return "/";
 }
 
 export async function POST(req: NextRequest) {
@@ -104,7 +107,9 @@ export async function POST(req: NextRequest) {
       ? "**Resume lens:** AI (coding / systems view)"
       : lens === "media"
         ? "**Resume lens:** Media (multimedia view)"
-        : null;
+        : lens === "ui"
+          ? "**Resume lens:** UI (visual design view)"
+          : null;
 
   const lines = [
     `**When:** ${when} (Central)`,
@@ -120,7 +125,13 @@ export async function POST(req: NextRequest) {
 
   const title = visitNotifyTitleForPath(path);
   const notifyKind: VisitNotifyKind =
-    lens === "ai" ? "visit_ai" : isPipeline ? "pipeline" : "visit";
+    lens === "ai"
+      ? "visit_ai"
+      : lens === "ui"
+        ? "visit_ui"
+        : isPipeline
+          ? "pipeline"
+          : "visit";
 
   if (deviceIgnored) {
     return NextResponse.json({

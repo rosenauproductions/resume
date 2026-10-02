@@ -27,12 +27,16 @@ export function resumeLensFromPath(path: string): ResumeLensId | null {
 }
 
 export function resumeLensLabel(lens: ResumeLensId): string {
-  return lens === "ai" ? "AI" : "Media";
+  if (lens === "ai") return "AI";
+  if (lens === "ui") return "UI";
+  return "Media";
 }
 
 /** Canonical path stored on visits + sent from the client. */
 export function visitPathForLens(lens: ResumeLensId): string {
-  return lens === "media" ? "/?lens=media" : "/";
+  if (lens === "media") return "/?lens=media";
+  if (lens === "ui") return "/?lens=ui";
+  return "/";
 }
 
 export function visitNotifyTitleForPath(path: string): string {
@@ -42,5 +46,6 @@ export function visitNotifyTitleForPath(path: string): string {
   const lens = resumeLensFromPath(path);
   if (lens === "ai") return "AI resume visit";
   if (lens === "media") return "Media resume visit";
+  if (lens === "ui") return "UI resume visit";
   return "Resume site visit";
 }

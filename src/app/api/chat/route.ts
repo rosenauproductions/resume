@@ -33,6 +33,10 @@ const SYSTEM_PROMPT_AI = readFileSync(
   path.join(process.cwd(), "system-prompt-ai.md"),
   "utf-8",
 );
+const SYSTEM_PROMPT_UI = readFileSync(
+  path.join(process.cwd(), "system-prompt-ui.md"),
+  "utf-8",
+);
 
 function aiConfigured() {
   return Boolean(
@@ -108,8 +112,9 @@ export async function POST(req: Request) {
     typeof body.visitId === "string" && body.visitId.trim()
       ? body.visitId.trim()
       : null;
-  const lens = body.lens === "media" ? "media" : "ai";
-  const systemPrompt = lens === "ai" ? SYSTEM_PROMPT_AI : SYSTEM_PROMPT;
+  const lens = body.lens === "media" ? "media" : body.lens === "ui" ? "ui" : "ai";
+  const systemPrompt =
+    lens === "ai" ? SYSTEM_PROMPT_AI : lens === "ui" ? SYSTEM_PROMPT_UI : SYSTEM_PROMPT;
 
   const lastUserText = textFromUiMessage(
     [...messages].reverse().find((m) => m.role === "user"),

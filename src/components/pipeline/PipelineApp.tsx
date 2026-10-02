@@ -130,14 +130,18 @@ function VisitLensBadge({ path }: { path: string }) {
   const lens = resumeLensFromPath(path);
   if (!lens) return null;
   const label = resumeLensLabel(lens);
+  const cls =
+    lens === "ai"
+      ? "border-sky-400/40 text-sky-300"
+      : lens === "ui"
+        ? "border-violet-400/40 text-violet-300"
+        : "border-[var(--accent)]/35 text-[var(--accent)]";
+  const title =
+    lens === "ai" ? "AI resume lens" : lens === "ui" ? "UI resume lens" : "Media resume lens";
   return (
     <span
-      className={`rounded border px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] ${
-        lens === "ai"
-          ? "border-sky-400/40 text-sky-300"
-          : "border-[var(--accent)]/35 text-[var(--accent)]"
-      }`}
-      title={lens === "ai" ? "AI resume lens" : "Media resume lens"}
+      className={`rounded border px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] ${cls}`}
+      title={title}
     >
       {label}
     </span>
@@ -522,7 +526,7 @@ export function PipelineApp({
         setResumeDoc(doc);
         setSkillsSectionEnabled(Boolean(doc.lenses.media.sections.skills.enabled));
       }
-      setResumeNotice("Saved — public Media + AI resume updated");
+      setResumeNotice("Saved — public Media, AI & UI resume updated");
     } catch {
       setResumeNotice("Network error saving resume");
     } finally {
@@ -531,7 +535,7 @@ export function PipelineApp({
   }
 
   async function resetResume() {
-    if (!window.confirm("Reset both Media and AI resume lenses to baked-in defaults?")) return;
+    if (!window.confirm("Reset Media, AI, and UI resume lenses to baked-in defaults?")) return;
     setResumeSaving(true);
     setResumeNotice("");
     try {
@@ -550,7 +554,7 @@ export function PipelineApp({
         setResumeDoc(doc);
         setSkillsSectionEnabled(Boolean(doc.lenses.media.sections.skills.enabled));
       }
-      setResumeNotice("Reset both lenses to defaults");
+      setResumeNotice("Reset all three lenses to defaults");
     } catch {
       setResumeNotice("Network error resetting resume");
     } finally {

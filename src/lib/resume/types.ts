@@ -181,25 +181,27 @@ export type ResumeContent = {
 
 export type ResumeThemeId = "dark" | "light" | "ocean" | "warm" | "forest" | "slate";
 
-export type ResumeLensId = "media" | "ai";
+export type ResumeLensId = "media" | "ai" | "ui";
 
-export const RESUME_LENS_IDS: ResumeLensId[] = ["media", "ai"];
+export const RESUME_LENS_IDS: ResumeLensId[] = ["media", "ai", "ui"];
 
 export const RESUME_LENS_LABELS: Record<ResumeLensId, string> = {
   media: "Media",
   ai: "AI",
+  ui: "UI",
 };
 
 export function isResumeLensId(value: unknown): value is ResumeLensId {
-  return value === "media" || value === "ai";
+  return value === "media" || value === "ai" || value === "ui";
 }
 
-/** Stored CMS document: two full variants, shared identity synced on save. */
+/** Stored CMS document: three full variants, shared identity synced on save. */
 export type ResumeDocument = {
   version: 2;
   lenses: {
     media: ResumeContent;
     ai: ResumeContent;
+    ui: ResumeContent;
   };
 };
 

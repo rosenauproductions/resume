@@ -36,6 +36,7 @@ const DEFAULT_NAV_LABEL: Partial<Record<ResumeSectionId, string>> = {
 const LENS_HINT: Record<ResumeLensId, string> = {
   ai: "Coding · LMS · AI systems",
   media: "Video · design · eLearning",
+  ui: "Visual design · layout · UI",
 };
 
 export function LensToggle({
@@ -60,10 +61,16 @@ export function LensToggle({
       <div
         className="inline-flex rounded-full border-2 border-[var(--accent)]/45 bg-black/40 p-1 shadow-[0_0_0_1px_rgba(255,255,255,0.06)]"
         role="group"
-        aria-label="Toggle skillset: AI or Media"
+        aria-label="Toggle skillset: AI, Media, or UI"
       >
-        {(["ai", "media"] as const).map((id) => {
+        {(["ai", "media", "ui"] as const).map((id) => {
           const active = lens === id;
+          const activeClass =
+            id === "ai"
+              ? "bg-sky-400 text-[var(--ink)] shadow-sm"
+              : id === "ui"
+                ? "bg-violet-400 text-[var(--ink)] shadow-sm"
+                : "bg-[var(--accent)] text-[var(--ink)] shadow-sm";
           return (
             <button
               key={id}
@@ -71,9 +78,7 @@ export function LensToggle({
               onClick={() => onChange(id)}
               className={`rounded-full ${pad} font-semibold transition ${
                 active
-                  ? id === "ai"
-                    ? "bg-sky-400 text-[var(--ink)] shadow-sm"
-                    : "bg-[var(--accent)] text-[var(--ink)] shadow-sm"
+                  ? activeClass
                   : "text-[var(--muted)] hover:bg-white/5 hover:text-[var(--cream)]"
               }`}
               aria-pressed={active}

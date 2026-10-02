@@ -50,6 +50,11 @@ export function Hero() {
                 AI-focused view
               </span>
             ) : null}
+            {lens === "ui" ? (
+              <span className="mt-1.5 block tracking-[0.22em] text-violet-300/90">
+                UI design-focused view
+              </span>
+            ) : null}
           </motion.p>
 
           <motion.h1
@@ -79,10 +84,10 @@ export function Hero() {
             transition={{ duration: 0.65, delay: 0.55 }}
           >
             <a
-              href={lens === "ai" ? "#projects" : "#experience"}
+              href={lens === "ai" || lens === "ui" ? "#projects" : "#experience"}
               className="rounded-full bg-[var(--cream)] px-6 py-3 text-sm font-semibold text-[var(--ink)] transition-transform hover:scale-[1.03] sm:px-7 sm:py-3.5"
             >
-              {lens === "ai" ? "View builds" : "View experience"}
+              {lens === "ai" ? "View builds" : lens === "ui" ? "View design work" : "View experience"}
             </a>
             <a
               href={site.linkedin}

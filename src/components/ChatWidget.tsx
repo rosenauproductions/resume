@@ -17,13 +17,29 @@ const WELCOME_DISMISS_KEY = "resume-chat-welcome-dismissed";
 const LINK_CTA_DISMISS_KEY = "resume-chat-link-cta-dismissed";
 
 const WELCOME_PEEK_MEDIA =
-  "Hi — Media view. Ask about Chris’s video, design, or eLearning work — or switch to AI in the nav.";
+  "Hi — Media view. Ask about Chris’s video, design, or eLearning work — or switch to AI/UI in the nav.";
 const WELCOME_PANEL_MEDIA =
-  "Hi! You’re on the Media lens (video, design, eLearning). For coding, Canvas/AWS systems, or LLM builds, switch to AI in the top nav — or just ask and I’ll flip the page for you.";
+  "Hi! You’re on the Media lens (video, design, eLearning). For coding/LMS systems, switch to AI in the top nav; for visual/UI design judgment, switch to UI — or just ask and I’ll flip the page for you.";
 const WELCOME_PEEK_AI =
-  "Hi — AI view. Ask about coding, Canvas/AWS, LLMs, or builds — Media is one tap away in the nav.";
+  "Hi — AI view. Ask about coding, Canvas/AWS, LLMs, or builds — Media and UI are one tap away in the nav.";
 const WELCOME_PANEL_AI =
-  "Hi! You’re on the AI lens (coding, LMS systems, bots). For classic multimedia / video craft, use Media in the top nav — or ask about video and I’ll switch automatically.";
+  "Hi! You’re on the AI lens (coding, LMS systems, bots). For classic multimedia/video craft, use Media; for visual/UI design judgment, use UI — or just ask and I’ll switch automatically.";
+const WELCOME_PEEK_UI =
+  "Hi — UI view. Ask about Chris’s visual design, layout, and AI-assisted design work — Media and AI are one tap away in the nav.";
+const WELCOME_PANEL_UI =
+  "Hi! You’re on the UI lens (visual design, layout, typography, AI-assisted design critique). For coding/LMS systems, use AI; for classic video/eLearning craft, use Media — or just ask and I’ll switch automatically.";
+
+const LENS_LABEL: Record<ResumeLensId, string> = {
+  ai: "AI (coding / systems)",
+  media: "Media (video / design)",
+  ui: "UI (visual design)",
+};
+
+const LENS_SHORT_LABEL: Record<ResumeLensId, string> = {
+  ai: "AI",
+  media: "Media",
+  ui: "UI",
+};
 
 function getOrCreateSessionId(): string {
   if (typeof window === "undefined") return "anonymous";
@@ -135,7 +151,7 @@ export function ChatWidget() {
       return;
     }
     navigateToLens(router, next);
-    const label = next === "ai" ? "AI (coding / systems)" : "Media (video / design)";
+    const label = LENS_LABEL[next];
     setLensNotice(
       reason === "auto"
         ? `Switched to ${label} to match your question.`
@@ -159,7 +175,9 @@ export function ChatWidget() {
       (suggested === "media" &&
         /\b(video|premiere|after\s*effects|multimedia|vyond|animation)\b/i.test(text)) ||
       (suggested === "ai" &&
-        /\b(typescript|coding|programmer|llm|github|stepbot|javascript)\b/i.test(text));
+        /\b(typescript|coding|programmer|llm|github|stepbot|javascript)\b/i.test(text)) ||
+      (suggested === "ui" &&
+        /\b(ui\s*design|ux\s*design|visual\s*design|layout|typography|visual\s*hierarchy)\b/i.test(text));
     if (strong) {
       applyLensSwitch(suggested, "auto");
     } else {
@@ -167,7 +185,9 @@ export function ChatWidget() {
       setLensNotice(
         suggested === "ai"
           ? "This sounds like coding / systems — switch to the AI view?"
-          : "This sounds like multimedia / video — switch to the Media view?",
+          : suggested === "ui"
+            ? "This sounds like visual / UI design — switch to the UI view?"
+            : "This sounds like multimedia / video — switch to the Media view?",
       );
     }
   }, [messages, lens, router]);
@@ -307,7 +327,7 @@ export function ChatWidget() {
                 onClick={openChat}
                 className="min-w-0 flex-1 text-left text-sm leading-relaxed text-[var(--cream)]"
               >
-                {lens === "ai" ? WELCOME_PEEK_AI : WELCOME_PEEK_MEDIA}
+                {lens === "ai" ? WELCOME_PEEK_AI : lens === "ui" ? WELCOME_PEEK_UI : WELCOME_PEEK_MEDIA}
                 <span className="mt-1.5 block text-xs font-semibold text-[var(--accent)]">
                   Tap to chat →
                 </span>
@@ -336,7 +356,7 @@ export function ChatWidget() {
                   Ask about Chris
                 </p>
                 <p className="text-xs text-[var(--muted)]">
-                  {lens === "ai" ? "AI view" : "Media view"} · not Chris himself
+                  {lens === "ai" ? "AI view" : lens === "ui" ? "UI view" : "Media view"} · not Chris himself
                 </p>
               </div>
               <button
@@ -355,7 +375,7 @@ export function ChatWidget() {
             >
               {messages.length === 0 ? (
                 <div className="mr-auto max-w-[92%] rounded-2xl bg-white/6 px-3 py-2 text-sm leading-relaxed text-[var(--cream)]">
-                  {lens === "ai" ? WELCOME_PANEL_AI : WELCOME_PANEL_MEDIA}
+                  {lens === "ai" ? WELCOME_PANEL_AI : lens === "ui" ? WELCOME_PANEL_UI : WELCOME_PANEL_MEDIA}
                 </div>
               ) : null}
               {lensNotice ? (
@@ -372,7 +392,7 @@ export function ChatWidget() {
                           onClick={() => applyLensSwitch(pendingLensSuggest, "manual")}
                           className="rounded-lg bg-sky-400 px-2.5 py-1 font-semibold text-[var(--ink)]"
                         >
-                          Switch to {pendingLensSuggest === "ai" ? "AI" : "Media"}
+                          Switch to {LENS_SHORT_LABEL[pendingLensSuggest]}
                         </button>
                         <button
                           type="button"
@@ -382,7 +402,7 @@ export function ChatWidget() {
                           }}
                           className="rounded-lg border border-white/15 px-2.5 py-1 text-[var(--muted)]"
                         >
-                          Keep {lens === "ai" ? "AI" : "Media"}
+                          Keep {LENS_SHORT_LABEL[lens]}
                         </button>
                       </>
                     ) : (
