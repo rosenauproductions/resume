@@ -58,9 +58,9 @@ export function buildAiResumeContent(mediaBase?: ResumeContent): ResumeContent {
     heading: "About",
     lead: "LMS platform engineering, AI-assisted production, and shipped software — bots, PWAs, and this resume stack.",
     paragraphs: [
-      "At Higher Ed Partners I treated Canvas as a delivery platform: AWS-hosted Rise content, CSS that fixed iframe UX, and a JavaScript language-embed layer so learners could switch languages inside the LMS. That stack — Canvas, AWS, CSS, and JS — is the systems work I want hiring teams to see first.",
-      "At Medical Sales College I ran Canvas administration with custom programming, and accelerated production with LLM workflows (Claude, ChatGPT, Grok) for scripting and iteration. Synthesia avatar systems at HEP scaled AI video without traditional film cycles.",
-      "Independently I build TypeScript and JavaScript products: StepBot (Canvas help bot), GoodWork (church youth service exchange), Pistomp-Mobile (PWA), multiplayer party games, Hinterviewer, lobe (macOS proximity radar), and this Next.js resume + Pipeline app with visit tracking, job linking, and an on-site AI chat. I’m open to roles in learning systems, AI-assisted product work, LMS engineering, and hands-on web development.",
+      "I design and ship AI-powered learning systems. ID Assist is a local instructional-design compiler that turns a brief into a pedagogy-gated outline (Bloom’s alignment + cost), then a live AI tutor grounded in the lesson content. StepBot is an embeddable Canvas help bot with multi-step guidance and session memory.",
+      "At Higher Ed Partners I treated Canvas as a delivery platform: AWS-hosted Rise content, CSS that fixed iframe UX, and a JavaScript language-embed layer so learners could switch languages inside the LMS. At Medical Sales College I ran Canvas administration with custom programming and accelerated production with LLM workflows (Claude, ChatGPT, Grok).",
+      "Independently I build TypeScript and JavaScript products: ID Assist, StepBot, GoodWork, Pistomp-Mobile, multiplayer party games, Hinterviewer, lobe, and this Next.js resume + Pipeline app. I’m open to roles as an AI Learning Architect, learning systems builder, LMS engineer, and hands-on web developer.",
     ],
   };
 
@@ -144,6 +144,16 @@ export function buildAiResumeContent(mediaBase?: ResumeContent): ResumeContent {
     {
       id: newId("proj"),
       enabled: true,
+      title: "ID Assist — Instructional Design Compiler + Live Tutor",
+      summary:
+        "Local-first instructional-design compiler: brief → Bloom’s-gated outline + cost → human approval → artifacts + live AI tutor grounded in the lesson. Adaptive SME interview, Ollama local mode, Electron desktop app. Solo-built architecture, prompt systems, and pedagogy rules.",
+      href: "https://id-assist.vercel.app",
+      linkLabel: "Live demo",
+      tags: ["AI Learning", "Prompt Engineering", "Local LLM", "Instructional Design"],
+    },
+    {
+      id: newId("proj"),
+      enabled: true,
       title: "Resume site + Pipeline",
       summary:
         "This site: Next.js/TypeScript resume with dual Media/AI lenses, Neon-backed job pipeline, visit tracking, visitor identify/link, JD ingest, and an on-site AI chat via Vercel AI Gateway.",
@@ -214,8 +224,8 @@ export function buildAiResumeContent(mediaBase?: ResumeContent): ResumeContent {
   ];
 
   ai.sideProjects = {
-    heading: "Shipped builds",
-    note: "Coding and AI-assisted products — LMS bots, PWAs, portals, and this pipeline.",
+    heading: "AI Learning Systems & Builds",
+    note: "Flagship AI learning tools first, then LMS bots, PWAs, and product apps.",
     projects,
   };
 
@@ -269,6 +279,32 @@ export function buildAiResumeContent(mediaBase?: ResumeContent): ResumeContent {
     heading: "Role fit",
     note: "Select what you’re hiring for — AI/systems first, plus instructional design and media craft.",
     needs: [
+      {
+        id: "ai-learning-architect",
+        enabled: true,
+        label: "AI Learning Architect / Learning Systems",
+        strength: "Advanced → Expert",
+        summary: "Hands-on builder of AI-powered instructional tools, adaptive pathways, LMS integrations, and human-in-the-loop learning systems.",
+        matches: [
+          {
+            role: "ID Assist",
+            company: "Independent",
+            proof: "Full instructional-design compiler + live AI tutor with Bloom’s gates, local LLM, and human approval workflow.",
+            projectId: byTitle("ID Assist — Instructional Design Compiler + Live Tutor")?.id,
+          },
+          {
+            role: "StepBot — Canvas LMS help bot",
+            company: "Independent",
+            proof: "Embeddable multi-step help system with session memory and zero-code admin tooling for Canvas.",
+            projectId: byTitle("StepBot — Canvas LMS help bot")?.id,
+          },
+          {
+            role: "Instructional Design Specialist (Media)",
+            company: "Medical Sales College",
+            proof: "LLM-accelerated production workflows + Canvas platform ownership.",
+          },
+        ],
+      },
       {
         id: "lms-platform",
         enabled: true,
@@ -510,7 +546,7 @@ export function buildUiResumeContent(mediaBase?: ResumeContent): ResumeContent {
   ui.site = {
     ...ui.site,
     title: "Visual & UI Design Specialist",
-    subtitle: "Layout \u00b7 Typography \u00b7 Visual hierarchy \u00b7 AI-assisted design",
+    subtitle: "Layout \u00b7 Typography \u00b7 Visual Hierarchy \u00b7 AI-Assisted Design",
     tagline:
       "I design and evaluate visual interfaces \u2014 layout, typography, motion, and AI-assisted outputs \u2014 judging what works and fixing what doesn\u2019t.",
   };
@@ -560,7 +596,7 @@ export function buildUiResumeContent(mediaBase?: ResumeContent): ResumeContent {
     if (company.includes("higher ed")) {
       return {
         ...job,
-        role: "Multimedia Director & Visual/UX Design",
+        role: "Multimedia Director & Visual / UX Design",
         highlights: [
           "Authored CSS fixes for AWS-hosted Canvas content, resolving iframe rendering issues, content display problems, and learner UX friction across embedded course experiences",
           "Stood up Synthesia avatar-video templates that scaled visual production across courses",
@@ -609,7 +645,7 @@ export function buildUiResumeContent(mediaBase?: ResumeContent): ResumeContent {
       enabled: true,
       title: "Light Cycle Arena",
       summary:
-        "Original Tron-inspired racing & combat game for a home console (Batocera Linux, C++17/SDL2/OpenGL), 1\u20136 player split-screen with Wii-remote tilt steering. Directed two AI coding agents (cloud + desktop, Git-tracked) to build it \u2014 wrote the specs, reviewed every visual change from screenshots, and ran separate beta/stable releases. Built a five-level story campaign, a phone-as-controller web companion, and a 3D cockpit (three.js) with lock-on targeting, plus the full 3D asset pipeline, textures, interface art, and audio.",
+        "Original Tron-inspired racing & combat game for a home console (Batocera Linux, C++17/SDL2/OpenGL), 1–6 player split-screen with Wii-remote tilt steering. Directed two AI coding agents (cloud + desktop, Git-tracked) to build it — wrote the specs, reviewed every visual change from screenshots, and ran separate beta/stable releases. Built a five-level story campaign, a phone-as-controller web companion, and a 3D cockpit (three.js) with lock-on targeting, plus the full 3D asset pipeline, textures, interface art, and audio.",
       href: "https://github.com/rosenauproductions",
       linkLabel: "GitHub profile",
       tags: ["Game design", "AI-directed dev", "3D / UI", "Asset pipeline"],
@@ -627,19 +663,9 @@ export function buildUiResumeContent(mediaBase?: ResumeContent): ResumeContent {
     {
       id: newId("proj"),
       enabled: true,
-      title: "GoodWork",
-      summary:
-        "TypeScript + React + Vite app for a church youth service exchange \u2014 job requests, volunteer assignment, parent approval flow, family profiles, and fundraising milestones toward community goals. Demo: goodwork-two.vercel.app",
-      href: "https://github.com/rosenauproductions/goodwork",
-      linkLabel: "GitHub",
-      tags: ["Product UI", "Layout", "React"],
-    },
-    {
-      id: newId("proj"),
-      enabled: true,
       title: "Pistomp-Mobile",
       summary:
-        "Mobile-first TypeScript + Vite PWA for the open-source Pi-Stomp multi-effects platform \u2014 pedalboard control, A/B snapshots, and per-effect params over the MOD-UI API, designed for phone use on the Pi\u2019s Wi-Fi hotspot.",
+        "Mobile-first TypeScript + Vite PWA for the open-source Pi-Stomp multi-effects platform — pedalboard control, A/B snapshots, and per-effect params over the MOD-UI API, designed for phone use on the Pi’s Wi-Fi hotspot.",
       href: "https://github.com/rosenauproductions/Pistomp-Mobile",
       linkLabel: "GitHub",
       tags: ["UX", "Mobile UI", "PWA"],
@@ -647,30 +673,56 @@ export function buildUiResumeContent(mediaBase?: ResumeContent): ResumeContent {
     {
       id: newId("proj"),
       enabled: true,
-      title: "Party games \u2014 Family Feud & The 1% Club",
+      title: "Party games — Family Feud & The 1% Club",
       summary:
-        "Browser party games with projector/TV display, host controller, and phone contestant clients \u2014 real-time multi-device UI.",
+        "Browser party games with projector/TV display, host controller, and phone contestant clients — real-time multi-device UI.",
       href: "https://github.com/rosenauproductions/family-feud",
       linkLabel: "GitHub",
       tags: ["Interactive UI", "Multiplayer", "Layout"],
+    },
+    {
+      id: newId("proj"),
+      enabled: true,
+      title: "Canvas Visual UX Fixes",
+      summary:
+        "Diagnosed and fixed visual/UX failures inside embedded Canvas LMS course content at Higher Ed Partners and Medical Sales College — CSS fixes for iframe rendering, content overflow and cutoff, alignment and spacing, and confusing learner navigation flow.",
+      href: "#work",
+      linkLabel: "See case study",
+      tags: ["UI fix", "Canvas", "CSS / iframe UX"],
+    },
+    {
+      id: newId("proj"),
+      enabled: true,
+      title: "ProPricer Brand & Print",
+      summary:
+        "21 years of magazine ads, conference print graphics, interactive media, and custom photo-shoot backgrounds for ProPricer — consistent layout, typography, visual hierarchy, and brand identity across formats.",
+      href: "#work",
+      linkLabel: "See case study",
+      tags: ["Print", "Layout", "Typography"],
     },
   ];
 
   ui.sideProjects = {
     heading: "Design & build portfolio",
-    note: "Independent visual and product work \u2014 directing AI tools, evaluating output quality, and shipping finished interfaces.",
+    note: "Strongest UI / product work is here — much of it independent, since production roles didn’t always call for a shipped interface.",
     projects: uiProjects,
   };
 
   ui.skills = {
     heading: "Visual design & tools",
-    top: ["Visual hierarchy", "Layout & typography", "AI-assisted design critique", "Motion & interactive media"],
+    top: ["Layout & Typography", "Visual Hierarchy", "CSS / iframe UX", "AI Design Critique", "User Flow & Interfaces"],
     groups: [
       {
         id: newId("sg"),
         enabled: true,
-        label: "Visual & UI design",
+        label: "Visual / UI Design",
         items: ["Layout & composition", "Typography", "Visual hierarchy", "Brand consistency", "Accessibility"],
+      },
+      {
+        id: newId("sg"),
+        enabled: true,
+        label: "LMS & Delivery UX",
+        items: ["Canvas administration", "AWS-hosted Rise", "CSS / iframe UX", "Content delivery troubleshooting"],
       },
       {
         id: newId("sg"),
@@ -710,7 +762,7 @@ export function buildUiResumeContent(mediaBase?: ResumeContent): ResumeContent {
 
   ui.roleFit = {
     heading: "Role fit",
-    note: "Select what you\u2019re hiring for \u2014 visual design and AI-assisted critique first, plus motion and interactive craft.",
+    note: "Select what you’re hiring for — visual design and AI-assisted critique first, plus motion and interactive craft.",
     needs: [
       {
         id: "visual-design-judgment",
@@ -720,14 +772,15 @@ export function buildUiResumeContent(mediaBase?: ResumeContent): ResumeContent {
         summary: "Evaluating interfaces, layouts, and AI-assisted visual output against a professional standard.",
         matches: [
           {
-            role: "Multimedia Director & Visual/UX Design",
+            role: "Multimedia Director & Visual / UX Design",
             company: "Higher Ed Partners",
             proof: "CSS fixes for iframe rendering, content display, and learner UX friction across embedded course experiences.",
           },
           {
-            role: "Video Editor, Graphic Artist & E-Learning Designer",
-            company: "ProPricer",
+            role: "ProPricer Brand & Print",
+            company: "Side project",
             proof: "Magazine ads, conference graphics, and photo-shoot backgrounds judged on layout, typography, and brand consistency.",
+            projectId: byTitle("ProPricer Brand & Print")?.id,
           },
           {
             role: "Light Cycle Arena",
@@ -742,7 +795,7 @@ export function buildUiResumeContent(mediaBase?: ResumeContent): ResumeContent {
         enabled: true,
         label: "AI-assisted design & evaluation",
         strength: "Advanced",
-        summary: "Directing AI tools and judging what they produce \u2014 not just prompting them.",
+        summary: "Directing AI tools and judging what they produce — not just prompting them.",
         matches: [
           {
             role: "Instructional Design Specialist (Media)",
@@ -768,12 +821,13 @@ export function buildUiResumeContent(mediaBase?: ResumeContent): ResumeContent {
         enabled: true,
         label: "Layout & typography",
         strength: "Expert",
-        summary: "Print, digital, and interface layout \u2014 hierarchy, spacing, and typographic consistency.",
+        summary: "Print, digital, and interface layout — hierarchy, spacing, and typographic consistency.",
         matches: [
           {
-            role: "Video Editor, Graphic Artist & E-Learning Designer",
-            company: "ProPricer",
+            role: "ProPricer Brand & Print",
+            company: "Side project",
             proof: "Magazine ads and conference print graphics designed with attention to layout and typography.",
+            projectId: byTitle("ProPricer Brand & Print")?.id,
           },
           {
             role: "Light Cycle Arena",
@@ -788,7 +842,7 @@ export function buildUiResumeContent(mediaBase?: ResumeContent): ResumeContent {
         enabled: true,
         label: "Motion & video design",
         strength: "Expert",
-        summary: "Full-cycle motion and video production \u2014 animation, pacing, sound design, and delivery.",
+        summary: "Full-cycle motion and video production — animation, pacing, sound design, and delivery.",
         matches: [
           {
             role: "Video Editor, Graphic Artist & E-Learning Designer",
@@ -807,19 +861,19 @@ export function buildUiResumeContent(mediaBase?: ResumeContent): ResumeContent {
         enabled: true,
         label: "UI / interactive & product design",
         strength: "Advanced",
-        summary: "Interfaces for real products \u2014 web apps, game UI, and multi-device control surfaces.",
+        summary: "Interfaces for real products — web apps, game UI, and multi-device control surfaces.",
         matches: [
-          {
-            role: "GoodWork",
-            company: "Side project",
-            proof: "React/TypeScript product UI for a service-exchange app \u2014 job requests, approvals, and fundraising progress.",
-            projectId: byTitle("GoodWork")?.id,
-          },
           {
             role: "Light Cycle Arena",
             company: "Side project",
             proof: "3D cockpit UI with lock-on targeting and a phone-as-controller companion interface.",
             projectId: byTitle("Light Cycle Arena")?.id,
+          },
+          {
+            role: "Party games — Family Feud & The 1% Club",
+            company: "Side project",
+            proof: "Realtime multi-device UI across a projector display, host controller, and phone clients.",
+            projectId: byTitle("Party games — Family Feud & The 1% Club")?.id,
           },
           {
             role: "Pistomp-Mobile",
@@ -837,9 +891,10 @@ export function buildUiResumeContent(mediaBase?: ResumeContent): ResumeContent {
         summary: "Spotting and fixing visual failures inside embedded LMS course content.",
         matches: [
           {
-            role: "Multimedia Director & Visual/UX Design",
-            company: "Higher Ed Partners",
-            proof: "CSS fixes for AWS-hosted Canvas content \u2014 overflow, alignment, spacing, and user flow.",
+            role: "Canvas Visual UX Fixes",
+            company: "Side project",
+            proof: "CSS fixes for AWS-hosted Canvas content — overflow, alignment, spacing, and user flow.",
+            projectId: byTitle("Canvas Visual UX Fixes")?.id,
           },
           {
             role: "Instructional Design Specialist (Media)",
@@ -853,7 +908,7 @@ export function buildUiResumeContent(mediaBase?: ResumeContent): ResumeContent {
         enabled: true,
         label: "Instructional design (also see AI / Media lens)",
         strength: "Advanced",
-        summary: "ADDIE, Canvas, Storyline, and accessibility \u2014 the AI and Media lenses lean harder into this.",
+        summary: "ADDIE, Canvas, Storyline, and accessibility — the AI and Media lenses lean harder into this.",
         matches: [
           {
             role: "Instructional Design Specialist (Media)",
@@ -861,7 +916,7 @@ export function buildUiResumeContent(mediaBase?: ResumeContent): ResumeContent {
             proof: "Hybrid migration, Rise/Storyline modules, and Canvas support for instructors.",
           },
           {
-            role: "Contractor \u2014 Instructional Designer",
+            role: "Contractor — Instructional Designer",
             company: "iCode / Intuit",
             proof: "ADDIE workflow, Storyline templates, CBT modules, and instructor materials.",
           },
@@ -873,15 +928,15 @@ export function buildUiResumeContent(mediaBase?: ResumeContent): ResumeContent {
   ui.work = {
     ...ui.work,
     heading: "Selected visual work",
-    note: "Interfaces, motion, and print/digital design \u2014 proof of visual judgment across formats.",
+    note: "Interfaces, motion, and print/digital design — proof of visual judgment across formats.",
     cases: [
       {
         id: newId("case"),
         enabled: true,
         title: "Canvas visual UX fixes",
         detail:
-          "CSS fixes for AWS-hosted Canvas content \u2014 iframe rendering, content overflow/cutoff, alignment and spacing, and learner user flow.",
-        tag: "UI fix \u00b7 Canvas",
+          "CSS fixes for AWS-hosted Canvas content — iframe rendering, content overflow/cutoff, alignment and spacing, and learner user flow.",
+        tag: "UI fix · Canvas",
       },
       {
         id: newId("case"),
@@ -889,15 +944,15 @@ export function buildUiResumeContent(mediaBase?: ResumeContent): ResumeContent {
         title: "ProPricer brand & print system",
         detail:
           "Magazine ads, conference graphics, and custom photo-shoot backgrounds designed with consistent layout, typography, and brand hierarchy.",
-        tag: "Print \u00b7 Layout",
+        tag: "Print · Layout",
       },
       {
         id: newId("case"),
         enabled: true,
-        title: "Light Cycle Arena \u2014 directed AI build",
+        title: "Light Cycle Arena — directed AI build",
         detail:
-          "Directed two AI coding agents (cloud + desktop) to build an original 3D game \u2014 wrote specs, reviewed every visual change from screenshots, and controlled beta vs. stable releases.",
-        tag: "AI-directed \u00b7 3D UI",
+          "Directed two AI coding agents (cloud + desktop) to build an original 3D game — wrote specs, reviewed every visual change from screenshots, and controlled beta vs. stable releases.",
+        tag: "AI-directed · 3D UI",
       },
     ],
   };
