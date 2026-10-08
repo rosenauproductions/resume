@@ -118,6 +118,22 @@ Key files:
 
 ## Status log (most recent first)
 
+**2026-10-08 — Content "swap" check: DB already matches code (no reset needed).** Chris's Oct 7 commits (`ae84738`, `d4a06a4`) put ID Assist + "AI Learning Systems & Builds" into the code-defined AI lens, and after Grok's file-swap attempt he reported the DB was "taking over." Verified instead: a deep diff of `buildDefaultResumeDocument()` vs the live `site_settings.resume_content` row (via `GET /api/pipeline/resume`) showed **zero content differences** across media/ai/ui (only the randomly generated item ids differ) and live `/`, `/?lens=media`, `/?lens=ui` show the expected content. **How DB-vs-code works (durable gotcha):** `getResumeDocument()` returns the stored row if one exists (code defaults are only a fallback when there is no row); `repairAiLensContent` / `repairUiLensContent` only append missing projects/needs, they never overwrite stored text. So editing `lens.ts` / `resume.ts` does NOT change the live site by itself - re-seed with the Reset button in the CMS (or `PUT /api/pipeline/resume` with `{"reset": true}`, or `scripts/reset-resume-ai.ts`). A reset discards ALL CMS edits in all three lenses. `src/content/ai-learning-systems-content.ts` is not imported anywhere (dead file); its richer ID Assist / StepBot detail (tagline, role, tech, highlights, responsible-AI) is not rendered because project cards only have title/summary/tags/link.
+
+### 2026-10-02 — UI lens refinement pass (UI/UX feedback)
+Chris passed along UI/UX feedback on the new UI lens (headline casing, Higher
+Ed Partners role title spacing, and — most substantively — promoting "Canvas
+Visual UX Fixes" and "ProPricer Brand & Print" from `work.cases`-only into
+full `sideProjects` cards, reordering Projects to lead with the strongest
+UI/product work, dropping GoodWork from this lens's project list, adding a
+new "LMS & Delivery UX" skills group, and retitling the top-skills sidebar
+to Layout & Typography / Visual Hierarchy / CSS-iframe UX / AI Design
+Critique / User Flow & Interfaces). All changes confined to
+`buildUiResumeContent()` in `src/lib/resume/lens.ts` — no other files
+touched. Verified with `tsc --noEmit` (clean), `eslint` (clean), and a
+`tsx` round-trip checking every `roleFit` match's `projectId` still
+resolves to a real project after the GoodWork removal (none broken).
+
 ### 2026-10-02 — Added a third "UI" resume lens
 Chris wanted a toggle for a UI-designer-focused presentation, seeded from
 resume feedback he got on a DataAnnotation "Mobile UI Designer" application
