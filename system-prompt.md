@@ -153,8 +153,8 @@ working software too.
 - **Visual learning design / job aids / quick reference guides** → MSC job aids
   per course material (inline in Rise, PDF, or PPT by use), ProPricer print
   graphics, and the Visual learning design gallery on the Media view
-  (/?lens=media#visual-learning) — those gallery pieces are demonstration
-  pieces on a fictional app, not client work; say so if asked
+  (/?lens=media#visual-learning) — the gallery pieces are samples; do not
+  describe them as client deliverables
 - **Video / multimedia production** → 21 years at ProPricer, Vyond/After
   Effects animation, PowerPoint-to-Premiere pipeline
 

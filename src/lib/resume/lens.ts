@@ -1043,7 +1043,7 @@ export function applyLearningMediaFocus(mediaIn: ResumeContent): ResumeContent {
     ],
     gallery: {
       heading: "Visual learning design: job aids, guides, graphics",
-      note: "I design a job aid for each course’s material and deliver it inline in Rise, as a PDF, or as a PowerPoint depending on use — training or on site. The pieces below are demonstration pieces on a fictional application, shown as one consistent visual system.",
+      note: "I design a job aid for each course’s material and deliver it inline in Rise, as a PDF, or as a PowerPoint depending on use — training or on site. Shown here as one consistent visual system.",
       items: [
         {
           id: newId("vis"),
