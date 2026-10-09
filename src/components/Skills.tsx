@@ -1,9 +1,8 @@
 "use client";
 
-import { useSectionNumber } from "@/components/resume/ResumeProvider";
+import { useResume, useSectionNumber } from "@/components/resume/ResumeProvider";
 import { useState } from "react";
 import { motion, useReducedMotion } from "motion/react";
-import { certifications, education, skills } from "@/content/resume";
 import { Reveal } from "./Reveal";
 import { SkillsNetwork } from "./SkillsNetwork";
 
@@ -11,6 +10,14 @@ type ViewMode = "list" | "network";
 
 export function Skills() {
   const sectionNumber = useSectionNumber("skills");
+  const resume = useResume();
+  const skills = {
+    ...resume.skills,
+    groups: resume.skills.groups.filter((g) => g.enabled),
+    meters: resume.skills.meters.filter((m) => m.enabled),
+  };
+  const certifications = resume.certifications.filter((c) => c.enabled).map((c) => c.label);
+  const education = resume.education.filter((e) => e.enabled);
   const reduce = useReducedMotion();
   const [view, setView] = useState<ViewMode>("list");
 
