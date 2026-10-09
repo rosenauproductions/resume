@@ -72,6 +72,40 @@ export type WorkFeatured = {
   src?: string;
   label: string;
   detail: string;
+  /** Optional "Tools: ..." line shown under the detail. */
+  tools?: string;
+};
+
+/** A still image sample (reference guide, job aid, infographic...). */
+export type WorkVisual = {
+  id: string;
+  enabled: boolean;
+  title: string;
+  /** Short category label, e.g. "Quick reference guide". */
+  tag: string;
+  caption: string;
+  /** Public path or URL of the image. */
+  image: string;
+  /** Alt text for the image. */
+  alt: string;
+  /** Optional link to a larger version / PDF. */
+  href?: string;
+};
+
+export type WorkStudyStep = {
+  id: string;
+  label: string;
+  detail: string;
+};
+
+/** One end-to-end case study (problem -> process -> result). */
+export type WorkStudy = {
+  enabled: boolean;
+  tag: string;
+  title: string;
+  summary: string;
+  steps: WorkStudyStep[];
+  outcome: string;
 };
 
 export type WorkCase = {
@@ -157,6 +191,12 @@ export type ResumeContent = {
     note: string;
     featured: WorkFeatured[];
     cases: WorkCase[];
+    gallery: {
+      heading: string;
+      note: string;
+      items: WorkVisual[];
+    };
+    study: WorkStudy;
   };
   sideProjects: {
     heading: string;

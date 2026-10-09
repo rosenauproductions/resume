@@ -84,10 +84,10 @@ export function Hero() {
             transition={{ duration: 0.65, delay: 0.55 }}
           >
             <a
-              href={lens === "ai" || lens === "ui" ? "#projects" : "#experience"}
+              href={lens === "ai" || lens === "ui" ? "#projects" : "#work"}
               className="rounded-full bg-[var(--cream)] px-6 py-3 text-sm font-semibold text-[var(--ink)] transition-transform hover:scale-[1.03] sm:px-7 sm:py-3.5"
             >
-              {lens === "ai" ? "View builds" : lens === "ui" ? "View design work" : "View experience"}
+              {lens === "ai" ? "View builds" : lens === "ui" ? "View design work" : "View Learning Media Portfolio"}
             </a>
             <a
               href={site.linkedin}

@@ -1,10 +1,11 @@
 "use client";
 
 import { motion, useReducedMotion } from "motion/react";
-import { useResume } from "@/components/resume/ResumeProvider";
+import { useResume, useSectionNumber } from "@/components/resume/ResumeProvider";
 import { Reveal } from "./Reveal";
 
 export function Experience() {
+  const sectionNumber = useSectionNumber("experience");
   const reduce = useReducedMotion();
   const { experience } = useResume();
   const jobs = experience.filter((j) => j.enabled);
@@ -13,7 +14,7 @@ export function Experience() {
     <section id="experience" className="relative pt-2 pb-4 md:pt-2 md:pb-4 lg:pt-2 lg:pb-2">
       <div className="mx-auto max-w-6xl px-6">
         <Reveal>
-          <p className="section-kicker">02</p>
+          <p className="section-kicker">{sectionNumber}</p>
           <h2 className="section-title">Experience</h2>
         </Reveal>
 

@@ -74,6 +74,8 @@ Feb 2024–July 2026, Remote
   animated training video, and Canvas administration with custom enhancements
 - Transformed Google Slides/PDFs into production-quality learning video via
   graphic treatment and PowerPoint animation
+- Designs job aids per course material — inline in Rise, or as PDFs or
+  PowerPoints depending on use (training vs. on-site reference)
 - Uses LLM workflows (Claude, ChatGPT, Grok) to accelerate scripting,
   iteration, and video polish
 - Produced remote-instructor video and Vyond scenario content simulating
@@ -148,6 +150,11 @@ working software too.
   scripting workflows at MSC
 - **Programming / web dev** → ID Assist, GoodWork, Pistomp-Mobile, StepBot-MSC,
   this resume site, the party-game apps — TypeScript, React, JS, CSS
+- **Visual learning design / job aids / quick reference guides** → MSC job aids
+  per course material (inline in Rise, PDF, or PPT by use), ProPricer print
+  graphics, and the Visual learning design gallery on the Media view
+  (/?lens=media#visual-learning) — those gallery pieces are demonstration
+  pieces on a fictional app, not client work; say so if asked
 - **Video / multimedia production** → 21 years at ProPricer, Vyond/After
   Effects animation, PowerPoint-to-Premiere pipeline
 

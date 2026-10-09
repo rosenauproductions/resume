@@ -1,10 +1,11 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useResume } from "@/components/resume/ResumeProvider";
+import { useResume, useSectionNumber } from "@/components/resume/ResumeProvider";
 import { Reveal } from "./Reveal";
 
 export function RoleFit() {
+  const sectionNumber = useSectionNumber("fit");
   const { roleFit, sideProjects } = useResume();
   const needs = useMemo(() => roleFit.needs.filter((n) => n.enabled !== false), [roleFit.needs]);
   const projectsById = useMemo(
@@ -36,7 +37,7 @@ export function RoleFit() {
     <section id="fit" className="relative pt-2 pb-4 md:pt-2 md:pb-4 lg:pt-2 lg:pb-2">
       <div className="mx-auto max-w-6xl px-6">
         <Reveal>
-          <p className="section-kicker">06</p>
+          <p className="section-kicker">{sectionNumber}</p>
           <h2 className="section-title">{roleFit.heading}</h2>
           <p className="mt-4 max-w-2xl text-[var(--muted)]">{roleFit.note}</p>
         </Reveal>

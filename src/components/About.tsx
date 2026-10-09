@@ -1,16 +1,17 @@
 "use client";
 
 import Image from "next/image";
-import { useResume } from "@/components/resume/ResumeProvider";
+import { useResume, useSectionNumber } from "@/components/resume/ResumeProvider";
 import { Reveal } from "./Reveal";
 
 export function About() {
+  const sectionNumber = useSectionNumber("about");
   const { about, portraits } = useResume();
   return (
     <section id="about" className="relative pt-6 pb-4 md:pt-8 md:pb-4 lg:pt-10 lg:pb-2">
       <div className="mx-auto max-w-6xl px-6">
         <Reveal>
-          <p className="section-kicker">01</p>
+          <p className="section-kicker">{sectionNumber}</p>
           <h2 className="section-title">{about.heading}</h2>
         </Reveal>
 

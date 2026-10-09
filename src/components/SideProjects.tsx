@@ -1,17 +1,18 @@
 "use client";
 
-import { useResume } from "@/components/resume/ResumeProvider";
+import { useResume, useSectionNumber } from "@/components/resume/ResumeProvider";
 import { Reveal } from "./Reveal";
 import { ProjectNetwork } from "./ProjectNetwork";
 
 export function SideProjects() {
+  const sectionNumber = useSectionNumber("projects");
   const { sideProjects } = useResume();
   const projects = sideProjects.projects.filter((p) => p.enabled);
   return (
     <section id="projects" className="relative pt-2 pb-4 md:pt-2 md:pb-4 lg:pt-2 lg:pb-2">
       <div className="mx-auto max-w-6xl px-6">
         <Reveal>
-          <p className="section-kicker">04</p>
+          <p className="section-kicker">{sectionNumber}</p>
           <h2 className="section-title">{sideProjects.heading}</h2>
           <p className="mt-4 max-w-2xl text-[var(--muted)]">{sideProjects.note}</p>
         </Reveal>

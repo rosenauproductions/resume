@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useMemo } from "react";
 import { buildDefaultResumeContent } from "@/lib/resume/defaults";
-import type { ResumeContent, ResumeLensId } from "@/lib/resume/types";
+import type { ResumeContent, ResumeLensId, ResumeSectionId } from "@/lib/resume/types";
 
 type ResumeContextValue = {
   content: ResumeContent;
@@ -33,4 +33,14 @@ export function useResume(): ResumeContent {
 export function useResumeLens(): ResumeLensId {
   const ctx = useContext(ResumeContext);
   return ctx?.lens ?? "ai";
+}
+
+/** "01", "02"... position of a section among the visible body sections, in display order. */
+export function useSectionNumber(id: ResumeSectionId): string {
+  const content = useResume();
+  const visible = content.sectionOrder.filter(
+    (sid) => sid !== "hero" && content.sections[sid]?.enabled !== false,
+  );
+  const idx = visible.indexOf(id);
+  return String((idx >= 0 ? idx : 0) + 1).padStart(2, "0");
 }

@@ -15,6 +15,9 @@ import {
   type SkillGroup,
   type SkillMeter,
   type WorkCase,
+  type WorkStudy,
+  type WorkStudyStep,
+  type WorkVisual,
   type WorkFeatured,
 } from "@/lib/resume/types";
 
@@ -153,7 +156,7 @@ function NestedCard({
   title: string;
   enabled: boolean;
   onEnabled: (v: boolean) => void;
-  onRemove: () => void;
+  onRemove?: () => void;
   onUp?: () => void;
   onDown?: () => void;
   canUp?: boolean;
@@ -182,9 +185,11 @@ function NestedCard({
             ↓
           </button>
         ) : null}
-        <button type="button" className={`${btnGhost} ml-auto`} onClick={onRemove}>
-          Remove
-        </button>
+        {onRemove ? (
+          <button type="button" className={`${btnGhost} ml-auto`} onClick={onRemove}>
+            Remove
+          </button>
+        ) : null}
       </div>
       {children}
     </div>
@@ -354,6 +359,19 @@ function WorkEditor({
     featured[i] = { ...featured[i], ...partial };
     onChange({ ...work, featured });
   };
+  const patchVisual = (i: number, partial: Partial<WorkVisual>) => {
+    const items = [...work.gallery.items];
+    items[i] = { ...items[i], ...partial };
+    onChange({ ...work, gallery: { ...work.gallery, items } });
+  };
+  const patchStudy = (partial: Partial<WorkStudy>) => {
+    onChange({ ...work, study: { ...work.study, ...partial } });
+  };
+  const patchStep = (i: number, partial: Partial<WorkStudyStep>) => {
+    const steps = [...work.study.steps];
+    steps[i] = { ...steps[i], ...partial };
+    patchStudy({ steps });
+  };
   const patchCase = (i: number, partial: Partial<WorkCase>) => {
     const cases = [...work.cases];
     cases[i] = { ...cases[i], ...partial };
@@ -388,6 +406,7 @@ function WorkEditor({
             </Label>
             <Text label="Label" value={f.label} onChange={(v) => patchFeatured(i, { label: v })} />
             <Text label="Detail" value={f.detail} onChange={(v) => patchFeatured(i, { detail: v })} />
+            <Text label="Tools line" value={f.tools ?? ""} onChange={(v) => patchFeatured(i, { tools: v })} />
             <Text label="Href" value={f.href ?? ""} onChange={(v) => patchFeatured(i, { href: v })} />
             <Text label="Embed" value={f.embed ?? ""} onChange={(v) => patchFeatured(i, { embed: v })} />
             <Text label="Src" value={f.src ?? ""} onChange={(v) => patchFeatured(i, { src: v })} />
@@ -409,6 +428,103 @@ function WorkEditor({
       >
         Add featured
       </button>
+      <p className="text-xs uppercase tracking-wider text-[var(--muted)]">Visual learning gallery</p>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <Text
+          label="Gallery heading"
+          value={work.gallery.heading}
+          onChange={(v) => onChange({ ...work, gallery: { ...work.gallery, heading: v } })}
+        />
+        <Text
+          label="Gallery note"
+          value={work.gallery.note}
+          onChange={(v) => onChange({ ...work, gallery: { ...work.gallery, note: v } })}
+        />
+      </div>
+      {work.gallery.items.map((v, i) => (
+        <NestedCard
+          key={v.id}
+          title={`Visual ${i + 1}`}
+          enabled={v.enabled}
+          onEnabled={(enabled) => patchVisual(i, { enabled })}
+          onRemove={() =>
+            onChange({
+              ...work,
+              gallery: { ...work.gallery, items: work.gallery.items.filter((_, j) => j !== i) },
+            })
+          }
+        >
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Text label="Title" value={v.title} onChange={(x) => patchVisual(i, { title: x })} />
+            <Text label="Tag" value={v.tag} onChange={(x) => patchVisual(i, { tag: x })} />
+            <Text label="Image path/URL" value={v.image} onChange={(x) => patchVisual(i, { image: x })} />
+            <Text label="Link (optional, e.g. PDF)" value={v.href ?? ""} onChange={(x) => patchVisual(i, { href: x })} />
+            <Text label="Alt text" value={v.alt} onChange={(x) => patchVisual(i, { alt: x })} />
+            <div className="sm:col-span-2">
+              <TextArea label="Caption" value={v.caption} onChange={(x) => patchVisual(i, { caption: x })} />
+            </div>
+          </div>
+        </NestedCard>
+      ))}
+      <button
+        type="button"
+        className={btnAccent}
+        onClick={() =>
+          onChange({
+            ...work,
+            gallery: {
+              ...work.gallery,
+              items: [
+                ...work.gallery.items,
+                { id: newId("vis"), enabled: true, title: "", tag: "", caption: "", image: "", alt: "" },
+              ],
+            },
+          })
+        }
+      >
+        Add visual
+      </button>
+      <p className="text-xs uppercase tracking-wider text-[var(--muted)]">Case study</p>
+      <NestedCard
+        title="Featured case study"
+        enabled={work.study.enabled}
+        onEnabled={(enabled) => patchStudy({ enabled })}
+      >
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Text label="Tag" value={work.study.tag} onChange={(v) => patchStudy({ tag: v })} />
+          <Text label="Title" value={work.study.title} onChange={(v) => patchStudy({ title: v })} />
+          <div className="sm:col-span-2">
+            <TextArea label="Summary" value={work.study.summary} onChange={(v) => patchStudy({ summary: v })} />
+          </div>
+          {work.study.steps.map((st, i) => (
+            <div key={st.id} className="space-y-2 border border-white/10 p-3 sm:col-span-2">
+              <Text label={`Step ${i + 1} label`} value={st.label} onChange={(v) => patchStep(i, { label: v })} />
+              <TextArea label="Detail" value={st.detail} onChange={(v) => patchStep(i, { detail: v })} />
+              <button
+                type="button"
+                className={btnAccent}
+                onClick={() => patchStudy({ steps: work.study.steps.filter((_, j) => j !== i) })}
+              >
+                Remove step
+              </button>
+            </div>
+          ))}
+          <div className="sm:col-span-2">
+            <button
+              type="button"
+              className={btnAccent}
+              onClick={() =>
+                patchStudy({ steps: [...work.study.steps, { id: newId("step"), label: "", detail: "" }] })
+              }
+            >
+              Add step
+            </button>
+          </div>
+          <div className="sm:col-span-2">
+            <TextArea label="Outcome" value={work.study.outcome} onChange={(v) => patchStudy({ outcome: v })} />
+          </div>
+        </div>
+      </NestedCard>
       <p className="text-xs uppercase tracking-wider text-[var(--muted)]">Cases</p>
       {work.cases.map((c, i) => (
         <NestedCard

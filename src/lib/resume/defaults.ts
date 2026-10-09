@@ -19,6 +19,7 @@ import {
   type RoleFitMatch,
   type RoleFitNeed,
   type SideProject,
+  type WorkStudy,
 } from "./types";
 
 function defaultSections(): ResumeContent["sections"] {
@@ -89,6 +90,10 @@ function mergeDefaultSideProjectMatches(
   });
 }
 
+export function emptyStudy(): WorkStudy {
+  return { enabled: false, tag: "", title: "", summary: "", steps: [], outcome: "" };
+}
+
 /** Build editable CMS document from the static resume.ts seed. */
 export function buildDefaultResumeContent(): ResumeContent {
   const projects = sideProjectsStatic.projects.map((p) => ({
@@ -142,6 +147,8 @@ export function buildDefaultResumeContent(): ResumeContent {
         detail: c.detail,
         tag: c.tag,
       })),
+      gallery: { heading: "Visual learning design", note: "", items: [] },
+      study: emptyStudy(),
     },
     sideProjects: {
       heading: sideProjectsStatic.heading,
@@ -326,6 +333,7 @@ export function normalizeResumeContent(raw: unknown): ResumeContent {
             src: f.src,
             label: String(f.label ?? ""),
             detail: String(f.detail ?? ""),
+            ...(typeof f.tools === "string" && f.tools.trim() ? { tools: f.tools } : {}),
           }))
         : fallback.work.featured,
       cases: Array.isArray(o.work?.cases)
@@ -337,6 +345,39 @@ export function normalizeResumeContent(raw: unknown): ResumeContent {
             tag: String(c.tag ?? ""),
           }))
         : fallback.work.cases,
+      gallery: {
+        heading: o.work?.gallery?.heading ?? fallback.work.gallery.heading,
+        note: o.work?.gallery?.note ?? fallback.work.gallery.note,
+        items: Array.isArray(o.work?.gallery?.items)
+          ? o.work!.gallery!.items.map((v) => ({
+              id: v.id || newId("vis"),
+              enabled: v.enabled !== false,
+              title: String(v.title ?? ""),
+              tag: String(v.tag ?? ""),
+              caption: String(v.caption ?? ""),
+              image: String(v.image ?? ""),
+              alt: String(v.alt ?? ""),
+              ...(typeof v.href === "string" && v.href.trim() ? { href: v.href } : {}),
+            }))
+          : fallback.work.gallery.items,
+      },
+      study:
+        o.work?.study && typeof o.work.study === "object"
+          ? {
+              enabled: o.work.study.enabled === true,
+              tag: String(o.work.study.tag ?? ""),
+              title: String(o.work.study.title ?? ""),
+              summary: String(o.work.study.summary ?? ""),
+              steps: Array.isArray(o.work.study.steps)
+                ? o.work.study.steps.map((st) => ({
+                    id: st.id || newId("step"),
+                    label: String(st.label ?? ""),
+                    detail: String(st.detail ?? ""),
+                  }))
+                : [],
+              outcome: String(o.work.study.outcome ?? ""),
+            }
+          : fallback.work.study,
     },
     sideProjects,
     skills: {

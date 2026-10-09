@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { site as siteFallback } from "@/content/resume";
-import { useResume } from "@/components/resume/ResumeProvider";
+import { useResume, useSectionNumber } from "@/components/resume/ResumeProvider";
 import { getOrCreateDeviceId } from "@/lib/device-id";
 import {
   markVisitorLeadSubmittedClient,
@@ -14,6 +14,7 @@ const fieldClass =
   "mt-1.5 w-full rounded-xl border border-white/12 bg-black/35 px-3 py-2.5 text-sm text-[var(--cream)] outline-none placeholder:text-[var(--muted)]/70 focus:border-[var(--accent)]";
 
 export function Contact() {
+  const sectionNumber = useSectionNumber("contact");
   const resume = useResume();
   const site = resume.site ?? siteFallback;
   const [name, setName] = useState("");
@@ -77,7 +78,7 @@ export function Contact() {
       <div className="absolute inset-0 contact-glow" aria-hidden />
       <div className="relative mx-auto max-w-6xl px-6">
         <Reveal>
-          <p className="section-kicker justify-center text-center">07</p>
+          <p className="section-kicker justify-center text-center">{sectionNumber}</p>
           <h2 className="section-title text-center">Let’s connect</h2>
           <p className="mx-auto mt-5 max-w-xl text-center text-lg text-[var(--muted)]">
             {site.location} · Open to instructional design, eLearning, corporate training,

@@ -1,5 +1,6 @@
 "use client";
 
+import { useSectionNumber } from "@/components/resume/ResumeProvider";
 import { useState } from "react";
 import { motion, useReducedMotion } from "motion/react";
 import { certifications, education, skills } from "@/content/resume";
@@ -9,6 +10,7 @@ import { SkillsNetwork } from "./SkillsNetwork";
 type ViewMode = "list" | "network";
 
 export function Skills() {
+  const sectionNumber = useSectionNumber("skills");
   const reduce = useReducedMotion();
   const [view, setView] = useState<ViewMode>("list");
 
@@ -18,7 +20,7 @@ export function Skills() {
         <Reveal>
           <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <p className="section-kicker">05</p>
+              <p className="section-kicker">{sectionNumber}</p>
               <h2 className="section-title">{skills.heading}</h2>
             </div>
 

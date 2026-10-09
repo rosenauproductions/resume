@@ -505,6 +505,8 @@ export function buildAiResumeContent(mediaBase?: ResumeContent): ResumeContent {
   // Keep media work cases lightly available if re-enabled later; disable featured noise
   ai.work = {
     ...ai.work,
+    gallery: { ...ai.work.gallery, items: [] },
+    study: { ...ai.work.study, enabled: false },
     heading: "Selected systems work",
     note: "LMS platform and AI delivery highlights — gallery media lives on the Media lens.",
     featured: ai.work.featured.map((f) => ({ ...f, enabled: false })),
@@ -927,6 +929,8 @@ export function buildUiResumeContent(mediaBase?: ResumeContent): ResumeContent {
 
   ui.work = {
     ...ui.work,
+    gallery: { ...ui.work.gallery, items: [] },
+    study: { ...ui.work.study, enabled: false },
     heading: "Selected visual work",
     note: "Interfaces, motion, and print/digital design — proof of visual judgment across formats.",
     cases: [
@@ -960,10 +964,268 @@ export function buildUiResumeContent(mediaBase?: ResumeContent): ResumeContent {
   return normalizeResumeContent(ui);
 }
 
+const LEARNING_SAMPLE_BASE = "/images/samples";
+
+/**
+ * Retarget the Media lens at multimedia / learning-media design roles (AbbVie-style):
+ * lead with finished learning media, show visual job-aid evidence, document the method,
+ * and let the work (not "Expert" labels) carry the level.
+ */
+export function applyLearningMediaFocus(mediaIn: ResumeContent): ResumeContent {
+  const media = structuredClone(mediaIn) as ResumeContent;
+
+  media.site = {
+    ...media.site,
+    title: "Multimedia Learning Designer",
+    subtitle: "Learning video · Graphic design · AI media · Interactive learning",
+    tagline:
+      "I turn complex software and technical concepts into engaging videos, clear visual learning resources, and intuitive digital experiences.",
+  };
+
+  media.about = {
+    ...media.about,
+    lead: "Learning video, visual job aids, and AI-enabled media — built to be used, not just viewed.",
+    paragraphs: [
+      media.about.paragraphs[0],
+      media.about.paragraphs[1],
+      "My focus is the finished learning asset: video that explains why and when to use a feature, job aids and reference guides designed for how they will be used (inline in a course, as a PDF, or as a PowerPoint), and the interactive experiences around them. I’m open to roles in learning media, multimedia design, and instructional design.",
+    ],
+  };
+
+  media.sectionOrder = ["hero", "work", "about", "projects", "experience", "skills", "fit", "contact"];
+  media.sections = {
+    ...media.sections,
+    work: { enabled: true, navLabel: "Portfolio" },
+    skills: { enabled: true, navLabel: "" },
+    projects: { enabled: true, navLabel: "UI & builds" },
+  };
+
+  // Experience: surface the job-aid / visual work with the video work
+  media.experience = media.experience.map((job) => {
+    if (!job.company.toLowerCase().includes("medical sales")) return job;
+    return {
+      ...job,
+      highlights: [
+        job.highlights[1],
+        "Designed job aids for each course’s material — placed inline in Rise, or delivered as PDFs or PowerPoints depending on use (training vs. on-site reference)",
+        job.highlights[0],
+        job.highlights[3],
+        job.highlights[2],
+        job.highlights[4],
+      ],
+    };
+  });
+
+  // Work section: finished learning media first
+  const [ednet, ppt, reel] = media.work.featured;
+  media.work = {
+    ...media.work,
+    heading: "Learning media portfolio",
+    note: "Finished work first: AI-assisted video, animated training, and job aids built for how learners will use them.",
+    featured: [
+      {
+        ...ednet,
+        label: "AI-assisted platform tutorial — Ednet introduction",
+        detail: "Software walkthrough built mostly with Synthesia avatar narration and After Effects motion graphics.",
+        tools: "Synthesia · After Effects",
+      },
+      {
+        ...ppt,
+        label: "Animated training video (PowerPoint)",
+        detail: "Source slides turned into production-quality learning video through graphic treatment and animation.",
+        tools: "PowerPoint animation",
+      },
+      {
+        ...reel,
+        label: "Portfolio reel",
+        detail: "Two-year overview of video and learning-media work.",
+      },
+    ],
+    gallery: {
+      heading: "Visual learning design: job aids, guides, graphics",
+      note: "I design a job aid for each course’s material and deliver it inline in Rise, as a PDF, or as a PowerPoint depending on use — training or on site. The pieces below are demonstration pieces on a fictional application, shown as one consistent visual system.",
+      items: [
+        {
+          id: newId("vis"),
+          enabled: true,
+          title: "Create a shared project board",
+          tag: "Quick reference guide",
+          caption: "Five numbered steps, a ‘when to use this’ callout, and a shortcut table — built to sit beside the task or print for on-site use.",
+          image: `${LEARNING_SAMPLE_BASE}/sample-quick-reference-guide.png`,
+          alt: "Quick reference guide titled Create a shared project board, with five numbered steps, a callout, and a keyboard shortcut table.",
+        },
+        {
+          id: newId("vis"),
+          enabled: true,
+          title: "Turn meeting notes into action items",
+          tag: "AI prompt recipe · job aid",
+          caption: "Role, task, context, format, and limit laid out as a recipe, with a copy-ready prompt and a review-before-you-send checklist.",
+          image: `${LEARNING_SAMPLE_BASE}/sample-ai-prompt-recipe.png`,
+          alt: "AI prompt job aid with a five-row recipe table, a copy-and-fill prompt block, and a four-item review checklist.",
+        },
+        {
+          id: newId("vis"),
+          enabled: true,
+          title: "From request to done: how work moves",
+          tag: "Infographic",
+          caption: "A four-stage process shown as a flow, with who owns each stage called out so learners see what happens next.",
+          image: `${LEARNING_SAMPLE_BASE}/sample-infographic.png`,
+          alt: "Infographic showing four stages — Request, Triage, Build, Review and done — with the people involved at each stage.",
+        },
+      ],
+    },
+    study: {
+      enabled: true,
+      tag: "Case study · video + job aids",
+      title: "From dense source material to a matched set of learning assets",
+      summary:
+        "How a course topic becomes a video, in-course content, and a job aid that learners can use in training or on the job.",
+      steps: [
+        {
+          id: newId("step"),
+          label: "Source and learner need",
+          detail: "Start from SME slides, PDFs, and instructor-led content. Decide what the learner must do, and whether they will need it while training or on site.",
+        },
+        {
+          id: newId("step"),
+          label: "Script and storyboard",
+          detail: "Rework the content into a script and storyboard. LLM workflows (Claude, ChatGPT, Grok) speed drafting and iteration; a human review keeps it accurate.",
+        },
+        {
+          id: newId("step"),
+          label: "Produce the video",
+          detail: "Graphic treatment and animation in PowerPoint, Premiere or After Effects when it needs more polish, or Synthesia avatars when narration scales better than filming.",
+        },
+        {
+          id: newId("step"),
+          label: "Design the job aid for its use",
+          detail: "One job aid per course material: inline in Rise, or as a PDF or PowerPoint depending on whether it supports training or on-site work.",
+        },
+        {
+          id: newId("step"),
+          label: "Review and revise",
+          detail: "SME and stakeholder review of script and visuals, then revisions before release, with change requests managed against the delivery date.",
+        },
+        {
+          id: newId("step"),
+          label: "Accessible delivery",
+          detail: "Captions or SRT subtitles on video, readable layouts, and consistent hosting and delivery inside the LMS.",
+        },
+      ],
+      outcome:
+        "A matched set — video, in-course content, and job aid — that learners can use in training or at work.",
+    },
+    cases: [
+      {
+        id: newId("case"),
+        enabled: true,
+        title: "Job aids by use",
+        detail:
+          "Designed a job aid for each course’s material: inline in Rise, or as a PDF or PowerPoint depending on training vs. on-site use.",
+        tag: "Visual design · Rise",
+      },
+      ...media.work.cases
+        .filter((c) => c.title !== "Canvas delivery customizations")
+        .reverse(),
+      ...media.work.cases
+        .filter((c) => c.title === "Canvas delivery customizations")
+        .map((c) => ({ ...c, enabled: false })),
+    ],
+  };
+
+  media.sideProjects = {
+    ...media.sideProjects,
+    heading: "Interactive UI & technical projects",
+    note: "Supporting evidence of interface design, clear interaction, and working software — secondary to the learning media above.",
+  };
+
+  // Skills: multimedia + visual design first, no overstated labels
+  const groupOrder = ["Video & animation", "Instructional design", "LMS & delivery", "AI & programming"];
+  const visualGroup = {
+    id: newId("sg"),
+    enabled: true,
+    label: "Graphic design & job aids",
+    items: ["Job aids (inline Rise, PDF, PowerPoint)", "Layout & visual hierarchy", "Print & conference graphics", "Reference guides"],
+  };
+  const sortedGroups = [...media.skills.groups].sort(
+    (a, b) => groupOrder.indexOf(a.label) - groupOrder.indexOf(b.label),
+  );
+  media.skills = {
+    ...media.skills,
+    top: ["Learning video", "Visual job aids", "AI-assisted media"],
+    groups: [sortedGroups[0], visualGroup, ...sortedGroups.slice(1)],
+    meters: [...media.skills.meters]
+      .sort((a, b) => {
+        const rank = (n: string) =>
+          /Synthesia|PowerPoint|Premiere|Vyond/i.test(n) ? 0 : /Rise|Storyline/i.test(n) ? 1 : 2;
+        return rank(a.name) - rank(b.name);
+      })
+      .map((m) => ({
+        ...m,
+        proficiency: m.proficiency === "Expert" ? "Advanced" : "Proficient",
+      })),
+  };
+
+  // Role fit: lead with visual + AI video; "Strong" instead of "Expert"
+  const visualNeed = {
+    id: "visual-learning",
+    enabled: true,
+    label: "Visual learning design",
+    strength: "Strong",
+    summary:
+      "Clean, scannable job aids, reference guides, and graphics designed for how they will be used — inline in the course, in print, or on site.",
+    matches: [
+      {
+        role: "Instructional Design Specialist (Media)",
+        company: "Medical Sales College",
+        proof: "Designed a job aid for each course’s material, delivered inline in Rise, as a PDF, or as a PowerPoint depending on use.",
+      },
+      {
+        role: "Video Editor, Graphic Artist & E-Learning Designer",
+        company: "ProPricer",
+        proof: "Magazine ads, conference print graphics, and training media across 20 years of graphic production.",
+      },
+      {
+        role: "E-Learning Designer",
+        company: "Concordia University Irvine",
+        proof: "Animated course graphics built from scripts, with narration and SRT subtitles.",
+      },
+    ],
+  };
+  const needOrder = [
+    "visual-learning",
+    "ai-video",
+    "ppt-video",
+    "multimedia",
+    "instructional-design",
+    "elearning",
+    "articulate",
+    "hybrid",
+    "canvas",
+    "corporate",
+    "ai-dev",
+    "programming",
+  ];
+  const needs = [visualNeed, ...media.roleFit.needs].map((n) => ({
+    ...n,
+    strength: n.strength === "Expert" ? "Strong" : n.strength,
+  }));
+  needs.sort((a, b) => needOrder.indexOf(a.id) - needOrder.indexOf(b.id));
+  media.roleFit = {
+    ...media.roleFit,
+    note: "Select what you’re hiring for. I’ll map it to matching roles, side projects, and short proof points.",
+    needs,
+  };
+
+  return normalizeResumeContent(media);
+}
+
 export function buildDefaultResumeDocument(): ResumeDocument {
-  const media = buildDefaultResumeContent();
-  const ai = syncSharedIdentity(media, buildAiResumeContent(media));
-  const ui = syncSharedIdentity(media, buildUiResumeContent(media));
+  const base = buildDefaultResumeContent();
+  // AI and UI lenses are derived from the untouched base; Media is then retargeted.
+  const ai = syncSharedIdentity(base, buildAiResumeContent(base));
+  const ui = syncSharedIdentity(base, buildUiResumeContent(base));
+  const media = applyLearningMediaFocus(base);
   return { version: 2, lenses: { media, ai, ui } };
 }
 
