@@ -34,14 +34,18 @@ export function SideProjects() {
                 <p className="mt-3 flex-1 text-sm leading-relaxed text-[var(--muted)]">
                   {project.summary}
                 </p>
-                <a
-                  href={project.href}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="mt-5 inline-flex self-start text-sm text-[var(--accent)] transition-colors hover:text-[var(--cream)]"
-                >
-                  {project.linkLabel} →
-                </a>
+                {project.href ? (
+                  <a
+                    href={project.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-5 inline-flex self-start text-sm text-[var(--accent)] transition-colors hover:text-[var(--cream)]"
+                  >
+                    {project.linkLabel} →
+                  </a>
+                ) : project.linkLabel ? (
+                  <p className="mt-5 text-xs text-[var(--muted)]">{project.linkLabel}</p>
+                ) : null}
               </article>
             </Reveal>
           ))}

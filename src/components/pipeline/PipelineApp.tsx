@@ -717,6 +717,10 @@ export function PipelineApp({
   }
 
   async function hydrateFromBundledSeed() {
+    const confirmed = window.confirm(
+      `Replace ALL ${jobs.length} applications with the bundled copy built into the site (last updated ${loadSeedMeta().lastUpdated || "unknown"})?\n\nAnything added or changed since then will be removed. A backup is saved first and can be restored from Settings → Backups.`,
+    );
+    if (!confirmed) return;
     const ok = await importIntoDb("bundled", undefined, "replace");
     if (!ok) {
       const seeded = loadSeedJobs();
@@ -988,6 +992,14 @@ export function PipelineApp({
 
   async function applyImport(mode: "merge" | "replace") {
     setImportError("");
+    if (
+      mode === "replace" &&
+      !window.confirm(
+        `Replace ALL ${jobs.length} applications with the pasted list?\n\nApplications not in the paste will be removed. A backup is saved first and can be restored from Settings → Backups.`,
+      )
+    ) {
+      return;
+    }
     try {
       const { jobs: incoming, meta: incomingMeta } = parseImport(importText);
       if (!incoming.length) {

@@ -1,0 +1,3 @@
+{
+  "crons": [{ "path": "/api/pipeline/backups/cron", "schedule": "17 9 * * *" }]
+}

@@ -48,19 +48,19 @@ export function buildAiResumeContent(mediaBase?: ResumeContent): ResumeContent {
   ai.theme = "ocean";
   ai.site = {
     ...ai.site,
-    title: "Learning Systems & AI Builder",
-    subtitle: "TypeScript · LLMs · Canvas · LMS platforms",
+    title: "AI Application & Full-Stack Developer",
+    subtitle: "TypeScript · Next.js · Postgres · LLM tool calling · Agents · Learning tech",
     tagline:
-      "I ship learning platforms and AI-assisted tools — Canvas/AWS delivery, LLM production workflows, and product-grade TypeScript apps — not just slide decks.",
+      "I design, build, and run AI-enabled web applications end to end — spec, data model, tool-calling assistants, scheduled agents, deployment, and day-to-day operation — directing AI coding agents (Claude) as part of my engineering workflow.",
   };
 
   ai.about = {
     heading: "About",
-    lead: "LMS platform engineering, AI-assisted production, and shipped software — bots, PWAs, and this resume stack.",
+    lead: "Full-stack builder with AI inside the product — backed by two decades of multimedia and LMS platform work.",
     paragraphs: [
-      "I design and ship AI-powered learning systems. ID Assist is a local instructional-design compiler that turns a brief into a pedagogy-gated outline (Bloom’s alignment + cost), then a live AI tutor grounded in the lesson content. StepBot is an embeddable Canvas help bot with multi-step guidance and session memory.",
-      "At Higher Ed Partners I treated Canvas as a delivery platform: AWS-hosted Rise content, CSS that fixed iframe UX, and a JavaScript language-embed layer so learners could switch languages inside the LMS. At Medical Sales College I ran Canvas administration with custom programming and accelerated production with LLM workflows (Claude, ChatGPT, Grok).",
-      "Independently I build TypeScript and JavaScript products: ID Assist, StepBot, GoodWork, Pistomp-Mobile, multiplayer party games, Hinterviewer, lobe, and this Next.js resume + Pipeline app. I’m open to roles as an AI Learning Architect, learning systems builder, LMS engineer, and hands-on web developer.",
+      "My main platform is this site and its job Pipeline: a Next.js/TypeScript app on Vercel with a Neon Postgres database. It runs a database-backed resume CMS with three audience views, a job tracker with LLM extraction of job postings, tool-calling chat assistants, web push notifications, nightly backups with a restore screen, and an hourly autonomous agent that triages my email and updates the tracker through its API.",
+      "I work as an AI-directed engineer: I write the spec, design the data model and the guardrails, direct Claude through implementation, then review, test, deploy, and fix it in production. When a bulk import wiped my job tracker, I traced the cause, rebuilt the data from email records, and shipped automatic snapshots, undelete, and confirmation gates so it can't happen silently again.",
+      "Other builds include ID Assist (an instructional-design compiler with a live AI tutor), StepBot (an embeddable Canvas help bot), FamilyFlow (a touch wall calendar for families), Light Cycle Arena (a 3D game built by two AI coding agents under my direction), Hinterviewer-X, Pistomp-Mobile, and multiplayer party games. Before that came Canvas/AWS delivery engineering at Higher Ed Partners and Medical Sales College and 20 years of media production. I'm open to AI application developer, full-stack, and learning-technology developer roles.",
     ],
   };
 
@@ -144,32 +144,42 @@ export function buildAiResumeContent(mediaBase?: ResumeContent): ResumeContent {
     {
       id: newId("proj"),
       enabled: true,
+      title: "Resume Platform + Job Pipeline",
+      summary:
+        "This site (Next.js 16, TypeScript, Neon Postgres + Drizzle, Vercel). Database-backed resume CMS with three audience views and an editor; job tracker with AI extraction of postings into structured fields; tool-calling assistants (visitor lead capture, a copilot that queues work for the email agent); web push with action buttons; visit tracking with Discord/ntfy/email alerts; nightly cron backups, restore and undelete.",
+      href: "https://github.com/rosenauproductions/resume",
+      linkLabel: "GitHub",
+      tags: ["Deployed · daily use", "Next.js", "Postgres", "LLM tool calling"],
+    },
+    {
+      id: newId("proj"),
+      enabled: true,
+      title: "Autonomous email & job-search agent",
+      summary:
+        "Hourly scheduled Claude agent I designed and operate: reads new Gmail, sorts it by what matters (family, job search, Scouts, events), matches job mail to the tracker and updates status through the REST API with whole-record writes, opens job-posting links and rates fit, posts items to the copilot feed, sends one push per run, and drafts replies without ever sending. Guardrails for untrusted email content and a shared log for handoffs.",
+      href: "",
+      linkLabel: "Runs privately against my own inbox — walkthrough on request",
+      tags: ["In production", "Agent design", "Gmail · Calendar · REST", "Guardrails"],
+    },
+    {
+      id: newId("proj"),
+      enabled: true,
       title: "ID Assist — Instructional Design Compiler + Live Tutor",
       summary:
         "Local-first instructional-design compiler: brief → Bloom’s-gated outline + cost → human approval → artifacts + live AI tutor grounded in the lesson. Adaptive SME interview, Ollama local mode, Electron desktop app. Solo-built architecture, prompt systems, and pedagogy rules.",
       href: "https://id-assist.vercel.app",
       linkLabel: "Live demo",
-      tags: ["AI Learning", "Prompt Engineering", "Local LLM", "Instructional Design"],
+      tags: ["Deployed", "LLM app", "Local LLM (Ollama)", "Electron"],
     },
     {
       id: newId("proj"),
       enabled: true,
-      title: "Resume site + Pipeline",
+      title: "FamilyFlow",
       summary:
-        "This site: Next.js/TypeScript resume with dual Media/AI lenses, Neon-backed job pipeline, visit tracking, visitor identify/link, JD ingest, and an on-site AI chat via Vercel AI Gateway.",
-      href: "https://github.com/rosenauproductions/resume",
-      linkLabel: "GitHub",
-      tags: ["Next.js", "TypeScript", "AI chat", "Neon"],
-    },
-    {
-      id: newId("proj"),
-      enabled: true,
-      title: "GoodWork",
-      summary:
-        "TypeScript + React + Vite app for a church youth service exchange — job requests, volunteer assignment, parent approval flow, family profiles, and fundraising milestones toward community goals. Demo: goodwork-two.vercel.app",
-      href: "https://github.com/rosenauproductions/goodwork",
-      linkLabel: "GitHub",
-      tags: ["TypeScript", "React", "Vite", "Product UI"],
+        "Touch-first family wall display — calendar, chores, lists, and weather on one screen, with Google sign-in and a segmented widget grid with an editor. Runs on a Raspberry Pi kiosk build that boots straight to the wall view.",
+      href: "https://familyflow.ashurose.com",
+      linkLabel: "Live site",
+      tags: ["Deployed", "Full-stack", "Google OAuth", "Kiosk / Pi"],
     },
     {
       id: newId("proj"),
@@ -179,7 +189,27 @@ export function buildAiResumeContent(mediaBase?: ResumeContent): ResumeContent {
         "Embeddable Canvas help bot with multi-step guided answers, session memory, admin/creator tooling, and theming. Built for easy content management and multi-site deployment.",
       href: "https://github.com/rosenauproductions/StepBot-MSC",
       linkLabel: "GitHub",
-      tags: ["Canvas", "JavaScript", "LMS", "Bot"],
+      tags: ["Deployed", "Canvas", "JavaScript", "Bot"],
+    },
+    {
+      id: newId("proj"),
+      enabled: true,
+      title: "Light Cycle Arena",
+      summary:
+        "Original 3D racing & combat game (C++17/SDL2/OpenGL on Batocera Linux, 1–6 player split-screen, Wii-remote tilt steering). Directed two AI coding agents (cloud + desktop, Git-tracked): wrote the specs, reviewed every change from screenshots, ran beta/stable releases. Includes a phone-as-controller web companion and a three.js cockpit.",
+      href: "https://github.com/rosenauproductions",
+      linkLabel: "GitHub profile",
+      tags: ["Working build", "AI-directed dev", "C++ / OpenGL", "three.js"],
+    },
+    {
+      id: newId("proj"),
+      enabled: true,
+      title: "Hinterviewer-X",
+      summary:
+        "Secure video-interview platform built for Medical Sales College career placement — multi-client portal for recorded candidate interviews and hiring review (TypeScript).",
+      href: "https://hinterviewer-x.vercel.app",
+      linkLabel: "Live site",
+      tags: ["Deployed", "TypeScript", "Video", "Portal"],
     },
     {
       id: newId("proj"),
@@ -189,27 +219,7 @@ export function buildAiResumeContent(mediaBase?: ResumeContent): ResumeContent {
         "Mobile-first TypeScript + Vite PWA for the open-source Pi-Stomp multi-effects platform — pedalboard control, A/B snapshots, and per-effect params over the MOD-UI API.",
       href: "https://github.com/rosenauproductions/Pistomp-Mobile",
       linkLabel: "GitHub",
-      tags: ["TypeScript", "PWA", "Raspberry Pi"],
-    },
-    {
-      id: newId("proj"),
-      enabled: true,
-      title: "Hinterviewer-X",
-      summary:
-        "Multi-client video resume portal (TypeScript) — public mirror for hiring workflows and client video delivery.",
-      href: "https://github.com/rosenauproductions/Hinterviewer-X",
-      linkLabel: "GitHub",
-      tags: ["TypeScript", "Video", "Portal"],
-    },
-    {
-      id: newId("proj"),
-      enabled: true,
-      title: "lobe",
-      summary:
-        "macOS Wi‑Fi/Bluetooth proximity radar with directional lobe calibration — map your antenna, find the signal.",
-      href: "https://github.com/rosenauproductions/lobe",
-      linkLabel: "GitHub",
-      tags: ["macOS", "Hardware", "Swift/JS"],
+      tags: ["Working", "TypeScript", "PWA", "Hardware API"],
     },
     {
       id: newId("proj"),
@@ -219,57 +229,89 @@ export function buildAiResumeContent(mediaBase?: ResumeContent): ResumeContent {
         "Browser party games with projector/TV display, host controller, and phone contestant clients — real-time multi-device UI.",
       href: "https://github.com/rosenauproductions/family-feud",
       linkLabel: "GitHub",
-      tags: ["JavaScript", "Multiplayer", "Realtime UI"],
+      tags: ["Deployed", "JavaScript", "Multiplayer", "Realtime UI"],
+    },
+    {
+      id: newId("proj"),
+      enabled: true,
+      title: "GoodWork",
+      summary:
+        "TypeScript + React + Vite app for a church youth service exchange — job requests, volunteer assignment, parent approval flow, family profiles, and fundraising milestones.",
+      href: "https://github.com/rosenauproductions/goodwork",
+      linkLabel: "GitHub",
+      tags: ["Prototype", "TypeScript", "React", "Product UI"],
+    },
+    {
+      id: newId("proj"),
+      enabled: true,
+      title: "lobe",
+      summary:
+        "macOS Wi‑Fi/Bluetooth proximity radar with directional lobe calibration — map your antenna, find the signal.",
+      href: "https://github.com/rosenauproductions/lobe",
+      linkLabel: "GitHub",
+      tags: ["Experimental", "macOS", "Hardware"],
     },
   ];
 
   ai.sideProjects = {
-    heading: "AI Learning Systems & Builds",
-    note: "Flagship AI learning tools first, then LMS bots, PWAs, and product apps.",
+    heading: "Software & AI builds",
+    note: "Each card is labeled with its real status — deployed, in production, working build, prototype, or experimental.",
     projects,
   };
 
   ai.skills = {
     heading: "Skills & stack",
-    top: ["TypeScript", "Canvas LMS", "LLM workflows", "Systems delivery"],
+    top: ["Full-stack TypeScript", "LLM tool calling", "AI-directed engineering", "Postgres + Vercel"],
     groups: [
       {
         id: newId("sg"),
         enabled: true,
-        label: "Programming",
-        items: ["TypeScript", "JavaScript", "CSS / HTML", "Next.js", "Vite / PWA"],
+        label: "Full-stack web",
+        items: ["TypeScript / JavaScript", "React", "Next.js (App Router)", "Vite / PWA", "HTML / CSS"],
       },
       {
         id: newId("sg"),
         enabled: true,
-        label: "LMS platform",
-        items: ["Canvas administration", "AWS-hosted Rise", "JS language embed", "CSS iframe UX"],
+        label: "Data & deployment",
+        items: ["PostgreSQL (Neon)", "Drizzle ORM", "REST API design", "Supabase", "Vercel (deploys, cron)"],
       },
       {
         id: newId("sg"),
         enabled: true,
-        label: "AI",
-        items: ["Claude / ChatGPT / Grok", "Synthesia", "AI chat / agents", "LLM production workflows"],
+        label: "AI integration",
+        items: [
+          "LLM tool / function calling (Vercel AI SDK)",
+          "Structured output with schemas (Zod)",
+          "Scheduled autonomous agents (Claude)",
+          "Prompt & guardrail design",
+          "Local LLMs (Ollama)",
+        ],
       },
       {
         id: newId("sg"),
         enabled: true,
-        label: "Learning media (secondary)",
-        items: ["Articulate Rise", "Storyline", "Vyond", "Premiere"],
+        label: "AI-directed engineering",
+        items: ["Specs for AI coding agents", "Code review & testing", "Git-based releases", "Production debugging & recovery"],
+      },
+      {
+        id: newId("sg"),
+        enabled: true,
+        label: "LMS & learning tech",
+        items: ["Canvas admin + custom JS/CSS", "AWS-hosted Rise", "Articulate Rise / Storyline", "Synthesia AI video"],
       },
     ],
     also: {
       label: "Also in the toolbox",
-      note: "Hardware-adjacent and studio experiments that keep systems skills sharp.",
-      items: ["Raspberry Pi / MOD", "Canvas embedding", "Multi-device UI", "Neon / Postgres"],
+      note: "Hardware-adjacent and multimedia work that keeps systems skills sharp.",
+      items: ["Web Push / service workers", "Electron", "Raspberry Pi / MOD-UI", "C++ / OpenGL (AI-directed)", "Premiere / After Effects"],
     },
     meters: [
-      { id: newId("meter"), enabled: true, name: "JavaScript / TypeScript / web", proficiency: "Advanced", width: 82 },
+      { id: newId("meter"), enabled: true, name: "TypeScript / React / Next.js", proficiency: "Advanced", width: 80 },
+      { id: newId("meter"), enabled: true, name: "LLM integration & tool calling", proficiency: "Advanced", width: 78 },
+      { id: newId("meter"), enabled: true, name: "Postgres & API design", proficiency: "Proficient", width: 68 },
       { id: newId("meter"), enabled: true, name: "Canvas LMS + AWS delivery", proficiency: "Advanced", width: 85 },
-      { id: newId("meter"), enabled: true, name: "AI tooling & LLM workflows", proficiency: "Advanced", width: 88 },
-      { id: newId("meter"), enabled: true, name: "Synthesia AI video systems", proficiency: "Expert", width: 90 },
-      { id: newId("meter"), enabled: true, name: "Articulate Rise & Storyline", proficiency: "Expert", width: 92 },
-      { id: newId("meter"), enabled: true, name: "Next.js product / pipeline apps", proficiency: "Advanced", width: 78 },
+      { id: newId("meter"), enabled: true, name: "Synthesia & AI video", proficiency: "Advanced", width: 88 },
+      { id: newId("meter"), enabled: true, name: "Articulate Rise & Storyline", proficiency: "Advanced", width: 90 },
     ],
   };
 
@@ -277,13 +319,116 @@ export function buildAiResumeContent(mediaBase?: ResumeContent): ResumeContent {
 
   ai.roleFit = {
     heading: "Role fit",
-    note: "Select what you’re hiring for — AI/systems first, plus instructional design and media craft.",
+    note: "Select what you’re hiring for — software and AI first, then learning systems, instructional design and media.",
     needs: [
+      {
+        id: "ai-app-dev",
+        enabled: true,
+        label: "AI application development",
+        strength: "Solid",
+        summary:
+          "LLM features inside real apps — tool calling, schema-validated structured output, grounded assistants, and the guardrails around them. Independent and single-team scale so far.",
+        matches: [
+          {
+            role: "Resume Platform + Job Pipeline",
+            company: "Side project",
+            proof: "Tool-calling chat assistants, LLM extraction of job postings into typed fields, and a copilot that queues agent work in Postgres.",
+            projectId: byTitle("Resume Platform + Job Pipeline")?.id,
+          },
+          {
+            role: "ID Assist — Instructional Design Compiler + Live Tutor",
+            company: "Side project",
+            proof: "Prompt pipeline with human approval gates, a tutor grounded in lesson content, and a local Ollama mode.",
+            projectId: byTitle("ID Assist — Instructional Design Compiler + Live Tutor")?.id,
+          },
+          {
+            role: "Instructional Design Specialist (Media)",
+            company: "Medical Sales College",
+            proof: "LLM workflows (Claude, ChatGPT, Grok) in day-to-day production.",
+          },
+        ],
+      },
+      {
+        id: "agents",
+        enabled: true,
+        label: "AI agents & automation",
+        strength: "Solid",
+        summary:
+          "Agents that act on external systems — email, calendar, REST APIs, a database — on a schedule, with safety rules. Personal production use, not yet enterprise multi-tenant.",
+        matches: [
+          {
+            role: "Autonomous email & job-search agent",
+            company: "Side project",
+            proof: "Hourly multi-step run: triage Gmail, update the tracker via API, rate job postings, push alerts, draft replies — never sends or deletes.",
+            projectId: byTitle("Autonomous email & job-search agent")?.id,
+          },
+          {
+            role: "Resume Platform + Job Pipeline",
+            company: "Side project",
+            proof: "Model-invoked tools for lead capture and for queuing calendar and general tasks to the agent.",
+            projectId: byTitle("Resume Platform + Job Pipeline")?.id,
+          },
+        ],
+      },
+      {
+        id: "full-stack",
+        enabled: true,
+        label: "Full-stack web development",
+        strength: "Solid",
+        summary: "TypeScript apps from data model to deployment — Next.js, React, Postgres, auth, cron, push, PWAs.",
+        matches: [
+          {
+            role: "Resume Platform + Job Pipeline",
+            company: "Side project",
+            proof: "Next.js 16 + Neon/Drizzle app with CMS, auth, cron backups, and web push — in daily use.",
+            projectId: byTitle("Resume Platform + Job Pipeline")?.id,
+          },
+          {
+            role: "FamilyFlow",
+            company: "Side project",
+            proof: "Deployed family wall display with Google sign-in, widget grid editor, and a Pi kiosk build.",
+            projectId: byTitle("FamilyFlow")?.id,
+          },
+          {
+            role: "Hinterviewer-X",
+            company: "Side project",
+            proof: "Deployed video-interview portal for Medical Sales College placement.",
+            projectId: byTitle("Hinterviewer-X")?.id,
+          },
+          {
+            role: "Party games — Family Feud & The 1% Club",
+            company: "Side project",
+            proof: "Projector + host + phone controllers — realtime multi-device UI.",
+            projectId: byTitle("Party games — Family Feud & The 1% Club")?.id,
+          },
+        ],
+      },
+      {
+        id: "ai-directed",
+        enabled: true,
+        label: "AI-directed engineering",
+        strength: "Strong",
+        summary: "Turning a product idea into specs, directing AI coding agents, reviewing their output, and shipping and maintaining the result.",
+        matches: [
+          {
+            role: "Light Cycle Arena",
+            company: "Side project",
+            proof: "Two AI coding agents under my direction — specs, screenshot review of every change, beta/stable releases.",
+            projectId: byTitle("Light Cycle Arena")?.id,
+          },
+          {
+            role: "Resume Platform + Job Pipeline",
+            company: "Side project",
+            proof: "Built and maintained with Claude; includes diagnosing a data wipe, rebuilding from email, and shipping a backup system.",
+            projectId: byTitle("Resume Platform + Job Pipeline")?.id,
+          },
+        ],
+      },
       {
         id: "ai-learning-architect",
         enabled: true,
-        label: "AI Learning Architect / Learning Systems",
-        strength: "Advanced → Expert",
+        label: "AI learning systems",
+        strength: "Strong",
         summary: "Hands-on builder of AI-powered instructional tools, adaptive pathways, LMS integrations, and human-in-the-loop learning systems.",
         matches: [
           {
@@ -309,7 +454,7 @@ export function buildAiResumeContent(mediaBase?: ResumeContent): ResumeContent {
         id: "lms-platform",
         enabled: true,
         label: "Canvas / LMS engineering",
-        strength: "Advanced",
+        strength: "Strong",
         summary: "Canvas as a delivery platform — AWS hosting, CSS/JS embeds, admin, and help bots.",
         matches: [
           {
@@ -331,75 +476,10 @@ export function buildAiResumeContent(mediaBase?: ResumeContent): ResumeContent {
         ],
       },
       {
-        id: "ai-dev",
-        enabled: true,
-        label: "AI development / LLM workflows",
-        strength: "Advanced",
-        summary: "Day-to-day LLM production, AI video systems, and on-site AI product features.",
-        matches: [
-          {
-            role: "Instructional Design Specialist (Media)",
-            company: "Medical Sales College",
-            proof: "Claude, ChatGPT, and Grok in production scripting and iteration.",
-          },
-          {
-            role: "Multimedia Director & LMS Platform Design",
-            company: "Higher Ed Partners",
-            proof: "Synthesia avatar systems for scaled AI video.",
-          },
-          {
-            role: "Resume site + Pipeline",
-            company: "Side project",
-            proof: "On-site AI chat, JD ingest, and visit→job linking on Neon/Next.js.",
-            projectId: byTitle("Resume site + Pipeline")?.id,
-          },
-        ],
-      },
-      {
-        id: "programming",
-        enabled: true,
-        label: "Programming / web product",
-        strength: "Advanced",
-        summary: "TypeScript/JS products — PWAs, multiplayer UI, portals, and full resume apps.",
-        matches: [
-          {
-            role: "GoodWork",
-            company: "Side project",
-            proof:
-              "React/TypeScript service-exchange UI — jobs, parent approval, volunteers, and fundraising progress.",
-            projectId: byTitle("GoodWork")?.id,
-          },
-          {
-            role: "Pistomp-Mobile",
-            company: "Side project",
-            proof: "TypeScript + Vite PWA for Pi-Stomp control over MOD-UI.",
-            projectId: byTitle("Pistomp-Mobile")?.id,
-          },
-          {
-            role: "Resume site + Pipeline",
-            company: "Side project",
-            proof: "Next.js resume + job tracker with real visitor and chat systems.",
-            projectId: byTitle("Resume site + Pipeline")?.id,
-          },
-          {
-            role: "Party games — Family Feud & The 1% Club",
-            company: "Side project",
-            proof: "Projector + host + phone controllers — realtime multi-device UI.",
-            projectId: byTitle("Party games — Family Feud & The 1% Club")?.id,
-          },
-          {
-            role: "lobe",
-            company: "Side project",
-            proof: "macOS proximity radar with directional calibration.",
-            projectId: byTitle("lobe")?.id,
-          },
-        ],
-      },
-      {
         id: "ai-video",
         enabled: true,
         label: "AI video / Synthesia",
-        strength: "Expert",
+        strength: "Strong",
         summary: "Template-driven AI video systems that replace slow film cycles at course scale.",
         matches: [
           {
@@ -418,7 +498,7 @@ export function buildAiResumeContent(mediaBase?: ResumeContent): ResumeContent {
         id: "instructional-design",
         enabled: true,
         label: "Instructional design",
-        strength: "Expert",
+        strength: "Strong",
         summary:
           "End-to-end course design with ADDIE, SME collaboration, assessments, and learner-centered media.",
         matches: [
@@ -440,7 +520,7 @@ export function buildAiResumeContent(mediaBase?: ResumeContent): ResumeContent {
         id: "elearning",
         enabled: true,
         label: "eLearning development",
-        strength: "Expert",
+        strength: "Strong",
         summary:
           "Interactive web modules, storyboards, and media-rich courses built for LMS delivery.",
         matches: [
@@ -462,7 +542,7 @@ export function buildAiResumeContent(mediaBase?: ResumeContent): ResumeContent {
         id: "articulate",
         enabled: true,
         label: "Articulate Rise / Storyline",
-        strength: "Expert",
+        strength: "Strong",
         summary:
           "Rise for modular cloud content; Storyline for branching, assessments, and templates.",
         matches: [
@@ -482,7 +562,7 @@ export function buildAiResumeContent(mediaBase?: ResumeContent): ResumeContent {
         id: "video-multimedia",
         enabled: true,
         label: "Video / multimedia production",
-        strength: "Expert",
+        strength: "Strong",
         summary:
           "End-to-end training video, motion graphics, and brand media — also on the Media lens.",
         matches: [
@@ -508,9 +588,17 @@ export function buildAiResumeContent(mediaBase?: ResumeContent): ResumeContent {
     gallery: { ...ai.work.gallery, items: [] },
     study: { ...ai.work.study, enabled: false },
     heading: "Selected systems work",
-    note: "LMS platform and AI delivery highlights — gallery media lives on the Media lens.",
+    note: "Production, LMS platform, and AI delivery highlights — gallery media lives on the Media lens.",
     featured: ai.work.featured.map((f) => ({ ...f, enabled: false })),
     cases: [
+      {
+        id: newId("case"),
+        enabled: true,
+        title: "Data-loss recovery + backup system",
+        detail:
+          "Traced a silent job-tracker wipe to a one-click bulk import, rebuilt 26 records from email confirmations, then shipped automatic snapshots, undelete, nightly cron backups, and confirmation gates.",
+        tag: "Production ops",
+      },
       {
         id: newId("case"),
         enabled: true,

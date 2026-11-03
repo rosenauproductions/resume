@@ -12,6 +12,7 @@ import {
   type SiteDeploySetting,
 } from "@/lib/db/settings";
 import { DEFAULT_INSET_MAP, DEFAULT_METRO_MAP } from "@/lib/pipeline/map-regions";
+import { PipelineBackups } from "./PipelineBackups";
 
 const fieldClass =
   "mt-1 w-full rounded-lg border border-white/12 bg-black/35 px-3 py-2 text-sm text-[var(--cream)] outline-none focus:border-[var(--accent)]";
@@ -230,6 +231,8 @@ export function PipelineSettings({
           </button>
         </div>
       </div>
+
+      <PipelineBackups />
 
       <section className="space-y-3 rounded-2xl border border-white/10 bg-[var(--panel)]/40 p-5">
         <h3 className="text-sm font-medium text-[var(--cream)]">Site</h3>

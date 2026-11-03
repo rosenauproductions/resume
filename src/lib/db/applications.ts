@@ -1,6 +1,7 @@
 import { and, desc, eq, sql } from "drizzle-orm";
 import { getDb } from "./index";
 import { applications, type ApplicationRow } from "./schema";
+import { addToTrash, backupBeforeReplace } from "./app-backups";
 import {
   createEmptyJob,
   isJobStatus,
@@ -153,11 +154,25 @@ export async function updateApplication(
 export async function deleteApplication(id: string): Promise<boolean> {
   const db = getDb();
   const deleted = await db.delete(applications).where(eq(applications.id, id)).returning();
+  if (deleted[0]) {
+    try {
+      await addToTrash(rowToJob(deleted[0]));
+    } catch (error) {
+      console.error("pipeline trash write failed", error);
+    }
+  }
   return deleted.length > 0;
 }
 
-export async function replaceAllApplications(jobs: JobApplication[]): Promise<number> {
+export async function replaceAllApplications(
+  jobs: JobApplication[],
+  opts: { skipBackup?: boolean } = {},
+): Promise<number> {
   const db = getDb();
+  if (!opts.skipBackup) {
+    // Safety net: never wipe the table without a copy to restore from.
+    await backupBeforeReplace(await listApplications(), jobs);
+  }
   await db.delete(applications);
   if (!jobs.length) return 0;
   const rows = jobs.map((job) => {
