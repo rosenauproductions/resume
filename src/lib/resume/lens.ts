@@ -60,7 +60,7 @@ export function buildAiResumeContent(mediaBase?: ResumeContent): ResumeContent {
     paragraphs: [
       "My main platform is this site and its job Pipeline: a Next.js/TypeScript app on Vercel with a Neon Postgres database. It runs a database-backed resume CMS with three audience views, a job tracker with LLM extraction of job postings, tool-calling chat assistants, web push notifications, nightly backups with a restore screen, and an hourly autonomous agent that triages my email and updates the tracker through its API.",
       "I work as an AI-directed engineer: I write the spec, design the data model and the guardrails, direct Claude through implementation, then review, test, deploy, and fix it in production. When a bulk import wiped my job tracker, I traced the cause, rebuilt the data from email records, and shipped automatic snapshots, undelete, and confirmation gates so it can't happen silently again.",
-      "Other builds include ID Assist (an instructional-design compiler with a live AI tutor), StepBot (an embeddable Canvas help bot), FamilyFlow (a touch wall calendar for families), Light Cycle Arena (a 3D game built by two AI coding agents under my direction), Hinterviewer-X, Pistomp-Mobile, and multiplayer party games. Before that came Canvas/AWS delivery engineering at Higher Ed Partners and Medical Sales College and 20 years of media production. I'm open to AI application developer, full-stack, and learning-technology developer roles.",
+      "Other builds include ID Assist (an instructional-design compiler with a live AI tutor), StepBot (an embeddable Canvas help bot), FamilyFlow (a touch wall calendar for families), Null Arena (a 3D game built by two AI coding agents under my direction), Hinterviewer-X, Pistomp-Mobile, and multiplayer party games. Before that came Canvas/AWS delivery engineering at Higher Ed Partners and Medical Sales College and 20 years of media production. I'm open to AI application developer, full-stack, and learning-technology developer roles.",
     ],
   };
 
@@ -194,7 +194,7 @@ export function buildAiResumeContent(mediaBase?: ResumeContent): ResumeContent {
     {
       id: newId("proj"),
       enabled: true,
-      title: "Light Cycle Arena",
+      title: "Null Arena",
       summary:
         "Original 3D racing & combat game (C++17/SDL2/OpenGL on Batocera Linux, 1–6 player split-screen, Wii-remote tilt steering). Directed two AI coding agents (cloud + desktop, Git-tracked): wrote the specs, reviewed every change from screenshots, ran beta/stable releases. Includes a phone-as-controller web companion and a three.js cockpit.",
       href: "https://github.com/rosenauproductions",
@@ -391,10 +391,10 @@ export function buildAiResumeContent(mediaBase?: ResumeContent): ResumeContent {
         summary: "Turning a product idea into specs, directing AI coding agents, reviewing their output, and shipping and maintaining the result.",
         matches: [
           {
-            role: "Light Cycle Arena",
+            role: "Null Arena",
             company: "Side project",
             proof: "Two AI coding agents under my direction — specs, screenshot review of every change, beta/stable releases.",
-            projectId: byTitle("Light Cycle Arena")?.id,
+            projectId: byTitle("Null Arena")?.id,
           },
           {
             role: "Resume Platform + Job Pipeline",
@@ -713,7 +713,7 @@ export function buildUiResumeContent(mediaBase?: ResumeContent): ResumeContent {
     {
       id: newId("proj"),
       enabled: true,
-      title: "Light Cycle Arena",
+      title: "Null Arena",
       summary:
         "Original Tron-inspired racing & combat game for a home console (Batocera Linux, C++17/SDL2/OpenGL), 1–6 player split-screen with Wii-remote tilt steering. Directed two AI coding agents (cloud + desktop, Git-tracked) to build it — wrote the specs, reviewed every visual change from screenshots, and ran separate beta/stable releases. Built a five-level story campaign, a phone-as-controller web companion, and a 3D cockpit (three.js) with lock-on targeting, plus the full 3D asset pipeline, textures, interface art, and audio.",
       href: "https://github.com/rosenauproductions",
@@ -853,10 +853,10 @@ export function buildUiResumeContent(mediaBase?: ResumeContent): ResumeContent {
             projectId: byTitle("ProPricer Brand & Print")?.id,
           },
           {
-            role: "Light Cycle Arena",
+            role: "Null Arena",
             company: "Side project",
             proof: "Reviewed every visual change from screenshots before approving it into the build.",
-            projectId: byTitle("Light Cycle Arena")?.id,
+            projectId: byTitle("Null Arena")?.id,
           },
         ],
       },
@@ -873,10 +873,10 @@ export function buildUiResumeContent(mediaBase?: ResumeContent): ResumeContent {
             proof: "Ran scripts through Claude, ChatGPT, and Grok, evaluating outputs for clarity, pacing, and visual hierarchy.",
           },
           {
-            role: "Light Cycle Arena",
+            role: "Null Arena",
             company: "Side project",
             proof: "Directed two AI coding agents with written specs and a screenshot-review workflow, controlling beta vs. stable releases.",
-            projectId: byTitle("Light Cycle Arena")?.id,
+            projectId: byTitle("Null Arena")?.id,
           },
           {
             role: "Resume site + Pipeline",
@@ -900,10 +900,10 @@ export function buildUiResumeContent(mediaBase?: ResumeContent): ResumeContent {
             projectId: byTitle("ProPricer Brand & Print")?.id,
           },
           {
-            role: "Light Cycle Arena",
+            role: "Null Arena",
             company: "Side project",
             proof: "Interface art and HUD layout for a 3D cockpit and multi-device control UI.",
-            projectId: byTitle("Light Cycle Arena")?.id,
+            projectId: byTitle("Null Arena")?.id,
           },
         ],
       },
@@ -934,10 +934,10 @@ export function buildUiResumeContent(mediaBase?: ResumeContent): ResumeContent {
         summary: "Interfaces for real products — web apps, game UI, and multi-device control surfaces.",
         matches: [
           {
-            role: "Light Cycle Arena",
+            role: "Null Arena",
             company: "Side project",
             proof: "3D cockpit UI with lock-on targeting and a phone-as-controller companion interface.",
-            projectId: byTitle("Light Cycle Arena")?.id,
+            projectId: byTitle("Null Arena")?.id,
           },
           {
             role: "Party games — Family Feud & The 1% Club",
@@ -1021,7 +1021,7 @@ export function buildUiResumeContent(mediaBase?: ResumeContent): ResumeContent {
       {
         id: newId("case"),
         enabled: true,
-        title: "Light Cycle Arena — directed AI build",
+        title: "Null Arena — directed AI build",
         detail:
           "Directed two AI coding agents (cloud + desktop) to build an original 3D game — wrote specs, reviewed every visual change from screenshots, and controlled beta vs. stable releases.",
         tag: "AI-directed · 3D UI",
@@ -1332,7 +1332,7 @@ function repairAiLensContent(ai: ResumeContent, media: ResumeContent): ResumeCon
   };
 }
 
-/** Patch live UI CMS docs: ensure Light Cycle Arena + fit needs exist. */
+/** Patch live UI CMS docs: ensure Null Arena + fit needs exist. */
 function repairUiLensContent(ui: ResumeContent, media: ResumeContent): ResumeContent {
   const seeded = buildUiResumeContent(media);
 
@@ -1345,8 +1345,8 @@ function repairUiLensContent(ui: ResumeContent, media: ResumeContent): ResumeCon
   const projects =
     extraProjects.length > 0
       ? (() => {
-          const lca = extraProjects.filter((p) => p.title === "Light Cycle Arena");
-          const rest = extraProjects.filter((p) => p.title !== "Light Cycle Arena");
+          const lca = extraProjects.filter((p) => p.title === "Null Arena");
+          const rest = extraProjects.filter((p) => p.title !== "Null Arena");
           const base = [...ui.sideProjects.projects];
           if (lca.length) base.splice(0, 0, ...lca);
           return [...base, ...rest];
@@ -1379,7 +1379,7 @@ export function normalizeResumeDocument(raw: unknown): ResumeDocument {
         ai = syncSharedIdentity(media, buildAiResumeContent(media));
       }
     }
-    ai = dropRetiredProjects(repairAiLensContent(syncSharedIdentity(media, ai), media));
+    ai = dropRetiredProjects(repairAiLensContent(syncSharedIdentity(media, applyProjectRenames(ai)), media));
 
     let ui = normalizeResumeContent(lenses.ui ?? fallback.lenses.ui);
     if (!lenses.ui || (ui.site.title === media.site.title && ui.theme === media.theme)) {
@@ -1387,7 +1387,7 @@ export function normalizeResumeDocument(raw: unknown): ResumeDocument {
         ui = syncSharedIdentity(media, buildUiResumeContent(media));
       }
     }
-    ui = dropRetiredProjects(repairUiLensContent(syncSharedIdentity(media, ui), media));
+    ui = dropRetiredProjects(repairUiLensContent(syncSharedIdentity(media, applyProjectRenames(ui)), media));
 
     const mediaRepaired = repairMediaSideProjects(media);
     return {
@@ -1435,8 +1435,23 @@ function dropRetiredProjects(content: ResumeContent): ResumeContent {
   };
 }
 
+/** Project renames applied to stored docs on read (old name → new name). */
+const RENAMED_PROJECTS: [string, string][] = [["Light Cycle Arena", "Null Arena"]];
+
+function applyProjectRenames(content: ResumeContent): ResumeContent {
+  let json = JSON.stringify(content);
+  let changed = false;
+  for (const [from, to] of RENAMED_PROJECTS) {
+    if (json.includes(from)) {
+      json = json.split(from).join(to);
+      changed = true;
+    }
+  }
+  return changed ? (JSON.parse(json) as ResumeContent) : content;
+}
+
 function repairMediaSideProjects(media: ResumeContent): ResumeContent {
-  return dropRetiredProjects(media);
+  return dropRetiredProjects(applyProjectRenames(media));
 }
 
 /** After editing one lens, keep contact/portraits aligned across both. */

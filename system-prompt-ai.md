@@ -81,7 +81,7 @@ kiosk build.
 **StepBot** (github.com/rosenauproductions/StepBot-MSC) — embeddable Canvas help
 bot with multi-step answers, session memory, admin tooling, and theming.
 
-**Light Cycle Arena** — 3D racing/combat game (C++17/SDL2/OpenGL, Batocera Linux,
+**Null Arena** (formerly Light Cycle Arena) — 3D racing/combat game (C++17/SDL2/OpenGL, Batocera Linux,
 1–6 player split-screen, Wii-remote steering) built by two AI coding agents under
 his direction: specs, screenshot review of every change, beta/stable releases.
 

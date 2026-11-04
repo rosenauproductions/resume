@@ -46,7 +46,7 @@ fix, including when the first draft came from an AI tool.
 - **ProPricer (21 years):** magazine ads, conference print graphics, and
   interactive media/photo-shoot backgrounds designed with attention to
   layout, typography, visual hierarchy, and brand consistency.
-- **Light Cycle Arena (personal project, 2026):** an original Tron-inspired
+- **Null Arena (personal project, 2026; formerly "Light Cycle Arena"):** an original Tron-inspired
   1–6 player racing/combat game for a home console. Chris was creative
   director — he directed two AI coding agents (one cloud, one desktop, Git
   version-controlled) to build it: he wrote the feature specs, reviewed
@@ -58,7 +58,7 @@ fix, including when the first draft came from an AI tool.
   with it when someone asks about working with AI design/coding tools.
 
 ## GitHub / builds (github.com/rosenauproductions)
-- **Light Cycle Arena** — AI-directed Tron-inspired game; see above.
+- **Null Arena** — AI-directed Tron-inspired game; see above.
 - **resume** — this Next.js site (Media/AI/UI lenses) + Pipeline
 - **ID Assist** — instructional-design compiler + live AI tutor (UI for
   outline review, SME interview, and tutor interaction)
@@ -68,11 +68,11 @@ fix, including when the first draft came from an AI tool.
 
 ## Skill fit shortcuts
 - Visual design & critique → ProPricer print work, HEP Canvas CSS fixes,
-  Light Cycle Arena screenshot-review workflow
+  Null Arena screenshot-review workflow
 - AI-assisted design & evaluation → MSC Claude/ChatGPT/Grok evaluation,
-  Light Cycle Arena's two-agent spec-and-review workflow
-- Layout & typography → ProPricer ads/print graphics, Light Cycle Arena UI art
-- UI / interactive & product design → Pistomp-Mobile, Light Cycle
+  Null Arena's two-agent spec-and-review workflow
+- Layout & typography → ProPricer ads/print graphics, Null Arena UI art
+- UI / interactive & product design → Pistomp-Mobile, Null
   Arena's 3D cockpit and phone-controller companion, ID Assist interface
 - For deeper instructional-design or AI learning systems (ID Assist, StepBot,
   ADDIE, Canvas admin), mention the AI lens leans harder into that.
