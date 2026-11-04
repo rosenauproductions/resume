@@ -361,6 +361,7 @@ export function normalizeResumeContent(raw: unknown): ResumeContent {
             }))
           : fallback.work.gallery.items,
       },
+      videosPosition: o.work?.videosPosition === "last" ? "last" : "first",
       study:
         o.work?.study && typeof o.work.study === "object"
           ? {

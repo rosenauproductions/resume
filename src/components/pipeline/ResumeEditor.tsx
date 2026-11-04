@@ -383,6 +383,17 @@ function WorkEditor({
         <Text label="Heading" value={work.heading} onChange={(v) => onChange({ ...work, heading: v })} />
         <Text label="Note" value={work.note} onChange={(v) => onChange({ ...work, note: v })} />
       </div>
+      <Label>
+        Videos position
+        <select
+          className={fieldClass}
+          value={work.videosPosition ?? "first"}
+          onChange={(e) => onChange({ ...work, videosPosition: e.target.value as "first" | "last" })}
+        >
+          <option value="first">Before the gallery (default)</option>
+          <option value="last">After the gallery, case study and cases</option>
+        </select>
+      </Label>
       <p className="text-xs uppercase tracking-wider text-[var(--muted)]">Featured</p>
       {work.featured.map((f, i) => (
         <NestedCard

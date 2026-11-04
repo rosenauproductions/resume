@@ -118,6 +118,8 @@ Key files:
 
 ## Status log (most recent first)
 
+**2026-11-04 — UI lens leads with FamilyFlow.** Hero tagline and CTA ("View FamilyFlow UI" → `#visual-learning`), the FamilyFlow paragraph moved to the top of About, Work renamed "FamilyFlow & visual work". New `work.videosPosition` ("first" | "last", editable in the CMS): the UI lens puts videos last under a "Motion & video" heading, with only the portfolio reel on. Media and AI lenses are unchanged.
+
 **2026-11-04 — FamilyFlow added to the UI lens (from the FamilyFlow session's asset report).** 9 demo-household screenshots in `public/images/familyflow/` (6 enabled in the UI gallery, 3 off but editable in the CMS); FamilyFlow is the first UI project card; the "Kid Desktop" case study is enabled; new UI role-fit needs `multi-device` and `design-systems`, plus FamilyFlow proofs on four existing needs; UI skills and About updated; `system-prompt-ui.md` covers FamilyFlow (no usage numbers, no art-authorship claims, TV apps "built"). AI-lens FamilyFlow card now links www.ashurose.com (product page; the app itself opens to sign-in). Needs a reseed after deploy.
 
 **2026-11-04 — Games added to the AI lens.** New cards: Belt Command (playable at belt-command.vercel.app; the only tracked game site), Iron Harbor (private, no link), and "Arcade-box game collection" (Vector Strike [personal project; uses personal-use-licensed models, never link], Fractal Rescue, Dead Center, Jump 'n Bump mod). Game GitHub links are deliberately omitted (Chris may make iron-harbor, belt-command and vector-strike private). Untracked console-only games removed from `visit-sites.ts`. Flow chart gets a `beltcmd` node. Needs a reseed after deploy so the new cards keep their order.

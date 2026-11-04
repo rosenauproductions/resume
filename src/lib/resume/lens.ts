@@ -660,16 +660,16 @@ export function buildUiResumeContent(mediaBase?: ResumeContent): ResumeContent {
     title: "Visual & UI Design Specialist",
     subtitle: "Layout \u00b7 Typography \u00b7 Visual Hierarchy \u00b7 AI-Assisted Design",
     tagline:
-      "I design and evaluate visual interfaces \u2014 layout, typography, motion, and AI-assisted outputs \u2014 judging what works and fixing what doesn\u2019t.",
+      "I design and ship multi-device product interfaces \u2014 most recently FamilyFlow, a live family hub for wall, phone, and desktop \u2014 and judge visual work, including AI-assisted output, against a professional standard.",
   };
 
   ui.about = {
     heading: "About",
     lead: "Visual design and multimedia specialist with 20+ years of experience creating learning interfaces, motion graphics, presentation assets, marketing visuals, and interactive course content. Skilled at evaluating layout, typography, visual hierarchy, user flow, accessibility, and production quality across AI-assisted and traditional design workflows.",
     paragraphs: [
+      "My strongest current UI work is FamilyFlow, a live family hub I designed for four kinds of screen \u2014 a 16:9 wall TV or tablet, parent and kid phones, a dense keyboard-first desktop, and a kid\u2019s own computer \u2014 plus printable paper charts. I set the visual system (five color themes in light and dark, 48px touch targets, an adjustable UI scale), designed the snap-grid layout editor, and directed AI coding agents from mockup to production, reviewing screenshots before each merge.",
       "At Medical Sales College and Higher Ed Partners I moved past just producing media \u2014 I critiqued and refined it. I ran learning video and course visuals through Claude, ChatGPT, and Grok, then evaluated what came back against a professional standard: clarity, pacing, visual hierarchy, and fit to the brief, not just whether it technically worked.",
       "I\u2019ve spent two decades solving visual problems other people can see are wrong but can\u2019t always name \u2014 content overflow and cutoff in embedded Canvas course windows, broken layout and spacing, a confusing user flow through a module, ad and print layouts that need a clearer hierarchy. Fixing those is CSS and production work as much as it is design judgment.",
-      "My strongest current UI work is FamilyFlow, a live family hub I designed for four kinds of screen \u2014 a 16:9 wall TV or tablet, parent and kid phones, a dense keyboard-first desktop, and a kid\u2019s own computer \u2014 plus printable paper charts. I set the visual system (five color themes in light and dark, 48px touch targets, an adjustable UI scale), designed the snap-grid layout editor, and directed AI coding agents from mockup to production, reviewing screenshots before each merge.",
       "Most recently I directed two AI coding agents to build an original 3D game from scratch \u2014 writing the specs, reviewing every visual change from screenshots, and signing off on art, interface, and motion before anything shipped. That\u2019s the same skill set as evaluating AI-generated design work: knowing what\u2019s right, naming what\u2019s wrong, and directing the fix.",
     ],
   };
@@ -1214,8 +1214,10 @@ export function buildUiResumeContent(mediaBase?: ResumeContent): ResumeContent {
       outcome:
         "In production for the family that asked for it: a kid’s computer now has its own screen built for its size instead of a stretched phone layout.",
     },
-    heading: "Selected visual work",
-    note: "Interfaces, motion, and print/digital design — proof of visual judgment across formats.",
+    heading: "FamilyFlow & visual work",
+    note: "Product UI first, then print, LMS and motion work — proof of visual judgment across formats.",
+    videosPosition: "last",
+    featured: ui.work.featured.map((f) => ({ ...f, enabled: /reel/i.test(f.label) })),
     cases: [
       {
         id: newId("case"),

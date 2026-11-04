@@ -197,6 +197,8 @@ export type ResumeContent = {
       items: WorkVisual[];
     };
     study: WorkStudy;
+    /** Where the featured videos sit in the Work section: before (default) or after the gallery/case study. */
+    videosPosition?: "first" | "last";
   };
   sideProjects: {
     heading: string;

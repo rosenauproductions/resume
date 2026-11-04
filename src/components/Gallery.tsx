@@ -14,6 +14,72 @@ export function Gallery() {
   const visuals = work.gallery.items.filter((v) => v.enabled && v.image);
   const study = work.study.enabled && work.study.title ? work.study : null;
 
+  const videosLast = work.videosPosition === "last";
+  const videosBlock = featured.length ? (
+    <div className={videosLast ? "mt-16" : undefined}>
+      {videosLast ? (
+        <h3 className="font-[family-name:var(--font-display)] text-2xl text-[var(--cream)] sm:text-3xl">
+          Motion &amp; video
+        </h3>
+      ) : null}
+          <div className={`${videosLast ? "mt-6" : "mt-12"} grid gap-6 md:grid-cols-3 print:grid-cols-3`}>
+            {featured.map((item, i) => (
+              <Reveal key={item.id} delay={0.06 + i * 0.04}>
+                <div className="overflow-hidden border border-white/10">
+                  <div className="relative aspect-video bg-black">
+                    {item.kind === "youtube" ? (
+                      <iframe
+                        src={item.embed}
+                        title={item.label}
+                        loading="lazy"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                        allowFullScreen
+                        className="absolute inset-0 h-full w-full"
+                      />
+                    ) : (
+                      <video
+                        src={item.src}
+                        autoPlay={!reduce}
+                        loop
+                        muted
+                        playsInline
+                        controls
+                        preload="metadata"
+                        aria-label={item.label}
+                        className="absolute inset-0 h-full w-full object-cover"
+                      />
+                    )}
+                  </div>
+                  <div className="border-t border-white/10 px-4 py-4">
+                    <h3 className="font-[family-name:var(--font-display)] text-lg text-[var(--cream)]">
+                      {item.label}
+                    </h3>
+                    {item.detail ? (
+                      <p className="mt-1 text-sm text-[var(--muted)]">{item.detail}</p>
+                    ) : null}
+                    {item.tools ? (
+                      <p className="mt-2 text-[11px] uppercase tracking-[0.16em] text-[var(--warm)]">
+                        {item.tools}
+                      </p>
+                    ) : null}
+                    {item.kind === "youtube" && item.href ? (
+                      <a
+                        href={item.href}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="mt-3 inline-block text-sm text-[var(--accent)] transition-colors hover:text-[var(--cream)]"
+                      >
+                        Open on YouTube
+                      </a>
+                    ) : null}
+                  </div>
+                </div>
+              </Reveal>
+            ))}
+          </div>
+    </div>
+  ) : null;
+
   return (
     <section id="work" className="relative pt-2 pb-4 md:pt-2 md:pb-4 lg:pt-2 lg:pb-2">
       <div className="mx-auto max-w-6xl px-6">
@@ -23,61 +89,7 @@ export function Gallery() {
           <p className="mt-4 max-w-2xl text-[var(--muted)]">{work.note}</p>
         </Reveal>
 
-        <div className="mt-12 grid gap-6 md:grid-cols-3 print:grid-cols-3">
-          {featured.map((item, i) => (
-            <Reveal key={item.id} delay={0.06 + i * 0.04}>
-              <div className="overflow-hidden border border-white/10">
-                <div className="relative aspect-video bg-black">
-                  {item.kind === "youtube" ? (
-                    <iframe
-                      src={item.embed}
-                      title={item.label}
-                      loading="lazy"
-                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                      allowFullScreen
-                      className="absolute inset-0 h-full w-full"
-                    />
-                  ) : (
-                    <video
-                      src={item.src}
-                      autoPlay={!reduce}
-                      loop
-                      muted
-                      playsInline
-                      controls
-                      preload="metadata"
-                      aria-label={item.label}
-                      className="absolute inset-0 h-full w-full object-cover"
-                    />
-                  )}
-                </div>
-                <div className="border-t border-white/10 px-4 py-4">
-                  <h3 className="font-[family-name:var(--font-display)] text-lg text-[var(--cream)]">
-                    {item.label}
-                  </h3>
-                  {item.detail ? (
-                    <p className="mt-1 text-sm text-[var(--muted)]">{item.detail}</p>
-                  ) : null}
-                  {item.tools ? (
-                    <p className="mt-2 text-[11px] uppercase tracking-[0.16em] text-[var(--warm)]">
-                      {item.tools}
-                    </p>
-                  ) : null}
-                  {item.kind === "youtube" && item.href ? (
-                    <a
-                      href={item.href}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="mt-3 inline-block text-sm text-[var(--accent)] transition-colors hover:text-[var(--cream)]"
-                    >
-                      Open on YouTube
-                    </a>
-                  ) : null}
-                </div>
-              </div>
-            </Reveal>
-          ))}
-        </div>
+        {videosLast ? null : videosBlock}
 
         {visuals.length ? (
           <div id="visual-learning" className="mt-16 scroll-mt-24">
@@ -174,6 +186,8 @@ export function Gallery() {
             </Reveal>
           ))}
         </div>
+
+        {videosLast ? videosBlock : null}
       </div>
     </section>
   );
