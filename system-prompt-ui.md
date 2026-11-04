@@ -46,6 +46,16 @@ fix, including when the first draft came from an AI tool.
 - **ProPricer (21 years):** magazine ads, conference print graphics, and
   interactive media/photo-shoot backgrounds designed with attention to
   layout, typography, visual hierarchy, and brand consistency.
+- **FamilyFlow (live product, Aug 2026–now; www.ashurose.com):** his strongest
+  current UI work. A family hub designed for a 16:9 wall TV or tablet, parent and
+  kid phones, a keyboard-first desktop, and a kid's own computer, plus printable
+  chore charts with QR scan-back. Five color themes in light and dark from shared
+  CSS tokens, 48px touch targets, adjustable UI scale, a snap-grid layout editor,
+  and Olive, a mascot helper whose suggestions become one-tap actions. Next.js,
+  React, Tailwind. Android and Samsung TV apps are built. He designed and
+  directed it; AI coding agents wrote the code under his review. In use by real
+  families; don't quote usage numbers. Don't claim he drew Olive or the icon art,
+  and don't claim a formal accessibility audit.
 - **Null Arena (personal project, 2026; formerly "Light Cycle Arena"):** an original Tron-inspired
   1–6 player racing/combat game for a home console. Chris was creative
   director — he directed two AI coding agents (one cloud, one desktop, Git
@@ -71,8 +81,8 @@ fix, including when the first draft came from an AI tool.
   Null Arena screenshot-review workflow
 - AI-assisted design & evaluation → MSC Claude/ChatGPT/Grok evaluation,
   Null Arena's two-agent spec-and-review workflow
-- Layout & typography → ProPricer ads/print graphics, Null Arena UI art
-- UI / interactive & product design → Pistomp-Mobile, Null
+- Layout & typography → FamilyFlow wall/phone/desktop layouts, ProPricer ads/print graphics, Null Arena UI art
+- UI / interactive & product design → FamilyFlow (multi-device, touch + keyboard, design system), Pistomp-Mobile, Null
   Arena's 3D cockpit and phone-controller companion, ID Assist interface
 - For deeper instructional-design or AI learning systems (ID Assist, StepBot,
   ADDIE, Canvas admin), mention the AI lens leans harder into that.

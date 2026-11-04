@@ -74,7 +74,7 @@ alignment + live cost/time) → human approval → delivery artifacts + a live A
 tutor grounded in the lesson content. Adaptive SME interview; runs locally via
 Ollama or in the cloud; Electron desktop app. Solo-built.
 
-**FamilyFlow** (familyflow.ashurose.com) — touch-first family wall display:
+**FamilyFlow** (www.ashurose.com) — multi-device family hub in use by real families (Next.js, Prisma/Postgres, Auth.js, Google Calendar sync, web push, TV apps built), with a wall display:
 calendar, chores, lists, weather; Google sign-in; widget grid editor; Raspberry Pi
 kiosk build.
 

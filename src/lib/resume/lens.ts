@@ -60,7 +60,7 @@ export function buildAiResumeContent(mediaBase?: ResumeContent): ResumeContent {
     paragraphs: [
       "My main platform is this site and its job Pipeline: a Next.js/TypeScript app on Vercel with a Neon Postgres database. It runs a database-backed resume CMS with three audience views, a job tracker with LLM extraction of job postings, tool-calling chat assistants, web push notifications, nightly backups with a restore screen, and an hourly autonomous agent that triages my email and updates the tracker through its API.",
       "I work as an AI-directed engineer: I write the spec, design the data model and the guardrails, direct Claude through implementation, then review, test, deploy, and fix it in production. When a bulk import wiped my job tracker, I traced the cause, rebuilt the data from email records, and shipped automatic snapshots, undelete, and confirmation gates so it can't happen silently again.",
-      "Other builds include ID Assist (an instructional-design compiler with a live AI tutor), StepBot (an embeddable Canvas help bot), FamilyFlow (a touch wall calendar for families), Null Arena and Belt Command (games built by AI coding agents under my direction, one playable in the browser), Hinterviewer-X, Pistomp-Mobile, and multiplayer party games. Before that came Canvas/AWS delivery engineering at Higher Ed Partners and Medical Sales College and 20 years of media production. I'm open to AI application developer, full-stack, and learning-technology developer roles.",
+      "Other builds include ID Assist (an instructional-design compiler with a live AI tutor), StepBot (an embeddable Canvas help bot), FamilyFlow (a multi-device family hub in use by real families), Null Arena and Belt Command (games built by AI coding agents under my direction, one playable in the browser), Hinterviewer-X, Pistomp-Mobile, and multiplayer party games. Before that came Canvas/AWS delivery engineering at Higher Ed Partners and Medical Sales College and 20 years of media production. I'm open to AI application developer, full-stack, and learning-technology developer roles.",
     ],
   };
 
@@ -176,10 +176,10 @@ export function buildAiResumeContent(mediaBase?: ResumeContent): ResumeContent {
       enabled: true,
       title: "FamilyFlow",
       summary:
-        "Touch-first family wall display — calendar, chores, lists, and weather on one screen, with Google sign-in and a segmented widget grid with an editor. Runs on a Raspberry Pi kiosk build that boots straight to the wall view.",
-      href: "https://familyflow.ashurose.com",
-      linkLabel: "Live site",
-      tags: ["Deployed", "Full-stack", "Google OAuth", "Kiosk / Pi"],
+        "Family hub in use by real families: wall TV/tablet, phone, desktop and kid-desktop views over one Postgres data model (Next.js 16, React 19, Prisma, Auth.js with Google sign-in plus kid/adult codes, Vercel). Google Calendar sync, web push, device approval, printable charts with QR scan-back, a snap-grid layout editor, and built Android and Samsung TV apps. 386 commits in three months.",
+      href: "https://www.ashurose.com",
+      linkLabel: "Product page",
+      tags: ["Deployed · real families", "Full-stack", "Prisma / Postgres", "Multi-device"],
     },
     {
       id: newId("proj"),
@@ -396,7 +396,7 @@ export function buildAiResumeContent(mediaBase?: ResumeContent): ResumeContent {
           {
             role: "FamilyFlow",
             company: "Side project",
-            proof: "Deployed family wall display with Google sign-in, widget grid editor, and a Pi kiosk build.",
+            proof: "Live multi-device family hub: Next.js + Prisma/Postgres, Auth.js, Google Calendar sync, web push, TV apps.",
             projectId: byTitle("FamilyFlow")?.id,
           },
           {
@@ -669,6 +669,7 @@ export function buildUiResumeContent(mediaBase?: ResumeContent): ResumeContent {
     paragraphs: [
       "At Medical Sales College and Higher Ed Partners I moved past just producing media \u2014 I critiqued and refined it. I ran learning video and course visuals through Claude, ChatGPT, and Grok, then evaluated what came back against a professional standard: clarity, pacing, visual hierarchy, and fit to the brief, not just whether it technically worked.",
       "I\u2019ve spent two decades solving visual problems other people can see are wrong but can\u2019t always name \u2014 content overflow and cutoff in embedded Canvas course windows, broken layout and spacing, a confusing user flow through a module, ad and print layouts that need a clearer hierarchy. Fixing those is CSS and production work as much as it is design judgment.",
+      "My strongest current UI work is FamilyFlow, a live family hub I designed for four kinds of screen \u2014 a 16:9 wall TV or tablet, parent and kid phones, a dense keyboard-first desktop, and a kid\u2019s own computer \u2014 plus printable paper charts. I set the visual system (five color themes in light and dark, 48px touch targets, an adjustable UI scale), designed the snap-grid layout editor, and directed AI coding agents from mockup to production, reviewing screenshots before each merge.",
       "Most recently I directed two AI coding agents to build an original 3D game from scratch \u2014 writing the specs, reviewing every visual change from screenshots, and signing off on art, interface, and motion before anything shipped. That\u2019s the same skill set as evaluating AI-generated design work: knowing what\u2019s right, naming what\u2019s wrong, and directing the fix.",
     ],
   };
@@ -755,6 +756,16 @@ export function buildUiResumeContent(mediaBase?: ResumeContent): ResumeContent {
     {
       id: newId("proj"),
       enabled: true,
+      title: "FamilyFlow",
+      summary:
+        "Live family hub designed for every screen: a 16:9 wall TV or tablet, parent and kid phones, a keyboard-first desktop, and a kid’s own computer. Touch-first with 48px targets and adjustable UI scale; a snap-grid layout editor; five color themes in light and dark; printable chore charts with QR scan-back; Olive, a mascot helper whose suggestions become one-tap actions. Designed and directed, built with AI coding agents.",
+      href: "https://www.ashurose.com",
+      linkLabel: "Product page",
+      tags: ["Deployed · real families", "UI/UX design", "Multi-device", "AI-directed build"],
+    },
+    {
+      id: newId("proj"),
+      enabled: true,
       title: "Null Arena",
       summary:
         "Original Tron-inspired racing & combat game for a home console (Batocera Linux, C++17/SDL2/OpenGL), 1–6 player split-screen with Wii-remote tilt steering. Directed two AI coding agents (cloud + desktop, Git-tracked) to build it — wrote the specs, reviewed every visual change from screenshots, and ran separate beta/stable releases. Built a five-level story campaign, a phone-as-controller web companion, and a 3D cockpit (three.js) with lock-on targeting, plus the full 3D asset pipeline, textures, interface art, and audio.",
@@ -822,13 +833,13 @@ export function buildUiResumeContent(mediaBase?: ResumeContent): ResumeContent {
 
   ui.skills = {
     heading: "Visual design & tools",
-    top: ["Layout & Typography", "Visual Hierarchy", "CSS / iframe UX", "AI Design Critique", "User Flow & Interfaces"],
+    top: ["Layout & Typography", "Visual Hierarchy", "Multi-device UI", "Design Systems", "AI Design Critique", "User Flow & Interfaces"],
     groups: [
       {
         id: newId("sg"),
         enabled: true,
         label: "Visual / UI Design",
-        items: ["Layout & composition", "Typography", "Visual hierarchy", "Brand consistency", "Accessibility"],
+        items: ["Layout & composition", "Typography", "Visual hierarchy", "Design tokens & theming", "Multi-device layout", "Brand consistency"],
       },
       {
         id: newId("sg"),
@@ -852,7 +863,7 @@ export function buildUiResumeContent(mediaBase?: ResumeContent): ResumeContent {
         id: newId("sg"),
         enabled: true,
         label: "Web & interactive",
-        items: ["CSS", "JavaScript", "HTML", "Canvas embedding", "User flow"],
+        items: ["CSS / Tailwind", "React / Next.js", "Touch & keyboard UX", "Print CSS", "Canvas embedding", "User flow"],
       },
     ],
     also: {
@@ -884,6 +895,12 @@ export function buildUiResumeContent(mediaBase?: ResumeContent): ResumeContent {
         summary: "Evaluating interfaces, layouts, and AI-assisted visual output against a professional standard.",
         matches: [
           {
+            role: "FamilyFlow",
+            company: "Side project",
+            proof: "Chose a calm warm-neutral palette with one color per family member, so a wall reads at a glance.",
+            projectId: byTitle("FamilyFlow")?.id,
+          },
+          {
             role: "Multimedia Director & Visual / UX Design",
             company: "Higher Ed Partners",
             proof: "CSS fixes for iframe rendering, content display, and learner UX friction across embedded course experiences.",
@@ -910,6 +927,12 @@ export function buildUiResumeContent(mediaBase?: ResumeContent): ResumeContent {
         summary: "Directing AI tools and judging what they produce — not just prompting them.",
         matches: [
           {
+            role: "FamilyFlow",
+            company: "Side project",
+            proof: "Directed Claude coding agents from mockup to production, reviewing screenshots and requesting changes before each merge.",
+            projectId: byTitle("FamilyFlow")?.id,
+          },
+          {
             role: "Instructional Design Specialist (Media)",
             company: "Medical Sales College",
             proof: "Ran scripts through Claude, ChatGPT, and Grok, evaluating outputs for clarity, pacing, and visual hierarchy.",
@@ -935,6 +958,12 @@ export function buildUiResumeContent(mediaBase?: ResumeContent): ResumeContent {
         strength: "Expert",
         summary: "Print, digital, and interface layout — hierarchy, spacing, and typographic consistency.",
         matches: [
+          {
+            role: "FamilyFlow",
+            company: "Side project",
+            proof: "One 16:9 wall layout that turns into phone stacks and dense desktop tables.",
+            projectId: byTitle("FamilyFlow")?.id,
+          },
           {
             role: "ProPricer Brand & Print",
             company: "Side project",
@@ -976,6 +1005,12 @@ export function buildUiResumeContent(mediaBase?: ResumeContent): ResumeContent {
         summary: "Interfaces for real products — web apps, game UI, and multi-device control surfaces.",
         matches: [
           {
+            role: "FamilyFlow",
+            company: "Side project",
+            proof: "Touch-first flows with 48px targets, auto-submitting PINs, and one-tap actions offered by a mascot helper.",
+            projectId: byTitle("FamilyFlow")?.id,
+          },
+          {
             role: "Null Arena",
             company: "Side project",
             proof: "3D cockpit UI with lock-on targeting and a phone-as-controller companion interface.",
@@ -992,6 +1027,42 @@ export function buildUiResumeContent(mediaBase?: ResumeContent): ResumeContent {
             company: "Side project",
             proof: "Mobile UI for pedalboard control, A/B snapshots, and per-effect parameters.",
             projectId: byTitle("Pistomp-Mobile")?.id,
+          },
+        ],
+      },
+      {
+        id: "multi-device",
+        enabled: true,
+        label: "Responsive / multi-device design",
+        strength: "Strong",
+        summary: "Designing one product for TV, tablet, phone, desktop and paper, each layout built for its screen, not stretched to fit.",
+        matches: [
+          {
+            role: "FamilyFlow",
+            company: "Side project",
+            proof: "Wall/TV, tablet, phone, desktop and kid-desktop views, plus printable charts; Android and Samsung TV apps built.",
+            projectId: byTitle("FamilyFlow")?.id,
+          },
+        ],
+      },
+      {
+        id: "design-systems",
+        enabled: true,
+        label: "Design systems & theming",
+        strength: "Strong",
+        summary: "Shared tokens, themes and scale rules that keep many screens consistent.",
+        matches: [
+          {
+            role: "FamilyFlow",
+            company: "Side project",
+            proof: "Five color themes in light and dark from shared CSS tokens, with a device-level UI scale.",
+            projectId: byTitle("FamilyFlow")?.id,
+          },
+          {
+            role: "ProPricer Brand & Print",
+            company: "Side project",
+            proof: "Consistent layout, typography and brand hierarchy across ads, conference graphics and print.",
+            projectId: byTitle("ProPricer Brand & Print")?.id,
           },
         ],
       },
@@ -1039,11 +1110,121 @@ export function buildUiResumeContent(mediaBase?: ResumeContent): ResumeContent {
 
   ui.work = {
     ...ui.work,
-    gallery: { ...ui.work.gallery, items: [] },
-    study: { ...ui.work.study, enabled: false },
+    gallery: {
+      heading: "FamilyFlow: one product, every screen",
+      note: "Screens from FamilyFlow’s demo household (no real family data). Designed and directed by me, built with AI coding agents.",
+      items: [
+        {
+          id: newId("vis"),
+          enabled: true,
+          title: "Wall display (16:9)",
+          tag: "Wall / TV",
+          caption: "A kitchen TV or tablet that reads from across the room: flip clock, illustrated weather, school notes, a color-coded week and each kid’s chores, with large touch targets.",
+          image: "/images/familyflow/01-wall-tv.png",
+          alt: "FamilyFlow wall display with a flip clock, weather card, notes, a color-coded weekly calendar and a chores checklist.",
+        },
+        {
+          id: newId("vis"),
+          enabled: true,
+          title: "Parent phone, kid phone, Olive",
+          tag: "Phone",
+          caption: "Same data, three jobs: the parent phone stacks the wall’s widgets, the kid phone shows one encouraging progress ring, and Olive turns a suggestion into a one-tap action.",
+          image: "/images/familyflow/02-phone-parent-kid-olive.png",
+          alt: "Three phone screens: a parent widget stack, a kid chore progress ring at 2 of 5, and the Olive helper offering a one-tap high five.",
+        },
+        {
+          id: newId("vis"),
+          enabled: true,
+          title: "Desktop: chores & jobs",
+          tag: "Desktop",
+          caption: "A dense, keyboard-first table for parents at a computer: filters, status pills, and shortcuts shown inline (J/K to move, X to check off).",
+          image: "/images/familyflow/03-desktop-chores.png",
+          alt: "Desktop table of chores and jobs with who, type, schedule, reward and status pills, plus filter chips and keyboard hints.",
+        },
+        {
+          id: newId("vis"),
+          enabled: true,
+          title: "Kid Desktop: chores first, then homework",
+          tag: "Kid desktop",
+          caption: "Built from a parent’s request: a kid’s own computer view that orders the day chores first, homework second, with a points-and-money ring.",
+          image: "/images/familyflow/05-kid-desktop-today.png",
+          alt: "A kid’s desktop Today screen with a chore checklist, a My day ring at 2 of 4, a homework card and today’s events.",
+        },
+        {
+          id: newId("vis"),
+          enabled: true,
+          title: "Layout editor",
+          tag: "Design tool",
+          caption: "Parents arrange the wall’s widgets on a snap grid, then switch between Wall, Parent phone and Kid phone layouts.",
+          image: "/images/familyflow/07-layout-editor.png",
+          alt: "Settings layout editor with clock, weather, calendar and chores tiles on a 16 by 9 grid and a tab-bar preview.",
+        },
+        {
+          id: newId("vis"),
+          enabled: true,
+          title: "Printable chore chart",
+          tag: "Print",
+          caption: "A paper version for kids who aren’t on a screen: a picture per chore, a stars strip, a grown-up sign-off, and a QR code to check chores off from the filled-in chart.",
+          image: "/images/familyflow/09-printable-chore-chart.png",
+          alt: "Print settings panel beside a printable weekly chore chart with fill-in circles and a QR code.",
+        },
+        {
+          id: newId("vis"),
+          enabled: false,
+          title: "Desktop calendar",
+          tag: "Desktop",
+          caption: "Day/week/month calendar with per-person color filters, click-to-add, and shortcut keys printed under the grid.",
+          image: "/images/familyflow/04-desktop-calendar.png",
+          alt: "Week calendar with events tinted by family member and a filter chip per person.",
+        },
+        {
+          id: newId("vis"),
+          enabled: false,
+          title: "Kid homework week",
+          tag: "Kid desktop",
+          caption: "The school week as five columns; late work sits in a Catch up first row, and multi-step assignments lock later steps until earlier ones are done.",
+          image: "/images/familyflow/06-kid-homework-week.png",
+          alt: "Monday-to-Friday homework columns with subject tags, a highlighted Today column and a Catch up first row.",
+        },
+        {
+          id: newId("vis"),
+          enabled: false,
+          title: "Rewards",
+          tag: "Desktop",
+          caption: "Gold, silver and bronze tiers give each kid a visible next goal; parents redeem with one tap.",
+          image: "/images/familyflow/08-rewards.png",
+          alt: "Three kid reward cards with point totals, tier badges and Redeem buttons.",
+        },
+      ],
+    },
+    study: {
+      enabled: true,
+      tag: "Case study · FamilyFlow",
+      title: "Kid Desktop: from a parent’s request to production",
+      summary:
+        "A parent asked for “FamilyFlow desktop for kids.” Kids on a family computer only had the phone-style view, and any computer with the kid’s code could sign in.",
+      steps: [
+        { id: newId("step"), label: "Who it’s for", detail: "Kids at a computer doing chores and homework, and parents who want a say in which devices their kids use." },
+        { id: newId("step"), label: "Design decisions", detail: "Order the day chores first, then homework, with a progress ring for points and money; show homework as a Monday–Friday week with a Catch up first row; number-key navigation." },
+        { id: newId("step"), label: "Device approval", detail: "Each new computer waits for a grown-up’s “Allow this computer” before it works, with parent cards that explain the request." },
+        { id: newId("step"), label: "Preview first", detail: "I asked the agent for mockups first and approved the direction before any build work." },
+        { id: newId("step"), label: "Screenshot review", detail: "The agent built it in a test copy and sent screenshots of each screen; my review led to fixes like hiding past events and fixing wrapped sidebar text." },
+        { id: newId("step"), label: "Shipped", detail: "Kid Desktop and the device-approval flow went live with new help answers from Olive, merged after review." },
+      ],
+      outcome:
+        "In production for the family that asked for it: a kid’s computer now has its own screen built for its size instead of a stretched phone layout.",
+    },
     heading: "Selected visual work",
     note: "Interfaces, motion, and print/digital design — proof of visual judgment across formats.",
     cases: [
+      {
+        id: newId("case"),
+        enabled: true,
+        title: "FamilyFlow — one product, every screen",
+        detail:
+          "Wall TV, phones, desktop, kid desktop and paper charts from one design system: five themes in light and dark, 48px touch targets, and a snap-grid layout editor.",
+        tag: "Product UI · Multi-device",
+      },
       {
         id: newId("case"),
         enabled: true,
