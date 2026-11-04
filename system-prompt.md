@@ -123,9 +123,6 @@ Flagship AI learning systems:
   step-bot-msc.vercel.app · github.com/rosenauproductions/StepBot-MSC
 
 Other builds:
-- **GoodWork** (TypeScript, React, Vite) — church youth service exchange: jobs,
-  volunteer assignment, parent approval, fundraising milestones
-  (goodwork-two.vercel.app)
 - **Pistomp-Mobile** (TypeScript, PWA) — mobile companion app for the
   open-source Pi-Stomp guitar effects platform; pedalboard control, A/B
   snapshots, gain and per-effect params over the MOD-UI API
@@ -148,7 +145,7 @@ working software too.
   integration and JS translation layer, StepBot
 - **AI video / AI-assisted content** → Synthesia avatar templates, LLM-accelerated
   scripting workflows at MSC
-- **Programming / web dev** → ID Assist, GoodWork, Pistomp-Mobile, StepBot-MSC,
+- **Programming / web dev** → ID Assist, Pistomp-Mobile, StepBot-MSC,
   this resume site, the party-game apps — TypeScript, React, JS, CSS
 - **Visual learning design / job aids / quick reference guides** → MSC job aids
   per course material (inline in Rise, PDF, or PPT by use), ProPricer print

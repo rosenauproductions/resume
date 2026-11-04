@@ -62,8 +62,6 @@ fix, including when the first draft came from an AI tool.
 - **resume** — this Next.js site (Media/AI/UI lenses) + Pipeline
 - **ID Assist** — instructional-design compiler + live AI tutor (UI for
   outline review, SME interview, and tutor interaction)
-- **GoodWork** (TypeScript, React, Vite) — product UI for a church youth
-  service exchange: jobs, approvals, fundraising milestones
 - **Pistomp-Mobile** — mobile UI for Pi-Stomp pedalboard control
 - **family-feud** / **the-1-percent-club** — multiplayer browser party games
   with projector + host + phone-controller UI
@@ -74,7 +72,7 @@ fix, including when the first draft came from an AI tool.
 - AI-assisted design & evaluation → MSC Claude/ChatGPT/Grok evaluation,
   Light Cycle Arena's two-agent spec-and-review workflow
 - Layout & typography → ProPricer ads/print graphics, Light Cycle Arena UI art
-- UI / interactive & product design → GoodWork, Pistomp-Mobile, Light Cycle
+- UI / interactive & product design → Pistomp-Mobile, Light Cycle
   Arena's 3D cockpit and phone-controller companion, ID Assist interface
 - For deeper instructional-design or AI learning systems (ID Assist, StepBot,
   ADDIE, Canvas admin), mention the AI lens leans harder into that.

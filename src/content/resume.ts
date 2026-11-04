@@ -286,14 +286,12 @@ export const projectNetwork = {
     { id: "calendar", label: "Family\nFlow", kind: "project", x: 32, y: 72 },
     { id: "hinter", label: "Hinterviewer", kind: "project", x: 70, y: 36 },
     { id: "ashurose", label: "Ashurose", kind: "project", x: 58, y: 30 },
-    { id: "lobe", label: "Lobe", kind: "project", x: 28, y: 58 },
     { id: "synthesia", label: "Synthesia\nsystems", kind: "project", x: 78, y: 42 },
     { id: "courses", label: "Rise /\nStoryline", kind: "project", x: 72, y: 24 },
     { id: "pptwork", label: "Training\nvideo", kind: "project", x: 86, y: 62 },
     { id: "idassist", label: "ID\nAssist", kind: "project", x: 62, y: 46 },
     { id: "agent", label: "Email\nagent", kind: "project", x: 50, y: 22 },
     { id: "lightcycle", label: "Light\nCycle", kind: "project", x: 40, y: 52 },
-    { id: "goodwork", label: "Good\nWork", kind: "project", x: 16, y: 38 },
   ],
   edges: [
     ["core", "code"],
@@ -311,7 +309,6 @@ export const projectNetwork = {
     ["code", "stepbot"],
     ["code", "feud"],
     ["code", "onepct"],
-    ["code", "lobe"],
     ["web", "resume"],
     ["web", "stepbot"],
     ["web", "hinter"],
@@ -341,7 +338,6 @@ export const projectNetwork = {
     ["ux", "pistomp"],
     ["ux", "resume"],
     ["hardware", "pistomp"],
-    ["hardware", "lobe"],
     ["resume", "pipeline"],
     ["feud", "onepct"],
     ["stepbot", "courses"],
@@ -357,9 +353,6 @@ export const projectNetwork = {
     ["ux", "lightcycle"],
     ["ai", "lightcycle"],
     ["hardware", "lightcycle"],
-    ["code", "goodwork"],
-    ["web", "goodwork"],
-    ["ux", "goodwork"],
     ["code", "calendar"],
     ["hardware", "calendar"],
   ],
@@ -370,14 +363,6 @@ export const sideProjects = {
   heading: "Selected Side Projects",
   note: "Beyond institutional work I build tools for learners, instructors, and musicians. These projects keep programming, UX, and systems skills sharp.",
   projects: [
-    {
-      title: "GoodWork",
-      summary:
-        "TypeScript + React church youth service exchange — job requests, volunteer assignment, parent approval, family profiles, and fundraising milestones. Live: goodwork-two.vercel.app",
-      href: "https://github.com/rosenauproductions/goodwork",
-      linkLabel: "GitHub",
-      tags: ["TypeScript", "React", "Vite", "Product UI"],
-    },
     {
       title: "Pistomp-Mobile",
       summary:
@@ -586,12 +571,6 @@ export const roleFit = {
           role: "Instructional Design Specialist (Media)",
           company: "Medical Sales College",
           proof: "Custom Canvas programming enhancements, troubleshooting, and faculty support.",
-        },
-        {
-          role: "GoodWork",
-          company: "Side project",
-          proof:
-            "React/TypeScript church youth service exchange — jobs, volunteers, parent approval, fundraising.",
         },
         {
           role: "Pistomp-Mobile",

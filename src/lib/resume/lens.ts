@@ -231,26 +231,6 @@ export function buildAiResumeContent(mediaBase?: ResumeContent): ResumeContent {
       linkLabel: "GitHub",
       tags: ["Deployed", "JavaScript", "Multiplayer", "Realtime UI"],
     },
-    {
-      id: newId("proj"),
-      enabled: true,
-      title: "GoodWork",
-      summary:
-        "TypeScript + React + Vite app for a church youth service exchange — job requests, volunteer assignment, parent approval flow, family profiles, and fundraising milestones.",
-      href: "https://github.com/rosenauproductions/goodwork",
-      linkLabel: "GitHub",
-      tags: ["Prototype", "TypeScript", "React", "Product UI"],
-    },
-    {
-      id: newId("proj"),
-      enabled: true,
-      title: "lobe",
-      summary:
-        "macOS Wi‑Fi/Bluetooth proximity radar with directional lobe calibration — map your antenna, find the signal.",
-      href: "https://github.com/rosenauproductions/lobe",
-      linkLabel: "GitHub",
-      tags: ["Experimental", "macOS", "Hardware"],
-    },
   ];
 
   ai.sideProjects = {
@@ -1317,7 +1297,7 @@ export function buildDefaultResumeDocument(): ResumeDocument {
   return { version: 2, lenses: { media, ai, ui } };
 }
 
-/** Patch live AI CMS docs: drop BPMon note, ensure ID/media fit + GoodWork exist. */
+/** Patch live AI CMS docs: drop BPMon note, ensure seeded projects + fit needs exist. */
 function repairAiLensContent(ai: ResumeContent, media: ResumeContent): ResumeContent {
   const seeded = buildAiResumeContent(media);
   let note = ai.sideProjects.note || "";
@@ -1331,50 +1311,12 @@ function repairAiLensContent(ai: ResumeContent, media: ResumeContent): ResumeCon
   const extraProjects = seeded.sideProjects.projects.filter(
     (p) => !haveProjects.has(p.title.trim().toLowerCase()),
   );
-  // Prefer inserting GoodWork near the top if newly added
   const projects =
-    extraProjects.length > 0
-      ? (() => {
-          const gw = extraProjects.filter((p) => p.title === "GoodWork");
-          const rest = extraProjects.filter((p) => p.title !== "GoodWork");
-          if (!gw.length) return [...ai.sideProjects.projects, ...extraProjects];
-          const resumeIdx = ai.sideProjects.projects.findIndex((p) =>
-            /resume/i.test(p.title),
-          );
-          const base = [...ai.sideProjects.projects];
-          const at = resumeIdx >= 0 ? resumeIdx + 1 : 0;
-          base.splice(at, 0, ...gw);
-          return [...base, ...rest];
-        })()
-      : ai.sideProjects.projects;
+    extraProjects.length > 0 ? [...ai.sideProjects.projects, ...extraProjects] : ai.sideProjects.projects;
 
   const have = new Set(ai.roleFit.needs.map((n) => n.id));
   const extras = seeded.roleFit.needs.filter((n) => !have.has(n.id));
-  let needs = extras.length > 0 ? [...ai.roleFit.needs, ...extras] : ai.roleFit.needs;
-
-  // Ensure Programming fit cites GoodWork when the project exists
-  const goodwork = projects.find((p) => p.title === "GoodWork");
-  if (goodwork) {
-    needs = needs.map((need) => {
-      if (need.id !== "programming") return need;
-      if (need.matches.some((m) => m.role === "GoodWork" || m.projectId === goodwork.id)) {
-        return need;
-      }
-      return {
-        ...need,
-        matches: [
-          {
-            role: "GoodWork",
-            company: "Side project",
-            proof:
-              "React/TypeScript service-exchange UI — jobs, parent approval, volunteers, and fundraising progress.",
-            projectId: goodwork.id,
-          },
-          ...need.matches,
-        ],
-      };
-    });
-  }
+  const needs = extras.length > 0 ? [...ai.roleFit.needs, ...extras] : ai.roleFit.needs;
 
   return {
     ...ai,
@@ -1437,7 +1379,7 @@ export function normalizeResumeDocument(raw: unknown): ResumeDocument {
         ai = syncSharedIdentity(media, buildAiResumeContent(media));
       }
     }
-    ai = repairAiLensContent(syncSharedIdentity(media, ai), media);
+    ai = dropRetiredProjects(repairAiLensContent(syncSharedIdentity(media, ai), media));
 
     let ui = normalizeResumeContent(lenses.ui ?? fallback.lenses.ui);
     if (!lenses.ui || (ui.site.title === media.site.title && ui.theme === media.theme)) {
@@ -1445,7 +1387,7 @@ export function normalizeResumeDocument(raw: unknown): ResumeDocument {
         ui = syncSharedIdentity(media, buildUiResumeContent(media));
       }
     }
-    ui = repairUiLensContent(syncSharedIdentity(media, ui), media);
+    ui = dropRetiredProjects(repairUiLensContent(syncSharedIdentity(media, ui), media));
 
     const mediaRepaired = repairMediaSideProjects(media);
     return {
@@ -1465,26 +1407,36 @@ export function normalizeResumeDocument(raw: unknown): ResumeDocument {
   return { version: 2, lenses: { media, ai, ui } };
 }
 
-function repairMediaSideProjects(media: ResumeContent): ResumeContent {
-  const have = new Set(media.sideProjects.projects.map((p) => p.title.trim().toLowerCase()));
-  if (have.has("goodwork")) return media;
-  const goodwork = {
-    id: newId("proj"),
-    enabled: true,
-    title: "GoodWork",
-    summary:
-      "TypeScript + React church youth service exchange — job requests, volunteer assignment, parent approval, family profiles, and fundraising milestones. Live: goodwork-two.vercel.app",
-    href: "https://github.com/rosenauproductions/goodwork",
-    linkLabel: "GitHub",
-    tags: ["TypeScript", "React", "Vite", "Product UI"],
-  };
+/** Projects Chris retired from the resume; stripped from stored docs on read. */
+const RETIRED_PROJECT_TITLES = new Set(["goodwork", "lobe"]);
+
+function dropRetiredProjects(content: ResumeContent): ResumeContent {
+  const retiredIds = new Set(
+    content.sideProjects.projects
+      .filter((p) => RETIRED_PROJECT_TITLES.has(p.title.trim().toLowerCase()))
+      .map((p) => p.id),
+  );
+  const isRetiredMatch = (m: { role: string; projectId?: string }) =>
+    RETIRED_PROJECT_TITLES.has(m.role.trim().toLowerCase()) ||
+    (m.projectId ? retiredIds.has(m.projectId) : false);
   return {
-    ...media,
+    ...content,
     sideProjects: {
-      ...media.sideProjects,
-      projects: [goodwork, ...media.sideProjects.projects],
+      ...content.sideProjects,
+      projects: content.sideProjects.projects.filter((p) => !retiredIds.has(p.id)),
+    },
+    roleFit: {
+      ...content.roleFit,
+      needs: content.roleFit.needs.map((n) => ({
+        ...n,
+        matches: n.matches.filter((m) => !isRetiredMatch(m)),
+      })),
     },
   };
+}
+
+function repairMediaSideProjects(media: ResumeContent): ResumeContent {
+  return dropRetiredProjects(media);
 }
 
 /** After editing one lens, keep contact/portraits aligned across both. */

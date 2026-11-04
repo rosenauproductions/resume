@@ -29,6 +29,7 @@ import { loadSeedJobs, loadSeedMeta } from "@/lib/jobs/seed";
 import { getOrCreateDeviceId } from "@/lib/device-id";
 import { BarChart, DonutChart, DismissiblePanel, StatCard, TimelineChart, VisitTimelineChart } from "./PipelineCharts";
 import { TargetMap } from "./TargetMap";
+import { visitSourceKey, visitSourceLabel } from "@/lib/visit-sites";
 import { ResumeEditor } from "./ResumeEditor";
 import { PipelineSettings } from "./PipelineSettings";
 import { PushNotifications } from "./PushNotifications";
@@ -412,6 +413,27 @@ export function PipelineApp({
   }, [jobs, filter]);
 
   const visitGroups = useMemo(() => buildVisitGroups(visits), [visits]);
+  const [mapSource, setMapSource] = useState<string>("all");
+  const mapSourceOptions = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const v of visits) {
+      const key = visitSourceKey(v.path);
+      if (key === "pipeline") continue;
+      counts.set(key, (counts.get(key) ?? 0) + 1);
+    }
+    const total = [...counts.values()].reduce((a, b) => a + b, 0);
+    const keys = [...counts.keys()].sort((a, b) =>
+      a === "resume" ? -1 : b === "resume" ? 1 : visitSourceLabel(a).localeCompare(visitSourceLabel(b)),
+    );
+    return [
+      { key: "all", label: "All sites", count: total },
+      ...keys.map((key) => ({ key, label: visitSourceLabel(key), count: counts.get(key) ?? 0 })),
+    ];
+  }, [visits]);
+  const mapVisits = useMemo(
+    () => (mapSource === "all" ? visits : visits.filter((v) => visitSourceKey(v.path) === mapSource)),
+    [visits, mapSource],
+  );
 
   const persist = useCallback(async (next: JobApplication[], nextMeta: TrackerMeta | null = meta, mode: "replace" | "upsert" = "replace") => {
     setJobs(next);
@@ -1976,13 +1998,33 @@ export function PipelineApp({
           {view === "copilot" ? <PipelineCopilot active={view === "copilot"} /> : null}
 
           {view === "map" ? (
+            <div className="space-y-3">
+            <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Filter visits by site">
+              <span className="text-xs uppercase tracking-wider text-[var(--muted)]">Visits from</span>
+              {mapSourceOptions.map((opt) => (
+                <button
+                  key={opt.key}
+                  type="button"
+                  aria-pressed={mapSource === opt.key}
+                  onClick={() => setMapSource(opt.key)}
+                  className={`rounded-full border px-3 py-1 text-xs transition-colors ${
+                    mapSource === opt.key
+                      ? "border-[var(--accent)] bg-[var(--accent)]/15 text-[var(--accent)]"
+                      : "border-white/15 text-[var(--muted)] hover:border-white/30 hover:text-[var(--cream)]"
+                  }`}
+                >
+                  {opt.label} · {opt.count}
+                </button>
+              ))}
+            </div>
             <TargetMap
               jobs={jobs}
-              visits={visits}
+              visits={mapVisits}
               onSelectJob={setDetail}
               loading={visitsLoading}
               onRefresh={() => void refreshVisits()}
             />
+            </div>
           ) : null}
 
           {view === "resume" ? (

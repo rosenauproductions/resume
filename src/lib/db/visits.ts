@@ -201,6 +201,9 @@ export async function suggestAssociation(input: {
   if (path === "/pipeline" || path.startsWith("/pipeline/")) {
     return { applicationId: null, reason: "pipeline self-visit", confidence: "none" };
   }
+  if (path.startsWith("site:")) {
+    return { applicationId: null, reason: "visit to another site (not the resume)", confidence: "none" };
+  }
 
   const city = normalizeCity(input.city);
   if (!city || city === "unknown") {

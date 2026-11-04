@@ -90,9 +90,7 @@ his direction: specs, screenshot review of every change, beta/stable releases.
   Medical Sales College career placement
 - **Pistomp-Mobile** — TypeScript Vite PWA for the Pi-Stomp effects unit
 - **family-feud** / **the-1-percent-club** — multiplayer browser party games
-- **GoodWork** — React/TypeScript youth service-exchange prototype
-- **lobe** — macOS Wi-Fi/Bluetooth proximity radar (experimental)
-- Do **not** pitch BPMon or billion-year-counter.
+- Do **not** pitch BPMon, billion-year-counter, GoodWork, or lobe (retired).
 
 ## Employed highlights to prefer
 - **Higher Ed Partners:** JavaScript language-embed in Canvas; AWS-hosted Rise;
