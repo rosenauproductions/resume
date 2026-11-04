@@ -15,6 +15,7 @@ export const site = {
   linkedinLabel: "linkedin.com/in/christopherrosenau",
   tagline:
     "I build learning and brand media end to end — design, motion and video, LMS systems, and interactive experiences that actually scale.",
+  openTo: "Open to learning media, multimedia design, and instructional design roles.",
 };
 
 export const about = {
@@ -228,6 +229,7 @@ export const work = {
     {
       kind: "video" as const,
       src: "/images/work-diagnostic-scope.mp4",
+      poster: "/images/work-diagnostic-scope-poster.jpg",
       label: "PPT Animation Samples",
       detail: "Animated training video built primarily in PowerPoint",
     },
@@ -387,7 +389,7 @@ export const sideProjects = {
     {
       title: "Interactive party games & more",
       summary:
-        "Browser-based Family Feud and The 1% Club with projector + host + phone controllers, plus family calendar tooling and other experiments in interactive media and rapid prototyping.",
+        "Browser-based Family Feud and The 1% Club with projector + host + phone controllers, built for live group play — experiments in interactive media and rapid prototyping.",
       href: "https://github.com/rosenauproductions",
       linkLabel: "GitHub profile",
       tags: ["Interactive media", "Multiplayer UI"],

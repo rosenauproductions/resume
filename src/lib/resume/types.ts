@@ -43,6 +43,8 @@ export type ResumeSite = {
   linkedin: string;
   linkedinLabel: string;
   tagline: string;
+  /** Per-lens "Open to ..." line (contact section + PDF summary). */
+  openTo?: string;
 };
 
 export type ResumePortraits = {
@@ -74,6 +76,8 @@ export type WorkFeatured = {
   detail: string;
   /** Optional "Tools: ..." line shown under the detail. */
   tools?: string;
+  /** Optional poster image for self-hosted videos. */
+  poster?: string;
 };
 
 /** A still image sample (reference guide, job aid, infographic...). */
@@ -195,6 +199,8 @@ export type ResumeContent = {
       heading: string;
       note: string;
       items: WorkVisual[];
+      /** "feature": first image full width, rest in two columns. Default: three-column grid. */
+      layout?: "grid" | "feature";
     };
     study: WorkStudy;
     /** Where the featured videos sit in the Work section: before (default) or after the gallery/case study. */
@@ -204,6 +210,8 @@ export type ResumeContent = {
     heading: string;
     note: string;
     projects: SideProject[];
+    /** Show this many cards, the rest behind "More builds". Also caps projects on the PDF. */
+    initialCount?: number;
   };
   skills: {
     heading: string;

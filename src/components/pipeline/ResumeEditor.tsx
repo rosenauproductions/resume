@@ -283,6 +283,7 @@ function SiteFields({
       <Text label="LinkedIn URL" value={site.linkedin} onChange={set("linkedin")} />
       <Text label="LinkedIn label" value={site.linkedinLabel} onChange={set("linkedinLabel")} />
       <Text label="Tagline" value={site.tagline} onChange={set("tagline")} />
+      <Text label="Open to (contact line)" value={site.openTo ?? ""} onChange={set("openTo")} />
       {showPortraits && onPortraits
         ? (["hero", "rim", "side", "close", "texture"] as const).map((key) => (
             <Text
@@ -421,6 +422,7 @@ function WorkEditor({
             <Text label="Href" value={f.href ?? ""} onChange={(v) => patchFeatured(i, { href: v })} />
             <Text label="Embed" value={f.embed ?? ""} onChange={(v) => patchFeatured(i, { embed: v })} />
             <Text label="Src" value={f.src ?? ""} onChange={(v) => patchFeatured(i, { src: v })} />
+            <Text label="Poster image" value={f.poster ?? ""} onChange={(v) => patchFeatured(i, { poster: v })} />
           </div>
         </NestedCard>
       ))}
@@ -451,6 +453,19 @@ function WorkEditor({
           value={work.gallery.note}
           onChange={(v) => onChange({ ...work, gallery: { ...work.gallery, note: v } })}
         />
+        <Label>
+          Gallery layout
+          <select
+            className={fieldClass}
+            value={work.gallery.layout ?? "grid"}
+            onChange={(e) =>
+              onChange({ ...work, gallery: { ...work.gallery, layout: e.target.value as "grid" | "feature" } })
+            }
+          >
+            <option value="grid">Three-column grid</option>
+            <option value="feature">First image full width, then two columns</option>
+          </select>
+        </Label>
       </div>
       {work.gallery.items.map((v, i) => (
         <NestedCard
@@ -587,6 +602,14 @@ function ProjectsEditor({
       <div className="grid gap-3 sm:grid-cols-2">
         <Text label="Heading" value={sideProjects.heading} onChange={(v) => onChange({ ...sideProjects, heading: v })} />
         <Text label="Note" value={sideProjects.note} onChange={(v) => onChange({ ...sideProjects, note: v })} />
+        <Text
+          label="Show first N (blank = all; also caps the PDF)"
+          value={sideProjects.initialCount ? String(sideProjects.initialCount) : ""}
+          onChange={(v) => {
+            const n = parseInt(v, 10);
+            onChange({ ...sideProjects, initialCount: n > 0 ? n : undefined });
+          }}
+        />
       </div>
       {sideProjects.projects.map((p, i) => (
         <NestedCard

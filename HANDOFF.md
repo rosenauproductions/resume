@@ -118,6 +118,17 @@ Key files:
 
 ## Status log (most recent first)
 
+**2026-11-04 — Professional resume PDFs + site-review fixes.**
+- **New printable:** `/print?lens=media|ai|ui` (`src/app/print/page.tsx`) renders `src/components/print/ResumeDocument.tsx`: one-column, ATS-friendly, white, Letter, 2 pages. Replaces the old dark screenshot export.
+- **PDFs:** `public/resume/Chris-Rosenau-Resume-{Learning-Media,AI-Developer,UI-Design}.pdf` (names = `RESUME_PDF_PATHS`). Old `public/exports/Chris-Rosenau-Resume.pdf` removed. **Regenerate after any content change or reseed:** `RESUME_URL=https://resume-rho-taupe.vercel.app npm run pdf` (or `npm run dev` + `npm run pdf`). Needs playwright locally.
+- Header "Resume PDF" menu → Download PDF (per lens) / Printable version.
+- Per-lens `<title>`, description, canonical, OG/Twitter (`generateMetadata` in `src/app/page.tsx`, image `/images/og-preview.jpg`).
+- New content fields (editor supports them): `site.openTo` (contact line + PDF summary), `sideProjects.initialCount` ("More builds" button; also caps PDF projects), `work.gallery.layout` (`grid`|`feature`), `work.videosPosition`, featured `poster`.
+- UI lens: new lead, `feature` gallery, reel last, FamilyFlow case card removed (gallery + one project card remain), "Expert" → Advanced/Strong. AI lens: 6 cards shown + "More builds", MSC bullet reworded.
+- Chat welcome bubble: desktop 1.6s; mobile waits until scroll past first screen or 12s (was covering hero photo).
+- Video poster: `public/images/work-diagnostic-scope-poster.jpg`.
+- Open: Education school name + E-Learning Professional cert status (item 12) still need Chris's info.
+
 **2026-11-04 — UI lens leads with FamilyFlow.** Hero tagline and CTA ("View FamilyFlow UI" → `#visual-learning`), the FamilyFlow paragraph moved to the top of About, Work renamed "FamilyFlow & visual work". New `work.videosPosition` ("first" | "last", editable in the CMS): the UI lens puts videos last under a "Motion & video" heading, with only the portfolio reel on. Media and AI lenses are unchanged.
 
 **2026-11-04 — FamilyFlow added to the UI lens (from the FamilyFlow session's asset report).** 9 demo-household screenshots in `public/images/familyflow/` (6 enabled in the UI gallery, 3 off but editable in the CMS); FamilyFlow is the first UI project card; the "Kid Desktop" case study is enabled; new UI role-fit needs `multi-device` and `design-systems`, plus FamilyFlow proofs on four existing needs; UI skills and About updated; `system-prompt-ui.md` covers FamilyFlow (no usage numbers, no art-authorship claims, TV apps "built"). AI-lens FamilyFlow card now links www.ashurose.com (product page; the app itself opens to sign-in). Needs a reseed after deploy.

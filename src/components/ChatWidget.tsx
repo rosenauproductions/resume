@@ -62,7 +62,8 @@ function isPrivatePath(path: string) {
     path === "/pipeline" ||
     path.startsWith("/pipeline/") ||
     path === "/head-count" ||
-    path.startsWith("/head-count/")
+    path.startsWith("/head-count/") ||
+    path === "/print"
   );
 }
 
@@ -123,8 +124,30 @@ export function ChatWidget() {
     } catch {
       // ignore
     }
-    const timer = window.setTimeout(() => setShowWelcome(true), 1600);
-    return () => window.clearTimeout(timer);
+    // Desktop: short delay. Mobile: the bubble would cover the hero photo,
+    // so wait until the visitor scrolls past the first screen (or 12s).
+    const isSmall = window.matchMedia("(max-width: 767px)").matches;
+    if (!isSmall) {
+      const timer = window.setTimeout(() => setShowWelcome(true), 1600);
+      return () => window.clearTimeout(timer);
+    }
+    let done = false;
+    const show = () => {
+      if (done) return;
+      done = true;
+      setShowWelcome(true);
+      cleanup();
+    };
+    const onScroll = () => {
+      if (window.scrollY > window.innerHeight * 0.9) show();
+    };
+    const timer = window.setTimeout(show, 12000);
+    const cleanup = () => {
+      window.clearTimeout(timer);
+      window.removeEventListener("scroll", onScroll);
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return cleanup;
   }, [pathname]);
 
   const transport = useMemo(

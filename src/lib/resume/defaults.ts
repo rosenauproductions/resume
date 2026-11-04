@@ -139,6 +139,7 @@ export function buildDefaultResumeContent(): ResumeContent {
         src: "src" in f ? f.src : undefined,
         label: f.label,
         detail: f.detail,
+        ...("poster" in f && f.poster ? { poster: f.poster } : {}),
       })),
       cases: workStatic.cases.map((c) => ({
         id: newId("case"),
@@ -264,6 +265,9 @@ export function normalizeResumeContent(raw: unknown): ResumeContent {
           tags: Array.isArray(p.tags) ? p.tags.map(String) : [],
         }))
       : fallback.sideProjects.projects,
+    ...(Number(o.sideProjects?.initialCount) > 0
+      ? { initialCount: Math.round(Number(o.sideProjects!.initialCount)) }
+      : {}),
   };
 
   const roleFitNeeds: RoleFitNeed[] = Array.isArray(o.roleFit?.needs)
@@ -334,6 +338,7 @@ export function normalizeResumeContent(raw: unknown): ResumeContent {
             label: String(f.label ?? ""),
             detail: String(f.detail ?? ""),
             ...(typeof f.tools === "string" && f.tools.trim() ? { tools: f.tools } : {}),
+            ...(typeof f.poster === "string" && f.poster.trim() ? { poster: f.poster } : {}),
           }))
         : fallback.work.featured,
       cases: Array.isArray(o.work?.cases)
@@ -360,6 +365,7 @@ export function normalizeResumeContent(raw: unknown): ResumeContent {
               ...(typeof v.href === "string" && v.href.trim() ? { href: v.href } : {}),
             }))
           : fallback.work.gallery.items,
+        layout: o.work?.gallery?.layout === "feature" ? "feature" : "grid",
       },
       videosPosition: o.work?.videosPosition === "last" ? "last" : "first",
       study:

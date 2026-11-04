@@ -12,6 +12,7 @@ export function Gallery() {
   const featured = work.featured.filter((f) => f.enabled);
   const cases = work.cases.filter((c) => c.enabled);
   const visuals = work.gallery.items.filter((v) => v.enabled && v.image);
+  const featureLayout = work.gallery.layout === "feature";
   const study = work.study.enabled && work.study.title ? work.study : null;
 
   const videosLast = work.videosPosition === "last";
@@ -39,6 +40,7 @@ export function Gallery() {
                     ) : (
                       <video
                         src={item.src}
+                      poster={item.poster}
                         autoPlay={!reduce}
                         loop
                         muted
@@ -103,9 +105,17 @@ export function Gallery() {
                 </p>
               ) : null}
             </Reveal>
-            <div className="mt-8 grid gap-6 md:grid-cols-3 print:grid-cols-3">
+            <div
+              className={`mt-8 grid gap-6 ${
+                featureLayout ? "md:grid-cols-2" : "md:grid-cols-3 print:grid-cols-3"
+              }`}
+            >
               {visuals.map((v, i) => (
-                <Reveal key={v.id} delay={0.05 + i * 0.04}>
+                <Reveal
+                  key={v.id}
+                  delay={0.05 + i * 0.04}
+                  className={featureLayout && i === 0 ? "md:col-span-2" : undefined}
+                >
                   <figure className="overflow-hidden border border-white/10">
                     <a
                       href={v.href || v.image}
@@ -122,7 +132,7 @@ export function Gallery() {
                         unoptimized
                         loading="lazy"
                         className="h-auto w-full"
-                        sizes="(max-width: 768px) 100vw, 33vw"
+                        sizes={featureLayout ? (i === 0 ? "100vw" : "(max-width: 768px) 100vw, 50vw") : "(max-width: 768px) 100vw, 33vw"}
                       />
                     </a>
                     <figcaption className="border-t border-white/10 px-4 py-4">

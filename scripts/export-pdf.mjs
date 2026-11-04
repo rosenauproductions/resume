@@ -1,49 +1,30 @@
+// Regenerate the per-lens resume PDFs from the /print page.
+//   npm run pdf                                   (needs `npm run dev` on :3000)
+//   RESUME_URL=https://resume-rho-taupe.vercel.app npm run pdf   (from live, after reseed)
+// Writes public/resume/Chris-Rosenau-Resume-{AI-Developer,Learning-Media,UI-Design}.pdf
+// (names must match RESUME_PDF_PATHS in src/components/print/ResumeDocument.tsx).
 import { chromium } from "playwright";
 import path from "node:path";
+import { mkdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const out = path.resolve(__dirname, "../public/exports/Chris-Rosenau-Resume.pdf");
-const url = process.env.RESUME_URL || "http://localhost:3000/";
+const outDir = path.resolve(__dirname, "../public/resume");
+const base = (process.env.RESUME_URL || "http://localhost:3000").replace(/\/$/, "");
+const LENSES = [
+  ["media", "Chris-Rosenau-Resume-Learning-Media.pdf"],
+  ["ai", "Chris-Rosenau-Resume-AI-Developer.pdf"],
+  ["ui", "Chris-Rosenau-Resume-UI-Design.pdf"],
+];
 
+mkdirSync(outDir, { recursive: true });
 const browser = await chromium.launch();
-const page = await browser.newPage({
-  viewport: { width: 1280, height: 900 },
-  colorScheme: "dark",
-});
-
-// YouTube iframes keep network busy — skip them for PDF export
-await page.route("**/*youtube.com/**", (route) => route.abort());
-await page.route("**/*youtu.be/**", (route) => route.abort());
-await page.route("**/*googlevideo.com/**", (route) => route.abort());
-
-await page.emulateMedia({ media: "screen", colorScheme: "dark" });
-await page.goto(url, { waitUntil: "load", timeout: 60000 });
-await page.waitForTimeout(2000);
-
-// Force site ink background for the PDF page box
-await page.addStyleTag({
-  content: `
-    html, body {
-      background: #071018 !important;
-      -webkit-print-color-adjust: exact !important;
-      print-color-adjust: exact !important;
-    }
-  `,
-});
-
-const height = await page.evaluate(() =>
-  Math.max(document.documentElement.scrollHeight, document.body.scrollHeight),
-);
-
-await page.pdf({
-  path: out,
-  printBackground: true,
-  preferCSSPageSize: false,
-  width: "1280px",
-  height: `${Math.ceil(height)}px`,
-  margin: { top: "0", right: "0", bottom: "0", left: "0" },
-});
-
+const page = await browser.newPage();
+for (const [lens, file] of LENSES) {
+  await page.goto(`${base}/print?lens=${lens}`, { waitUntil: "networkidle", timeout: 60000 });
+  await page.emulateMedia({ media: "print" });
+  const out = path.join(outDir, file);
+  await page.pdf({ path: out, format: "Letter", preferCSSPageSize: true, printBackground: true });
+  console.log("wrote", path.relative(process.cwd(), out));
+}
 await browser.close();
-console.log("Wrote", out, "height", height);

@@ -1,4 +1,5 @@
-import { Fragment, Suspense } from "react";
+import type { Metadata } from "next";
+import { Fragment, Suspense, cache } from "react";
 import { About } from "@/components/About";
 import { Contact } from "@/components/Contact";
 import { Experience } from "@/components/Experience";
@@ -27,23 +28,44 @@ const SECTION_RENDER: Record<Exclude<ResumeSectionId, "hero">, () => React.React
   contact: () => <Contact />,
 };
 
+const loadContent = cache(async (lensRaw: string | string[] | undefined) => {
+  const lens = resolveLens(lensRaw);
+  let content = materializeResume(buildDefaultResumeDocument(), lens);
+  if (dbConfigured()) {
+    try {
+      content = materializeResume(await getResumeDocument(), lens);
+    } catch {
+      // keep defaults
+    }
+  }
+  return { lens, content };
+});
+
+/** Per-view link previews (LinkedIn, email, Slack) and browser titles. */
+export async function generateMetadata({
+  searchParams,
+}: {
+  searchParams: Promise<{ lens?: string | string[] }>;
+}): Promise<Metadata> {
+  const { lens, content } = await loadContent((await searchParams).lens);
+  const title = `${content.site.name} — ${content.site.title}`;
+  const description = content.site.tagline;
+  const url = lens === "ai" ? "/" : `/?lens=${lens}`;
+  return {
+    title,
+    description,
+    alternates: { canonical: url },
+    openGraph: { title, description, url, type: "website", images: [{ url: "/images/og-preview.jpg", width: 1200, height: 630, alt: title }] },
+    twitter: { card: "summary_large_image", title, description, images: ["/images/og-preview.jpg"] },
+  };
+}
+
 export default async function Home({
   searchParams,
 }: {
   searchParams: Promise<{ lens?: string | string[] }>;
 }) {
-  const params = await searchParams;
-  const lens = resolveLens(params.lens);
-
-  let content = materializeResume(buildDefaultResumeDocument(), lens);
-  if (dbConfigured()) {
-    try {
-      const doc = await getResumeDocument();
-      content = materializeResume(doc, lens);
-    } catch {
-      // keep defaults
-    }
-  }
+  const { lens, content } = await loadContent((await searchParams).lens);
 
   const bodySections = content.sectionOrder.filter(
     (id): id is Exclude<ResumeSectionId, "hero"> =>

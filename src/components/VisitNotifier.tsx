@@ -87,7 +87,7 @@ export function VisitNotifier() {
         };
         rememberLastVisitId(data.visitId);
         const identify = data.identify;
-        if (!identify?.show || isPipelinePath(pathname)) return;
+        if (!identify?.show || isPipelinePath(pathname) || pathname === "/print") return;
 
         if (identify.mode === "welcome") {
           if (wasWelcomeDismissedThisSession()) return;

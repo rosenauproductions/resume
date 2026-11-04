@@ -81,8 +81,8 @@ export function Contact() {
           <p className="section-kicker justify-center text-center">{sectionNumber}</p>
           <h2 className="section-title text-center">Let’s connect</h2>
           <p className="mx-auto mt-5 max-w-xl text-center text-lg text-[var(--muted)]">
-            {site.location} · Open to instructional design, eLearning, corporate training,
-            and multimedia production.
+            {site.location}
+            {site.openTo ? ` · ${site.openTo}` : ""}
           </p>
         </Reveal>
 

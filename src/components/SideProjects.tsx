@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useResume, useSectionNumber } from "@/components/resume/ResumeProvider";
 import { Reveal } from "./Reveal";
 import { ProjectNetwork } from "./ProjectNetwork";
@@ -7,7 +8,11 @@ import { ProjectNetwork } from "./ProjectNetwork";
 export function SideProjects() {
   const sectionNumber = useSectionNumber("projects");
   const { sideProjects } = useResume();
-  const projects = sideProjects.projects.filter((p) => p.enabled);
+  const allProjects = sideProjects.projects.filter((p) => p.enabled);
+  const [showAll, setShowAll] = useState(false);
+  const limit = sideProjects.initialCount ?? 0;
+  const hidden = limit > 0 ? Math.max(0, allProjects.length - limit) : 0;
+  const projects = hidden && !showAll ? allProjects.slice(0, limit) : allProjects;
   return (
     <section id="projects" className="relative pt-2 pb-4 md:pt-2 md:pb-4 lg:pt-2 lg:pb-2">
       <div className="mx-auto max-w-6xl px-6">
@@ -50,6 +55,18 @@ export function SideProjects() {
             </Reveal>
           ))}
         </div>
+        {hidden ? (
+          <div className="mt-6 flex justify-center no-print">
+            <button
+              type="button"
+              aria-expanded={showAll}
+              onClick={() => setShowAll((v) => !v)}
+              className="rounded-full border border-white/20 px-5 py-2 text-sm text-[var(--cream)] transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)]"
+            >
+              {showAll ? "Show fewer" : `More builds (${hidden})`}
+            </button>
+          </div>
+        ) : null}
       </div>
     </section>
   );

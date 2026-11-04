@@ -52,6 +52,7 @@ export function buildAiResumeContent(mediaBase?: ResumeContent): ResumeContent {
     subtitle: "TypeScript · Next.js · Postgres · LLM tool calling · Agents · Learning tech",
     tagline:
       "I design, build, and run AI-enabled web applications end to end — spec, data model, tool-calling assistants, scheduled agents, deployment, and day-to-day operation — directing AI coding agents (Claude) as part of my engineering workflow.",
+    openTo: "Open to AI application developer, full-stack developer, and learning-technology developer roles.",
   };
 
   ai.about = {
@@ -104,7 +105,7 @@ export function buildAiResumeContent(mediaBase?: ResumeContent): ResumeContent {
           "Accelerated production with LLM workflows (Claude, ChatGPT, Grok) for scripting, iteration, and polish",
           "Owned Canvas LMS operations: troubleshooting, custom programming, and instructor support",
           "Led hybrid migration with Rise/Storyline modules plus Canvas administration and custom enhancements",
-          "Produced scenario and training video when the learning system needed it — secondary to platform work",
+          "Produced remote-instructor and Vyond scenario video that simulated real patient cycles of care",
         ],
       };
     }
@@ -146,7 +147,7 @@ export function buildAiResumeContent(mediaBase?: ResumeContent): ResumeContent {
       enabled: true,
       title: "Resume Platform + Job Pipeline",
       summary:
-        "This site (Next.js 16, TypeScript, Neon Postgres + Drizzle, Vercel). Database-backed resume CMS with three audience views and an editor; job tracker with AI extraction of postings into structured fields; tool-calling assistants (visitor lead capture, a copilot that queues work for the email agent); web push with action buttons; visit tracking with Discord/ntfy/email alerts; nightly cron backups, restore and undelete.",
+        "My resume site and job tracker (Next.js 16, TypeScript, Neon Postgres + Drizzle, Vercel). Database-backed resume CMS with three audience views and an editor; job tracker with AI extraction of postings into structured fields; tool-calling assistants (visitor lead capture, a copilot that queues work for the email agent); web push with action buttons; visit tracking with Discord/ntfy/email alerts; nightly cron backups, restore and undelete.",
       href: "https://github.com/rosenauproductions/resume",
       linkLabel: "GitHub",
       tags: ["Deployed · daily use", "Next.js", "Postgres", "LLM tool calling"],
@@ -267,6 +268,7 @@ export function buildAiResumeContent(mediaBase?: ResumeContent): ResumeContent {
     heading: "Software & AI builds",
     note: "Each card is labeled with its real status — deployed, in production, working build, prototype, or experimental.",
     projects,
+    initialCount: 6,
   };
 
   ai.skills = {
@@ -661,11 +663,12 @@ export function buildUiResumeContent(mediaBase?: ResumeContent): ResumeContent {
     subtitle: "Layout \u00b7 Typography \u00b7 Visual Hierarchy \u00b7 AI-Assisted Design",
     tagline:
       "I design and ship multi-device product interfaces \u2014 most recently FamilyFlow, a live family hub for wall, phone, and desktop \u2014 and judge visual work, including AI-assisted output, against a professional standard.",
+    openTo: "Open to product UI, visual design, and multimedia design roles.",
   };
 
   ui.about = {
     heading: "About",
-    lead: "Visual design and multimedia specialist with 20+ years of experience creating learning interfaces, motion graphics, presentation assets, marketing visuals, and interactive course content. Skilled at evaluating layout, typography, visual hierarchy, user flow, accessibility, and production quality across AI-assisted and traditional design workflows.",
+    lead: "Product UI designer with 20+ years of visual craft behind it — layout, typography, motion, and the judgment to direct AI-assisted work.",
     paragraphs: [
       "My strongest current UI work is FamilyFlow, a live family hub I designed for four kinds of screen \u2014 a 16:9 wall TV or tablet, parent and kid phones, a dense keyboard-first desktop, and a kid\u2019s own computer \u2014 plus printable paper charts. I set the visual system (five color themes in light and dark, 48px touch targets, an adjustable UI scale), designed the snap-grid layout editor, and directed AI coding agents from mockup to production, reviewing screenshots before each merge.",
       "At Medical Sales College and Higher Ed Partners I moved past just producing media \u2014 I critiqued and refined it. I ran learning video and course visuals through Claude, ChatGPT, and Grok, then evaluated what came back against a professional standard: clarity, pacing, visual hierarchy, and fit to the brief, not just whether it technically worked.",
@@ -778,7 +781,7 @@ export function buildUiResumeContent(mediaBase?: ResumeContent): ResumeContent {
       enabled: true,
       title: "Resume site + Pipeline",
       summary:
-        "This site: Next.js/TypeScript resume with Media/AI/UI lenses, Neon-backed job pipeline, visit tracking, visitor identify/link, JD ingest, and an on-site AI chat via Vercel AI Gateway.",
+        "My resume site and job tracker: Next.js/TypeScript with Media/AI/UI lenses, Neon-backed job pipeline, visit tracking, visitor identify/link, JD ingest, and an on-site AI chat via Vercel AI Gateway.",
       href: "https://github.com/rosenauproductions/resume",
       linkLabel: "GitHub",
       tags: ["Visual design", "Next.js", "Product UI"],
@@ -872,8 +875,8 @@ export function buildUiResumeContent(mediaBase?: ResumeContent): ResumeContent {
       items: ["three.js", "glTF / GLB", "WebSockets", "Git", "Raspberry Pi / MOD"],
     },
     meters: [
-      { id: newId("meter"), enabled: true, name: "Visual & UI design", proficiency: "Expert", width: 95 },
-      { id: newId("meter"), enabled: true, name: "Motion graphics & video", proficiency: "Expert", width: 92 },
+      { id: newId("meter"), enabled: true, name: "Visual & UI design", proficiency: "Advanced", width: 95 },
+      { id: newId("meter"), enabled: true, name: "Motion graphics & video", proficiency: "Advanced", width: 92 },
       { id: newId("meter"), enabled: true, name: "Typography & layout", proficiency: "Advanced", width: 88 },
       { id: newId("meter"), enabled: true, name: "AI-assisted design evaluation", proficiency: "Advanced", width: 85 },
       { id: newId("meter"), enabled: true, name: "Interactive / web (CSS, JS)", proficiency: "Advanced", width: 75 },
@@ -891,7 +894,7 @@ export function buildUiResumeContent(mediaBase?: ResumeContent): ResumeContent {
         id: "visual-design-judgment",
         enabled: true,
         label: "Visual design & critique",
-        strength: "Expert",
+        strength: "Strong",
         summary: "Evaluating interfaces, layouts, and AI-assisted visual output against a professional standard.",
         matches: [
           {
@@ -955,7 +958,7 @@ export function buildUiResumeContent(mediaBase?: ResumeContent): ResumeContent {
         id: "layout-typography",
         enabled: true,
         label: "Layout & typography",
-        strength: "Expert",
+        strength: "Strong",
         summary: "Print, digital, and interface layout — hierarchy, spacing, and typographic consistency.",
         matches: [
           {
@@ -982,7 +985,7 @@ export function buildUiResumeContent(mediaBase?: ResumeContent): ResumeContent {
         id: "motion-video",
         enabled: true,
         label: "Motion & video design",
-        strength: "Expert",
+        strength: "Strong",
         summary: "Full-cycle motion and video production — animation, pacing, sound design, and delivery.",
         matches: [
           {
@@ -1111,6 +1114,7 @@ export function buildUiResumeContent(mediaBase?: ResumeContent): ResumeContent {
   ui.work = {
     ...ui.work,
     gallery: {
+      layout: "feature",
       heading: "FamilyFlow: one product, every screen",
       note: "Screens from FamilyFlow’s demo household (no real family data). Designed and directed by me, built with AI coding agents.",
       items: [
@@ -1219,14 +1223,6 @@ export function buildUiResumeContent(mediaBase?: ResumeContent): ResumeContent {
     videosPosition: "last",
     featured: ui.work.featured.map((f) => ({ ...f, enabled: /reel/i.test(f.label) })),
     cases: [
-      {
-        id: newId("case"),
-        enabled: true,
-        title: "FamilyFlow — one product, every screen",
-        detail:
-          "Wall TV, phones, desktop, kid desktop and paper charts from one design system: five themes in light and dark, 48px touch targets, and a snap-grid layout editor.",
-        tag: "Product UI · Multi-device",
-      },
       {
         id: newId("case"),
         enabled: true,
