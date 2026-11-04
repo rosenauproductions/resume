@@ -15,7 +15,6 @@ export const TRACKED_SITES: TrackedSite[] = [
   // Games — add origins once their URLs are confirmed.
   { slug: "vector-strike", label: "Vector Strike" },
   { slug: "belt-command", label: "Belt Command" },
-  { slug: "null-arena", label: "Null Arena" },
   { slug: "fractal-rescue", label: "Fractal Rescue" },
   { slug: "jump-n-bump", label: "Jump n Bump" },
   { slug: "dead-center", label: "Dead Center Firing Range" },
