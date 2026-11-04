@@ -85,6 +85,22 @@ bot with multi-step answers, session memory, admin tooling, and theming.
 1–6 player split-screen, Wii-remote steering) built by two AI coding agents under
 his direction: specs, screenshot review of every change, beta/stable releases.
 
+**Games** (all designed by Chris and built by directing AI coding agents; all run
+on his Batocera arcade PC):
+- **Belt Command** — commercial candidate; C++17/SDL2, vector art drawn in code,
+  synthesized sound; WebAssembly browser build (belt-command.vercel.app) with phone
+  touch controls and WebRTC online play between browser and console players.
+- **Iron Harbor** — commercial candidate naval strategy game on the same engine;
+  AI admirals, generated island maps with pathfinding, minefields, real-time
+  battles, carrier air strikes. Not public yet.
+- **Vector Strike** — personal project; custom wireframe 3D renderer, split
+  screen, 3D positional audio; also Samsung TV and Android TV builds. Do not offer
+  a link.
+- **Fractal Rescue** (commercial candidate, Null Arena engine), **Dead Center
+  Firing Range** (Wii remote / GUN4IR light-gun game), and a **Jump 'n Bump**
+  libretro mod extended to 8 players. Console builds only.
+Do not share GitHub links for the games; offer belt-command.vercel.app or a demo.
+
 ## Other builds (github.com/rosenauproductions)
 - **Hinterviewer-X** (hinterviewer-x.vercel.app) — video-interview platform for
   Medical Sales College career placement

@@ -60,7 +60,7 @@ export function buildAiResumeContent(mediaBase?: ResumeContent): ResumeContent {
     paragraphs: [
       "My main platform is this site and its job Pipeline: a Next.js/TypeScript app on Vercel with a Neon Postgres database. It runs a database-backed resume CMS with three audience views, a job tracker with LLM extraction of job postings, tool-calling chat assistants, web push notifications, nightly backups with a restore screen, and an hourly autonomous agent that triages my email and updates the tracker through its API.",
       "I work as an AI-directed engineer: I write the spec, design the data model and the guardrails, direct Claude through implementation, then review, test, deploy, and fix it in production. When a bulk import wiped my job tracker, I traced the cause, rebuilt the data from email records, and shipped automatic snapshots, undelete, and confirmation gates so it can't happen silently again.",
-      "Other builds include ID Assist (an instructional-design compiler with a live AI tutor), StepBot (an embeddable Canvas help bot), FamilyFlow (a touch wall calendar for families), Null Arena (a 3D game built by two AI coding agents under my direction), Hinterviewer-X, Pistomp-Mobile, and multiplayer party games. Before that came Canvas/AWS delivery engineering at Higher Ed Partners and Medical Sales College and 20 years of media production. I'm open to AI application developer, full-stack, and learning-technology developer roles.",
+      "Other builds include ID Assist (an instructional-design compiler with a live AI tutor), StepBot (an embeddable Canvas help bot), FamilyFlow (a touch wall calendar for families), Null Arena and Belt Command (games built by AI coding agents under my direction, one playable in the browser), Hinterviewer-X, Pistomp-Mobile, and multiplayer party games. Before that came Canvas/AWS delivery engineering at Higher Ed Partners and Medical Sales College and 20 years of media production. I'm open to AI application developer, full-stack, and learning-technology developer roles.",
     ],
   };
 
@@ -204,6 +204,36 @@ export function buildAiResumeContent(mediaBase?: ResumeContent): ResumeContent {
     {
       id: newId("proj"),
       enabled: true,
+      title: "Belt Command",
+      summary:
+        "Original arcade game (commercial candidate) in C++17/SDL2 — every visual is vector art drawn in code and every sound is synthesized. Runs on my Batocera arcade box and compiles to WebAssembly (Emscripten) for the browser and phones: 1–4 player split screen, touch controls, and online play between browser and box players over WebRTC.",
+      href: "https://belt-command.vercel.app",
+      linkLabel: "Play in the browser",
+      tags: ["Playable", "C++ / SDL2", "WebAssembly", "WebRTC multiplayer"],
+    },
+    {
+      id: newId("proj"),
+      enabled: true,
+      title: "Iron Harbor",
+      summary:
+        "Naval strategy game (commercial candidate) on the Belt Command engine: 1–4 players in any mix of humans and AI admirals that plan fleets and fight. Generated mirrored island maps with pathfinding, hidden minefields, real-time battles with per-turret salvos, and carrier air strikes with dogfights. Xbox 360 and Wii remote support.",
+      href: "",
+      linkLabel: "Private build — demo on request",
+      tags: ["In development", "C++ / SDL2", "Game AI", "Pathfinding"],
+    },
+    {
+      id: newId("proj"),
+      enabled: true,
+      title: "Arcade-box game collection",
+      summary:
+        "More games built for my Batocera arcade PC: Vector Strike (personal project — custom wireframe 3D renderer, 1–4 player split screen, 3D positional audio with Doppler, also on Samsung and Android TV); Fractal Rescue (commercial candidate on the Null Arena OpenGL engine, rigged 3D characters, 1–4 player competitive); Dead Center Firing Range (light-gun practice with direct-Bluetooth Wii remotes and GUN4IR, three modes); and a Jump ’n Bump libretro mod extended to 8 players and 16:9 with a level maker and new modes.",
+      href: "",
+      linkLabel: "Console builds — demo on request",
+      tags: ["Working builds", "C++ / OpenGL", "Wii remote / light gun", "AI-directed dev"],
+    },
+    {
+      id: newId("proj"),
+      enabled: true,
       title: "Hinterviewer-X",
       summary:
         "Secure video-interview platform built for Medical Sales College career placement — multi-client portal for recorded candidate interviews and hiring review (TypeScript).",
@@ -283,7 +313,7 @@ export function buildAiResumeContent(mediaBase?: ResumeContent): ResumeContent {
     also: {
       label: "Also in the toolbox",
       note: "Hardware-adjacent and multimedia work that keeps systems skills sharp.",
-      items: ["Web Push / service workers", "Electron", "Raspberry Pi / MOD-UI", "C++ / OpenGL (AI-directed)", "Premiere / After Effects"],
+      items: ["Web Push / service workers", "Electron", "Raspberry Pi / MOD-UI", "C++17 · SDL2 · OpenGL · WebAssembly (AI-directed)", "Premiere / After Effects"],
     },
     meters: [
       { id: newId("meter"), enabled: true, name: "TypeScript / React / Next.js", proficiency: "Advanced", width: 80 },
@@ -370,6 +400,12 @@ export function buildAiResumeContent(mediaBase?: ResumeContent): ResumeContent {
             projectId: byTitle("FamilyFlow")?.id,
           },
           {
+            role: "Belt Command",
+            company: "Side project",
+            proof: "Browser build via WebAssembly with phone touch controls and WebRTC multiplayer against console players.",
+            projectId: byTitle("Belt Command")?.id,
+          },
+          {
             role: "Hinterviewer-X",
             company: "Side project",
             proof: "Deployed video-interview portal for Medical Sales College placement.",
@@ -390,6 +426,12 @@ export function buildAiResumeContent(mediaBase?: ResumeContent): ResumeContent {
         strength: "Strong",
         summary: "Turning a product idea into specs, directing AI coding agents, reviewing their output, and shipping and maintaining the result.",
         matches: [
+          {
+            role: "Belt Command",
+            company: "Side project",
+            proof: "Commercial-candidate game directed end to end: C++ engine, WebAssembly browser build, WebRTC online play.",
+            projectId: byTitle("Belt Command")?.id,
+          },
           {
             role: "Null Arena",
             company: "Side project",

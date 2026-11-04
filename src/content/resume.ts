@@ -292,6 +292,7 @@ export const projectNetwork = {
     { id: "idassist", label: "ID\nAssist", kind: "project", x: 62, y: 46 },
     { id: "agent", label: "Email\nagent", kind: "project", x: 50, y: 22 },
     { id: "nullarena", label: "Null\nArena", kind: "project", x: 40, y: 52 },
+    { id: "beltcmd", label: "Belt\nCommand", kind: "project", x: 16, y: 38 },
   ],
   edges: [
     ["core", "code"],
@@ -353,6 +354,10 @@ export const projectNetwork = {
     ["ux", "nullarena"],
     ["ai", "nullarena"],
     ["hardware", "nullarena"],
+    ["code", "beltcmd"],
+    ["graphics", "beltcmd"],
+    ["web", "beltcmd"],
+    ["ux", "beltcmd"],
     ["code", "calendar"],
     ["hardware", "calendar"],
   ],

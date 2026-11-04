@@ -12,12 +12,8 @@ export const TRACKED_SITES: TrackedSite[] = [
   { slug: "familyflow", label: "FamilyFlow", origins: ["https://familyflow.ashurose.com", "https://family-wall-calendar.vercel.app"] },
   { slug: "ashurose", label: "Ashurose", origins: ["https://ashurose.com", "https://www.ashurose.com", "https://ashurose.vercel.app"] },
   { slug: "hinterviewer", label: "Hinterviewer-X", origins: ["https://hinterviewer-x.vercel.app"] },
-  // Games — add origins once their URLs are confirmed.
-  { slug: "vector-strike", label: "Vector Strike" },
-  { slug: "belt-command", label: "Belt Command" },
-  { slug: "fractal-rescue", label: "Fractal Rescue" },
-  { slug: "jump-n-bump", label: "Jump n Bump" },
-  { slug: "dead-center", label: "Dead Center Firing Range" },
+  // Games with a public web build. Console-only (Batocera) and login-protected builds are not tracked.
+  { slug: "belt-command", label: "Belt Command", origins: ["https://belt-command.vercel.app"] },
   { slug: "family-feud", label: "Family Feud", origins: ["https://family-feud-9paz.onrender.com"] },
   { slug: "one-percent-club", label: "The 1% Club", origins: ["https://the-1-percent-club.onrender.com"] },
 ];
