@@ -118,6 +118,8 @@ Key files:
 
 ## Status log (most recent first)
 
+**2026-11-20 — Salary round-trip bug fixed.** `parseSalary` (src/lib/jobs/types.ts) re-parsed the display `rate` label on every full-object save, splitting on commas and ignoring "K" ("$117,437–$177,624" → 117–437; "$85,000–$95,000" → 0–85). Any GET→PUT (email bot, pipeline UI edit, Claude updates) corrupted salaryMin/Max/annualMid while the label still looked right. Fix: trust stored numeric `salaryMin`/`salaryMax`/`salaryPeriod` when present; otherwise parse labels with thousands commas and K suffix. 12 damaged rows repaired in prod via `PUT {job}` with a `salary:{min,max,period}` object (backup: scratchpad jobs-pre-salaryfix-2026-11-20.json).
+
 **2026-11-04 — Professional resume PDFs + site-review fixes.**
 - **New printable:** `/print?lens=media|ai|ui` (`src/app/print/page.tsx`) renders `src/components/print/ResumeDocument.tsx`: one-column, ATS-friendly, white, Letter, 2 pages. Replaces the old dark screenshot export.
 - **PDFs:** `public/resume/Chris-Rosenau-Resume-{Learning-Media,AI-Developer,UI-Design}.pdf` (names = `RESUME_PDF_PATHS`). Old `public/exports/Chris-Rosenau-Resume.pdf` removed. **Regenerate after any content change or reseed:** `RESUME_URL=https://resume-rho-taupe.vercel.app npm run pdf` (or `npm run dev` + `npm run pdf`). Needs playwright locally.

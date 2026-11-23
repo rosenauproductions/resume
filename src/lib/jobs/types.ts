@@ -447,17 +447,37 @@ function parseSalary(o: Record<string, unknown>): SalaryBag {
   } else {
     const rateStr = String(pick(o, "rate", "salary") ?? "").trim();
     rateLabel = rateStr;
-    const nums = [...rateStr.matchAll(/(\d+(?:\.\d+)?)/g)].map((m) => Number(m[1]));
-    if (nums.length === 1) {
-      min = nums[0];
-      max = nums[0];
-    } else if (nums.length >= 2) {
-      min = Math.min(nums[0], nums[1]);
-      max = Math.max(nums[0], nums[1]);
+    // A stored job round-trips with numeric salaryMin/salaryMax: trust those
+    // over re-parsing the display label (re-parsing used to turn
+    // "$117,437–$177,624" into 117–437 on every save).
+    const storedMin = pick(o, "salarymin");
+    const storedMax = pick(o, "salarymax");
+    const storedPeriod = String(pick(o, "salaryperiod") ?? "");
+    if (typeof storedMin === "number" || typeof storedMax === "number") {
+      min = typeof storedMin === "number" ? storedMin : (storedMax as number);
+      max = typeof storedMax === "number" ? storedMax : (storedMin as number);
+      if (storedPeriod === "hourly" || storedPeriod === "daily" || storedPeriod === "annual") {
+        period = storedPeriod;
+      }
+    } else {
+      // "$117,437", "$60K", "45.50" — commas are thousands separators, K = ×1000
+      const nums = [...rateStr.matchAll(/(\d[\d,]*(?:\.\d+)?)\s*([kK])?(?![\d,])/g)].map((m) => {
+        const n = Number(m[1].replace(/,/g, ""));
+        return m[2] ? n * 1000 : n;
+      });
+      if (nums.length === 1) {
+        min = nums[0];
+        max = nums[0];
+      } else if (nums.length >= 2) {
+        min = Math.min(nums[0], nums[1]);
+        max = Math.max(nums[0], nums[1]);
+      }
     }
-    if (/hr|hour/i.test(rateStr)) period = "hourly";
-    else if (/day/i.test(rateStr)) period = "daily";
-    else if (min != null && min >= 1000) period = "annual";
+    if (!period) {
+      if (/hr|hour/i.test(rateStr)) period = "hourly";
+      else if (/day/i.test(rateStr)) period = "daily";
+      else if (min != null && min >= 1000) period = "annual";
+    }
   }
 
   if (!rateLabel) {
